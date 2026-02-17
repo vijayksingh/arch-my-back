@@ -1,0 +1,299 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /* Base semantic tokens */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 12%;
+    --primary: 0 0% 12%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 20%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 92%;
+    --accent-foreground: 0 0% 12%;
+    --destructive: 0 0% 20%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 86%;
+    --input: 0 0% 86%;
+    --ring: 0 0% 35%;
+    --ui-border-ghost: hsl(var(--border) / 0.32);
+    --ui-border-focus: hsl(var(--ring) / 0.68);
+    --ui-border-accent-soft: hsl(var(--primary) / 0.26);
+    --radius: 0.75rem;
+    --chart-1: 0 0% 22%;
+    --chart-2: 0 0% 34%;
+    --chart-3: 0 0% 46%;
+    --chart-4: 0 0% 58%;
+    --chart-5: 0 0% 70%;
+
+    /* Canvas and surface treatment */
+    --canvas-dot: 0 0% 80%;
+    --canvas-pattern-opacity: 0.6;
+    --canvas-mask: rgba(255, 255, 255, 0.72);
+    --surface-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --panel-shadow: 0 24px 48px rgba(0, 0, 0, 0.16);
+
+    /* Node category tones (monochrome) */
+    --gradient-traffic: linear-gradient(160deg, hsl(0 0% 100%) 0%, hsl(0 0% 95%) 100%);
+    --gradient-compute: linear-gradient(160deg, hsl(0 0% 98%) 0%, hsl(0 0% 92%) 100%);
+    --gradient-storage: linear-gradient(160deg, hsl(0 0% 96%) 0%, hsl(0 0% 90%) 100%);
+    --gradient-messaging: linear-gradient(160deg, hsl(0 0% 94%) 0%, hsl(0 0% 88%) 100%);
+    --gradient-caching: linear-gradient(160deg, hsl(0 0% 92%) 0%, hsl(0 0% 86%) 100%);
+    --gradient-external: linear-gradient(160deg, hsl(0 0% 90%) 0%, hsl(0 0% 84%) 100%);
+
+    --category-traffic-accent: 12 84% 47%;
+    --category-compute-accent: 218 86% 50%;
+    --category-storage-accent: 274 76% 50%;
+    --category-messaging-accent: 168 74% 38%;
+    --category-caching-accent: 38 90% 46%;
+    --category-external-accent: 218 16% 44%;
+    --category-traffic-icon: var(--category-traffic-accent);
+    --category-compute-icon: var(--category-compute-accent);
+    --category-storage-icon: var(--category-storage-accent);
+    --category-messaging-icon: var(--category-messaging-accent);
+    --category-caching-icon: var(--category-caching-accent);
+    --category-external-icon: var(--category-external-accent);
+
+    --glow-traffic: hsl(var(--category-traffic-accent) / 0.2);
+    --glow-compute: hsl(var(--category-compute-accent) / 0.2);
+    --glow-storage: hsl(var(--category-storage-accent) / 0.2);
+    --glow-messaging: hsl(var(--category-messaging-accent) / 0.2);
+    --glow-caching: hsl(var(--category-caching-accent) / 0.2);
+    --glow-external: hsl(var(--category-external-accent) / 0.2);
+
+    --connection: 0 0% 34%;
+    --connection-selected: 0 0% 14%;
+    --connection-glow: rgba(0, 0, 0, 0.18);
+
+    --node-surface: hsl(var(--card) / 0.82);
+    --node-surface-hover: hsl(var(--card) / 0.9);
+    --node-surface-selected: hsl(var(--card) / 0.94);
+    --node-border: hsl(var(--border) / 0.62);
+    --node-border-hover: hsl(var(--border) / 0.8);
+    --node-handle: rgba(22, 22, 22, 0.9);
+    --node-handle-border: rgba(255, 255, 255, 0.75);
+    --node-handle-glow: rgba(0, 0, 0, 0.22);
+    --node-icon-surface: hsl(var(--background) / 0.75);
+    --node-icon-color: hsl(0 0% 12%);
+    --node-label: hsl(0 0% 12%);
+    --node-meta: hsl(0 0% 38%);
+    --node-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --node-hover-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
+    --node-selected-shadow: 0 0 0 1px hsl(var(--background)), 0 10px 20px rgba(0, 0, 0, 0.16);
+    --node-selected-scale: 1.02;
+
+    --export-bg: hsl(var(--background));
+  }
+
+  .dark,
+  [data-theme="dark"] {
+    color-scheme: dark;
+
+    --background: 0 0% 6%;
+    --foreground: 0 0% 94%;
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 94%;
+    --primary: 0 0% 94%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 88%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 62%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 94%;
+    --destructive: 0 0% 84%;
+    --destructive-foreground: 0 0% 9%;
+    --border: 0 0% 20%;
+    --input: 0 0% 22%;
+    --ring: 0 0% 72%;
+    --ui-border-ghost: hsl(var(--border) / 0.5);
+    --ui-border-focus: hsl(var(--ring) / 0.82);
+    --ui-border-accent-soft: hsl(var(--primary) / 0.34);
+    --chart-1: 0 0% 78%;
+    --chart-2: 0 0% 66%;
+    --chart-3: 0 0% 54%;
+    --chart-4: 0 0% 42%;
+    --chart-5: 0 0% 30%;
+
+    --canvas-dot: 0 0% 26%;
+    --canvas-pattern-opacity: 0.34;
+    --canvas-mask: rgba(6, 6, 6, 0.78);
+    --surface-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+    --panel-shadow: 0 30px 56px rgba(0, 0, 0, 0.5);
+
+    --gradient-traffic: linear-gradient(160deg, hsl(0 0% 27%) 0%, hsl(0 0% 20%) 100%);
+    --gradient-compute: linear-gradient(160deg, hsl(0 0% 24%) 0%, hsl(0 0% 18%) 100%);
+    --gradient-storage: linear-gradient(160deg, hsl(0 0% 22%) 0%, hsl(0 0% 16%) 100%);
+    --gradient-messaging: linear-gradient(160deg, hsl(0 0% 20%) 0%, hsl(0 0% 14%) 100%);
+    --gradient-caching: linear-gradient(160deg, hsl(0 0% 18%) 0%, hsl(0 0% 12%) 100%);
+    --gradient-external: linear-gradient(160deg, hsl(0 0% 30%) 0%, hsl(0 0% 22%) 100%);
+
+    --category-traffic-accent: 12 94% 70%;
+    --category-compute-accent: 214 92% 72%;
+    --category-storage-accent: 272 88% 74%;
+    --category-messaging-accent: 168 74% 66%;
+    --category-caching-accent: 42 96% 70%;
+    --category-external-accent: 216 26% 72%;
+    --category-traffic-icon: var(--category-traffic-accent);
+    --category-compute-icon: var(--category-compute-accent);
+    --category-storage-icon: var(--category-storage-accent);
+    --category-messaging-icon: var(--category-messaging-accent);
+    --category-caching-icon: var(--category-caching-accent);
+    --category-external-icon: var(--category-external-accent);
+
+    --glow-traffic: hsl(var(--category-traffic-accent) / 0.24);
+    --glow-compute: hsl(var(--category-compute-accent) / 0.24);
+    --glow-storage: hsl(var(--category-storage-accent) / 0.24);
+    --glow-messaging: hsl(var(--category-messaging-accent) / 0.24);
+    --glow-caching: hsl(var(--category-caching-accent) / 0.24);
+    --glow-external: hsl(var(--category-external-accent) / 0.24);
+
+    --connection: 0 0% 68%;
+    --connection-selected: 0 0% 96%;
+    --connection-glow: rgba(255, 255, 255, 0.26);
+
+    --node-surface: hsl(var(--card) / 0.74);
+    --node-surface-hover: hsl(var(--card) / 0.82);
+    --node-surface-selected: hsl(var(--card) / 0.9);
+    --node-border: hsl(var(--border) / 0.75);
+    --node-border-hover: hsl(var(--border) / 0.92);
+    --node-handle: rgba(245, 245, 245, 0.9);
+    --node-handle-border: rgba(255, 255, 255, 0.35);
+    --node-handle-glow: rgba(255, 255, 255, 0.28);
+    --node-icon-surface: hsl(var(--background) / 0.45);
+    --node-icon-color: hsl(0 0% 96%);
+    --node-label: hsl(0 0% 96%);
+    --node-meta: hsl(0 0% 75%);
+    --node-shadow: 0 4px 12px rgba(0, 0, 0, 0.34);
+    --node-hover-shadow: 0 10px 24px rgba(0, 0, 0, 0.42);
+    --node-selected-shadow: 0 0 0 1px hsl(var(--background) / 0.6), 0 14px 28px rgba(0, 0, 0, 0.48);
+    --node-selected-scale: 1.02;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  #root {
+    height: 100vh;
+    width: 100vw;
+  }
+}
+
+@layer utilities {
+  .ui-border-ghost {
+    border-color: var(--ui-border-ghost);
+  }
+
+  .ui-border-accent-soft {
+    border-color: var(--ui-border-accent-soft);
+  }
+
+  .ui-focus-outline {
+    border-color: var(--ui-border-focus) !important;
+    box-shadow: 0 0 0 1px var(--ui-border-focus), 0 0 0 4px hsl(var(--ring) / 0.18);
+  }
+}
+
+/* React Flow overrides */
+.react-flow__background {
+  background-color: hsl(var(--background)) !important;
+}
+
+.react-flow__background-pattern {
+  fill: hsl(var(--canvas-dot) / var(--canvas-pattern-opacity)) !important;
+}
+
+.react-flow__minimap {
+  background-color: hsl(var(--card) / 0.95) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: calc(var(--radius) + 4px) !important;
+  box-shadow: var(--surface-shadow) !important;
+  backdrop-filter: blur(10px);
+  z-index: 20 !important;
+}
+
+.react-flow__minimap-mask {
+  fill: var(--canvas-mask) !important;
+}
+
+.react-flow__controls {
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: var(--radius) !important;
+  overflow: hidden;
+  box-shadow: var(--surface-shadow) !important;
+  background: hsl(var(--card) / 0.95) !important;
+  backdrop-filter: blur(10px);
+  z-index: 20 !important;
+}
+
+.react-flow__controls-button {
+  background-color: transparent !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  transition: all 160ms ease !important;
+}
+
+.react-flow__controls-button svg {
+  fill: currentColor !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: hsl(var(--accent) / 0.8) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.4);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.55);
+}
+
+/* Animations */
+@keyframes flow {
+  0% {
+    stroke-dashoffset: 20;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
