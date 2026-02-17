@@ -1,8 +1,13 @@
 const KEY_PREFIX = 'archmyback_';
 
+// Module-level cache to avoid repeated localStorage reads
+const storageCache = new Map<string, string | null>();
+
 export function saveDesign(key: string, json: string): void {
   try {
-    localStorage.setItem(`${KEY_PREFIX}${key}`, json);
+    const fullKey = `${KEY_PREFIX}${key}`;
+    localStorage.setItem(fullKey, json);
+    storageCache.set(fullKey, json); // Keep cache in sync
   } catch (e) {
     console.error('Failed to save design:', e);
   }
@@ -10,7 +15,17 @@ export function saveDesign(key: string, json: string): void {
 
 export function loadDesign(key: string): string | null {
   try {
-    return localStorage.getItem(`${KEY_PREFIX}${key}`);
+    const fullKey = `${KEY_PREFIX}${key}`;
+
+    // Check cache first
+    if (storageCache.has(fullKey)) {
+      return storageCache.get(fullKey)!;
+    }
+
+    // Cache miss - read from localStorage
+    const value = localStorage.getItem(fullKey);
+    storageCache.set(fullKey, value);
+    return value;
   } catch (e) {
     console.error('Failed to load design:', e);
     return null;
@@ -34,7 +49,9 @@ export function listSavedDesigns(): string[] {
 
 export function deleteDesign(key: string): void {
   try {
-    localStorage.removeItem(`${KEY_PREFIX}${key}`);
+    const fullKey = `${KEY_PREFIX}${key}`;
+    localStorage.removeItem(fullKey);
+    storageCache.delete(fullKey); // Keep cache in sync
   } catch (e) {
     console.error('Failed to delete design:', e);
   }

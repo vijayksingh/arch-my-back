@@ -1,0 +1,2 @@
+export { WorkspaceModeTabs } from './WorkspaceModeTabs';
+

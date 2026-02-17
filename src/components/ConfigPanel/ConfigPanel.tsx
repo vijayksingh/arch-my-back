@@ -1,52 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { LucideIcon } from 'lucide-react';
-import {
-  Scale,
-  Router,
-  Globe,
-  Server,
-  Cog,
-  Zap,
-  Database,
-  HardDrive,
-  MemoryStick,
-  ArrowRightLeft,
-  Plug,
-  ExternalLink,
-  X,
-  Trash2,
-  Box,
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import type { ConfigField, ComponentCategory } from '@/types';
+import type { ConfigField } from '@/types';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { useCanvasStore } from '@/stores/canvasStore';
-
-const iconMap: Record<string, LucideIcon> = {
-  Scale,
-  Router,
-  Globe,
-  Server,
-  Cog,
-  Zap,
-  Database,
-  HardDrive,
-  MemoryStick,
-  ArrowRightLeft,
-  Plug,
-  ExternalLink,
-};
-
-const categoryAccentVarMap: Record<ComponentCategory, string> = {
-  Traffic: '--category-traffic-accent',
-  Compute: '--category-compute-accent',
-  Storage: '--category-storage-accent',
-  Messaging: '--category-messaging-accent',
-  Caching: '--category-caching-accent',
-  External: '--category-external-accent',
-};
+import { getIconByName } from '@/registry/iconRegistry';
+import { categoryAccentTokens } from '@/registry/categoryThemes';
 
 function InlineLabel({
   value,
@@ -169,11 +131,15 @@ export function ConfigPanel() {
   const setSelectedNode = useCanvasStore((s) => s.setSelectedNode);
 
   const node = nodes.find((n) => n.id === selectedNodeId);
-  const typeDef = node ? componentTypeMap.get(node.data.componentType) : null;
-  const isOpen = !!node && !!typeDef;
-  const IconComponent = typeDef ? (iconMap[typeDef.icon] ?? Box) : Box;
+  const componentNode = node && node.type === 'archComponent' ? node : null;
+  const typeDef =
+    componentNode
+      ? componentTypeMap.get(componentNode.data.componentType)
+      : null;
+  const isOpen = !!componentNode && !!typeDef;
+  const IconComponent = getIconByName(typeDef?.icon ?? '');
   const fields = typeDef?.configFields ?? [];
-  const accentVar = typeDef ? categoryAccentVarMap[typeDef.category] : '--category-external-accent';
+  const accentVar = typeDef ? categoryAccentTokens[typeDef.category] : '--category-external-accent';
 
   const handleFieldChange = useCallback(
     (fieldKey: string, value: unknown) => {
@@ -214,16 +180,16 @@ export function ConfigPanel() {
   }, [isOpen, setSelectedNode]);
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-2 z-50 flex justify-center px-3">
+    <div className="pointer-events-none absolute inset-x-0 bottom-2 z-50 flex justify-center px-3">
       <aside
         className={cn(
-          'pointer-events-auto flex h-12 w-fit max-w-[calc(100vw-1.5rem)] items-center gap-2 overflow-hidden rounded-xl border ui-border-ghost bg-card/95 px-2 shadow-(--panel-shadow) backdrop-blur-xl transition-all duration-180 ease-out',
+          'pointer-events-auto flex h-12 w-fit max-w-[calc(100%-1.5rem)] items-center gap-2 overflow-hidden rounded-xl border ui-border-ghost bg-card/95 px-2 shadow-(--panel-shadow) backdrop-blur-xl transition-all duration-180 ease-out',
           isOpen
             ? 'translate-y-0 opacity-100'
             : 'pointer-events-none translate-y-[calc(100%+0.75rem)] opacity-0',
         )}
       >
-        {node && typeDef && (
+        {componentNode && typeDef && (
           <>
             <div className="flex min-w-0 shrink-0 items-center gap-1.5">
               <div
@@ -232,7 +198,7 @@ export function ConfigPanel() {
               >
                 <IconComponent size={12} strokeWidth={1.8} className="text-foreground/90" />
               </div>
-              <InlineLabel value={node.data.label} onChange={handleLabelChange} />
+              <InlineLabel value={componentNode.data.label} onChange={handleLabelChange} />
               <span
                 className="rounded-md px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.12em]"
                 style={{
@@ -246,7 +212,8 @@ export function ConfigPanel() {
 
             <div className="flex min-w-0 max-w-[min(56vw,48rem)] items-center gap-1.5 overflow-x-auto pr-1 [scrollbar-width:thin]">
               {fields.map((field) => {
-                const currentValue = node.data.config[field.key] ?? field.defaultValue;
+                const currentValue =
+                  componentNode.data.config[field.key] ?? field.defaultValue;
 
                 return (
                   <div

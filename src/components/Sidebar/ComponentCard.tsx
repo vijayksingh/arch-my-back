@@ -1,46 +1,8 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import type { ComponentTypeConfig, ComponentCategory } from '@/types';
-import type { LucideIcon } from 'lucide-react';
-import {
-  Scale,
-  Router,
-  Globe,
-  Server,
-  Cog,
-  Zap,
-  Database,
-  HardDrive,
-  MemoryStick,
-  ArrowRightLeft,
-  Plug,
-  ExternalLink,
-  Box,
-} from 'lucide-react';
-
-const iconMap: Record<string, LucideIcon> = {
-  Scale,
-  Router,
-  Globe,
-  Server,
-  Cog,
-  Zap,
-  Database,
-  HardDrive,
-  MemoryStick,
-  ArrowRightLeft,
-  Plug,
-  ExternalLink,
-};
-
-const categoryAccents: Record<ComponentCategory, string> = {
-  Traffic: '--category-traffic-accent',
-  Compute: '--category-compute-accent',
-  Storage: '--category-storage-accent',
-  Messaging: '--category-messaging-accent',
-  Caching: '--category-caching-accent',
-  External: '--category-external-accent',
-};
+import type { ComponentTypeConfig } from '@/types';
+import { getIconByName } from '@/registry/iconRegistry';
+import { categoryAccentTokens } from '@/registry/categoryThemes';
 
 interface ComponentCardProps {
   componentType: ComponentTypeConfig;
@@ -48,8 +10,8 @@ interface ComponentCardProps {
 
 export function ComponentCard({ componentType }: ComponentCardProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const IconComponent = iconMap[componentType.icon] ?? Box;
-  const categoryAccent = categoryAccents[componentType.category];
+  const IconComponent = getIconByName(componentType.icon);
+  const categoryAccent = categoryAccentTokens[componentType.category];
 
   function handleDragStart(e: React.DragEvent<HTMLDivElement>) {
     e.dataTransfer.setData('application/archcomponent', componentType.key);
@@ -73,6 +35,7 @@ export function ComponentCard({ componentType }: ComponentCardProps) {
       )}
       style={{
         boxShadow: `inset 0 0 0 1px hsl(var(${categoryAccent}) / 0.1)`,
+        touchAction: 'none',
       }}
       title={componentType.description}
     >

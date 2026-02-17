@@ -1,5 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Search, Boxes, X, GripVertical } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { RefObject } from 'react';
+import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Boxes from 'lucide-react/dist/esm/icons/boxes';
+import X from 'lucide-react/dist/esm/icons/x';
+import GripVertical from 'lucide-react/dist/esm/icons/grip-vertical';
+import MousePointer2 from 'lucide-react/dist/esm/icons/mouse-pointer-2';
+import BoxSelect from 'lucide-react/dist/esm/icons/box-select';
+import Square from 'lucide-react/dist/esm/icons/square';
+import Circle from 'lucide-react/dist/esm/icons/circle';
+import Type from 'lucide-react/dist/esm/icons/type';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +17,9 @@ import { cn } from '@/lib/utils';
 import { componentsByCategory } from '@/registry/componentTypes';
 import type { RailSection } from '@/stores/uiStore';
 import { useUIStore } from '@/stores/uiStore';
-import type { ComponentCategory } from '@/types';
+import { useCanvasStore } from '@/stores/canvasStore';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
+import type { CanvasNode, CanvasTool, ComponentCategory } from '@/types';
 import { ComponentCard } from './ComponentCard';
 
 const categoryOrder: ComponentCategory[] = [
@@ -24,13 +36,26 @@ const railItems: { id: RailSection; label: string; icon: LucideIcon }[] = [
   { id: 'search', label: 'Search', icon: Search },
 ];
 
-const SIDEBAR_TOP_INSET = 68;
+const SIDEBAR_TOP_INSET = 12;
 const SIDEBAR_BOTTOM_INSET = 64;
 const SIDEBAR_MARGIN = 12;
 const SIDEBAR_SNAP_THRESHOLD = 180;
 const FALLBACK_RAIL_WIDTH = 40;
 const FALLBACK_TRAY_WIDTH = 184;
 const FALLBACK_GAP = 8;
+const FALLBACK_TOOL_PANEL_WIDTH = 232;
+
+const toolItems: {
+  id: CanvasTool;
+  label: string;
+  icon: LucideIcon;
+}[] = [
+  { id: 'cursor', label: 'Cursor', icon: MousePointer2 },
+  { id: 'select', label: 'Select', icon: BoxSelect },
+  { id: 'rectangle', label: 'Rectangle', icon: Square },
+  { id: 'circle', label: 'Circle', icon: Circle },
+  { id: 'text', label: 'Text', icon: Type },
+];
 
 interface DragState {
   startX: number;
@@ -39,7 +64,32 @@ interface DragState {
   startPosY: number;
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  containerRef: RefObject<HTMLDivElement | null>;
+}
+
+function getNodeWidth(node: CanvasNode): number {
+  const styleWidth = node.style?.width;
+  if (typeof styleWidth === 'number') return styleWidth;
+  if (typeof styleWidth === 'string') {
+    const parsed = Number.parseFloat(styleWidth);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return node.measured?.width ?? node.width ?? 156;
+}
+
+function getNodeHeight(node: CanvasNode): number {
+  const styleHeight = node.style?.height;
+  if (typeof styleHeight === 'number') return styleHeight;
+  if (typeof styleHeight === 'string') {
+    const parsed = Number.parseFloat(styleHeight);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return node.measured?.height ?? node.height ?? 96;
+}
+
+export function Sidebar({ containerRef }: SidebarProps) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const isTrayOpen = useUIStore((s) => s.isTrayOpen);
   const activeRailSection = useUIStore((s) => s.activeRailSection);
   const sidebarPosition = useUIStore((s) => s.sidebarPosition);
@@ -50,28 +100,46 @@ export function Sidebar() {
   const setSidebarDragging = useUIStore((s) => s.setSidebarDragging);
   const snapSidebarToNearestCorner = useUIStore((s) => s.snapSidebarToNearestCorner);
   const rehydrateSidebarPosition = useUIStore((s) => s.rehydrateSidebarPosition);
+  const nodes = useCanvasStore((s) => s.nodes);
+  const sections = useWorkspaceStore((s) => s.sections);
+  const activeCanvasTool = useWorkspaceStore((s) => s.activeCanvasTool);
+  const setActiveCanvasTool = useWorkspaceStore((s) => s.setActiveCanvasTool);
+  const createSectionFromNodeSelection = useWorkspaceStore(
+    (s) => s.createSectionFromNodeSelection,
+  );
+  const getSectionLink = useWorkspaceStore((s) => s.getSectionLink);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [sectionTitle, setSectionTitle] = useState('');
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const normalizedQuery = searchQuery.toLowerCase().trim();
+  const selectedNodes = useMemo(
+    () => nodes.filter((node): node is CanvasNode => Boolean(node.selected)),
+    [nodes],
+  );
   const requiresQuery = activeRailSection === 'search';
   const trayTitle =
     activeRailSection === 'search' ? 'Search Components' : 'Components';
 
   const getViewportMetrics = useCallback(() => {
+    const containerRect = containerRef.current?.getBoundingClientRect();
     const root = rootRef.current;
     const panelWidth =
       root?.offsetWidth ??
-      (isTrayOpen
-        ? FALLBACK_RAIL_WIDTH + FALLBACK_GAP + FALLBACK_TRAY_WIDTH
-        : FALLBACK_RAIL_WIDTH);
-    const panelHeight = root?.offsetHeight ?? 420;
+      Math.max(
+        FALLBACK_TOOL_PANEL_WIDTH,
+        isTrayOpen
+          ? FALLBACK_RAIL_WIDTH + FALLBACK_GAP + FALLBACK_TRAY_WIDTH
+          : FALLBACK_RAIL_WIDTH,
+      );
+    const panelHeight = root?.offsetHeight ?? 500;
 
     return {
-      width: window.innerWidth,
-      height: window.innerHeight,
+      width: containerRect?.width ?? window.innerWidth,
+      height: containerRect?.height ?? window.innerHeight,
       panelWidth,
       panelHeight,
       topInset: SIDEBAR_TOP_INSET,
@@ -79,7 +147,7 @@ export function Sidebar() {
       margin: SIDEBAR_MARGIN,
       snapThreshold: SIDEBAR_SNAP_THRESHOLD,
     };
-  }, [isTrayOpen]);
+  }, [containerRef, isTrayOpen]);
 
   const handleDragStart = useCallback(
     (e: React.PointerEvent) => {
@@ -122,6 +190,18 @@ export function Sidebar() {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, [getViewportMetrics, rehydrateSidebarPosition]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => {
+      rehydrateSidebarPosition(getViewportMetrics());
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [containerRef, getViewportMetrics, rehydrateSidebarPosition]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -197,152 +277,297 @@ export function Sidebar() {
       );
     });
 
+  useEffect(() => {
+    if (!actionFeedback) return;
+    const timeoutId = window.setTimeout(() => setActionFeedback(null), 2200);
+    return () => window.clearTimeout(timeoutId);
+  }, [actionFeedback]);
+
+  const handleCreateSection = useCallback(async () => {
+    if (selectedNodes.length === 0) {
+      setActionFeedback('Select one or more nodes first.');
+      return;
+    }
+
+    const nextSectionTitle = sectionTitle.trim() || `Section ${sections.length + 1}`;
+
+    const bounds = selectedNodes.reduce(
+      (acc, node, index) => {
+        const nodeX = node.position.x;
+        const nodeY = node.position.y;
+        const nodeRight = nodeX + getNodeWidth(node);
+        const nodeBottom = nodeY + getNodeHeight(node);
+
+        if (index === 0) {
+          return {
+            minX: nodeX,
+            minY: nodeY,
+            maxX: nodeRight,
+            maxY: nodeBottom,
+          };
+        }
+
+        return {
+          minX: Math.min(acc.minX, nodeX),
+          minY: Math.min(acc.minY, nodeY),
+          maxX: Math.max(acc.maxX, nodeRight),
+          maxY: Math.max(acc.maxY, nodeBottom),
+        };
+      },
+      { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+    );
+
+    const createdSection = createSectionFromNodeSelection(
+      nextSectionTitle,
+      selectedNodes.map((node) => node.id),
+      {
+        x: bounds.minX,
+        y: bounds.minY,
+        width: Math.max(40, bounds.maxX - bounds.minX),
+        height: Math.max(40, bounds.maxY - bounds.minY),
+      },
+    );
+
+    if (!createdSection) {
+      setActionFeedback('Unable to create section from selection.');
+      return;
+    }
+
+    setSectionTitle('');
+
+    const linkToken = getSectionLink(createdSection.id);
+    if (!linkToken) {
+      setActionFeedback('Section created.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(linkToken);
+      setActionFeedback('Section link copied.');
+    } catch (error) {
+      console.error('Failed to copy section link:', error);
+      setActionFeedback('Section created. Copy link from Document.');
+    }
+  }, [
+    createSectionFromNodeSelection,
+    getSectionLink,
+    sectionTitle,
+    sections.length,
+    selectedNodes,
+  ]);
+
   return (
     <div
       ref={rootRef}
-      className="pointer-events-none fixed z-40 flex items-start gap-2"
+      className="pointer-events-none absolute z-40 flex flex-col items-start gap-2"
       style={{
         left: `${sidebarPosition.x}px`,
         top: `${sidebarPosition.y}px`,
       }}
     >
-      <aside className="pointer-events-auto flex w-10 shrink-0 flex-col items-center gap-1 rounded-xl border ui-border-ghost bg-card/88 p-1 shadow-(--surface-shadow) backdrop-blur-xl">
-        <button
-          type="button"
-          aria-label="Drag sidebar"
-          title="Drag and snap"
-          onPointerDown={handleDragStart}
+      <div className="flex items-start gap-2">
+        <aside className="pointer-events-auto flex w-10 shrink-0 flex-col items-center gap-1 rounded-xl border ui-border-ghost bg-card/88 p-1 shadow-(--surface-shadow) backdrop-blur-xl">
+          <button
+            type="button"
+            aria-label="Drag sidebar"
+            title="Drag and snap"
+            onPointerDown={handleDragStart}
+            style={{ touchAction: 'none' }}
+            className={cn(
+              'flex h-6 w-6 cursor-grab items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-accent/70 hover:text-foreground active:cursor-grabbing',
+              sidebarPosition.isDragging && 'bg-accent/60 text-foreground',
+            )}
+          >
+            <GripVertical className="h-3 w-3" />
+          </button>
+
+          {railItems.map(({ id, label, icon: Icon }) => {
+            const isActive = isTrayOpen && activeRailSection === id;
+
+            return (
+              <Button
+                key={id}
+                variant="ghost"
+                size="icon"
+                title={label}
+                aria-label={label}
+                onClick={() => {
+                  if (isActive) {
+                    toggleTray(id);
+                  } else {
+                    setActiveRailSection(id);
+                  }
+                }}
+                className={cn(
+                  'h-6 w-6 rounded-md text-muted-foreground transition-colors',
+                  isActive && 'bg-accent text-foreground shadow-sm',
+                )}
+              >
+                <Icon className="h-2.5 w-2.5" />
+              </Button>
+            );
+          })}
+        </aside>
+
+        <aside
           className={cn(
-            'flex h-6 w-6 cursor-grab items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-accent/70 hover:text-foreground active:cursor-grabbing',
-            sidebarPosition.isDragging && 'bg-accent/60 text-foreground',
+            'pointer-events-auto flex w-[184px] max-h-[min(68vh,28rem)] max-w-[calc(100%-3.75rem)] flex-col overflow-hidden rounded-xl border ui-border-ghost bg-card/92 shadow-(--surface-shadow) backdrop-blur-xl ease-out',
+            !prefersReducedMotion && 'transition-all duration-180',
+            isTrayOpen
+              ? 'translate-x-0 opacity-100'
+              : 'pointer-events-none -translate-x-3 opacity-0',
           )}
         >
-          <GripVertical className="h-3 w-3" />
-        </button>
-
-        {railItems.map(({ id, label, icon: Icon }) => {
-          const isActive = isTrayOpen && activeRailSection === id;
-
-          return (
+          <div className="flex items-center justify-between px-2 py-1.5">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <div className="flex h-5 w-5 items-center justify-center rounded-md bg-secondary/65">
+                {activeRailSection === 'search' ? (
+                  <Search className="h-2.5 w-2.5 text-foreground/90" />
+                ) : (
+                  <Boxes className="h-2.5 w-2.5 text-foreground/90" />
+                )}
+              </div>
+              <span className="truncate text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                {trayTitle}
+              </span>
+            </div>
             <Button
-              key={id}
               variant="ghost"
               size="icon"
-              title={label}
-              onClick={() => {
-                if (isActive) {
-                  toggleTray(id);
-                } else {
-                  setActiveRailSection(id);
-                }
-              }}
-              className={cn(
-                'h-6 w-6 rounded-md text-muted-foreground transition-colors',
-                isActive && 'bg-accent text-foreground shadow-sm',
-              )}
+              title="Close tray"
+              aria-label="Close tray"
+              onClick={closeTray}
+              className="h-5 w-5 rounded-md text-muted-foreground hover:text-foreground"
             >
-              <Icon className="h-2.5 w-2.5" />
+              <X className="h-2.5 w-2.5" />
             </Button>
-          );
-        })}
-      </aside>
-
-      <aside
-        className={cn(
-          'pointer-events-auto flex w-[184px] max-h-[min(68vh,28rem)] max-w-[calc(100vw-3.75rem)] flex-col overflow-hidden rounded-xl border ui-border-ghost bg-card/92 shadow-(--surface-shadow) backdrop-blur-xl transition-all duration-180 ease-out',
-          isTrayOpen
-            ? 'translate-x-0 opacity-100'
-            : 'pointer-events-none -translate-x-3 opacity-0',
-        )}
-      >
-        <div className="flex items-center justify-between px-2 py-1.5">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <div className="flex h-5 w-5 items-center justify-center rounded-md bg-secondary/65">
-              {activeRailSection === 'search' ? (
-                <Search className="h-2.5 w-2.5 text-foreground/90" />
-              ) : (
-                <Boxes className="h-2.5 w-2.5 text-foreground/90" />
-              )}
-            </div>
-            <span className="truncate text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-              {trayTitle}
-            </span>
           </div>
+
+          <div className="px-2 pb-1.5">
+            <div className="relative rounded-md bg-background/40">
+              <Search className="absolute left-2 top-1/2 h-2.5 w-2.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={searchRef}
+                variant="ghost"
+                type="text"
+                name="componentSearch"
+                placeholder="Search components..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoComplete="off"
+                className="h-6 bg-transparent pl-6 text-[11px]"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-2 py-2">
+            {requiresQuery && !normalizedQuery && (
+              <div className="flex flex-col items-center px-1 py-6">
+                <Search className="h-6 w-6 text-muted-foreground/55" />
+                <p className="mt-2 text-center text-[10px] text-muted-foreground">
+                  Type to search components
+                </p>
+              </div>
+            )}
+
+            {(!requiresQuery || normalizedQuery) &&
+              categoryOrder.map((category) => {
+                const components = componentsByCategory[category];
+                if (!components?.length) return null;
+
+                const filtered = normalizedQuery
+                  ? components.filter(
+                      (c) =>
+                        c.label.toLowerCase().includes(normalizedQuery) ||
+                        c.description.toLowerCase().includes(normalizedQuery),
+                    )
+                  : components;
+
+                if (filtered.length === 0) return null;
+
+                return (
+                  <div key={category} className="mb-2.5">
+                    <div className="mb-1 px-1 text-[8px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/78">
+                      {category}
+                    </div>
+
+                    <div className="flex flex-col gap-0.5">
+                      {filtered.map((ct) => (
+                        <ComponentCard key={ct.key} componentType={ct} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+
+            {noMatches && (
+              <div className="flex flex-col items-center px-2 py-6">
+                <Search className="h-6 w-6 text-muted-foreground/50" />
+                <p className="mt-2 text-center text-[10px] text-muted-foreground">
+                  No components found
+                </p>
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
+
+      <aside className="pointer-events-auto flex w-[232px] flex-col rounded-xl border ui-border-ghost bg-card/90 p-1.5 shadow-(--surface-shadow) backdrop-blur-xl">
+        <div className="mb-1 flex items-center justify-between px-1">
+          <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Canvas Tools
+          </span>
+          <span className="text-[9px] text-muted-foreground">
+            {selectedNodes.length} selected
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1 rounded-md bg-background/50 p-1">
+          {toolItems.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveCanvasTool(id)}
+              className={
+                activeCanvasTool === id
+                  ? 'flex h-7 w-7 items-center justify-center rounded-md bg-accent text-accent-foreground'
+                  : 'flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/55 hover:text-foreground'
+              }
+              title={label}
+              aria-label={label}
+            >
+              <Icon className="h-3.5 w-3.5" />
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-1 flex items-center gap-1">
+          <Input
+            variant="ghost"
+            value={sectionTitle}
+            onChange={(e) => setSectionTitle(e.target.value)}
+            name="sectionTitle"
+            autoComplete="off"
+            className="h-7 flex-1 bg-background/50 px-2 text-[11px]"
+            placeholder={`Section ${sections.length + 1}`}
+          />
           <Button
             variant="ghost"
-            size="icon"
-            title="Close tray"
-            onClick={closeTray}
-            className="h-5 w-5 rounded-md text-muted-foreground hover:text-foreground"
+            size="sm"
+            className="h-7 px-2.5 text-[11px]"
+            onClick={handleCreateSection}
+            disabled={selectedNodes.length === 0}
+            title={selectedNodes.length === 0 ? 'Select nodes first' : 'Create section'}
           >
-            <X className="h-2.5 w-2.5" />
+            Create
           </Button>
         </div>
 
-        <div className="px-2 pb-1.5">
-          <div className="relative rounded-md bg-background/40">
-            <Search className="absolute left-2 top-1/2 h-2.5 w-2.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              ref={searchRef}
-              variant="ghost"
-              type="text"
-              placeholder="Search components..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-6 bg-transparent pl-6 text-[11px]"
-            />
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-2 py-2">
-          {requiresQuery && !normalizedQuery && (
-            <div className="flex flex-col items-center px-1 py-6">
-              <Search className="h-6 w-6 text-muted-foreground/55" />
-              <p className="mt-2 text-center text-[10px] text-muted-foreground">
-                Type to search components
-              </p>
-            </div>
-          )}
-
-          {(!requiresQuery || normalizedQuery) &&
-            categoryOrder.map((category) => {
-              const components = componentsByCategory[category];
-              if (!components?.length) return null;
-
-              const filtered = normalizedQuery
-                ? components.filter(
-                    (c) =>
-                      c.label.toLowerCase().includes(normalizedQuery) ||
-                      c.description.toLowerCase().includes(normalizedQuery),
-                  )
-                : components;
-
-              if (filtered.length === 0) return null;
-
-              return (
-                <div key={category} className="mb-2.5">
-                  <div className="mb-1 px-1 text-[8px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/78">
-                    {category}
-                  </div>
-
-                  <div className="flex flex-col gap-0.5">
-                    {filtered.map((ct) => (
-                      <ComponentCard key={ct.key} componentType={ct} />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-
-          {noMatches && (
-            <div className="flex flex-col items-center px-2 py-6">
-              <Search className="h-6 w-6 text-muted-foreground/50" />
-              <p className="mt-2 text-center text-[10px] text-muted-foreground">
-                No components found
-              </p>
-            </div>
-          )}
-        </div>
+        {actionFeedback && (
+          <span className="mt-1 truncate px-1 text-[10px] text-muted-foreground">
+            {actionFeedback}
+          </span>
+        )}
       </aside>
     </div>
   );

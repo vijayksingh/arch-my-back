@@ -1,64 +1,17 @@
 import { memo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import {
-  Scale,
-  Router,
-  Globe,
-  Server,
-  Cog,
-  Zap,
-  Database,
-  HardDrive,
-  MemoryStick,
-  ArrowRightLeft,
-  Plug,
-  ExternalLink,
-  Box,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import type { ArchNode as ArchNodeType, ComponentCategory } from '@/types';
+import type { ArchNode as ArchNodeType } from '@/types';
 import { componentTypeMap } from '@/registry/componentTypes';
-
-const iconMap: Record<string, LucideIcon> = {
-  Scale,
-  Router,
-  Globe,
-  Server,
-  Cog,
-  Zap,
-  Database,
-  HardDrive,
-  MemoryStick,
-  ArrowRightLeft,
-  Plug,
-  ExternalLink,
-};
-
-const categoryGlows: Record<ComponentCategory, string> = {
-  Traffic: 'var(--glow-traffic)',
-  Compute: 'var(--glow-compute)',
-  Storage: 'var(--glow-storage)',
-  Messaging: 'var(--glow-messaging)',
-  Caching: 'var(--glow-caching)',
-  External: 'var(--glow-external)',
-};
-
-const categoryAccents: Record<ComponentCategory, string> = {
-  Traffic: '--category-traffic-accent',
-  Compute: '--category-compute-accent',
-  Storage: '--category-storage-accent',
-  Messaging: '--category-messaging-accent',
-  Caching: '--category-caching-accent',
-  External: '--category-external-accent',
-};
+import { getIconByName } from '@/registry/iconRegistry';
+import { categoryGlows, categoryAccentTokens } from '@/registry/categoryThemes';
 
 function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
   const [isHovered, setIsHovered] = useState(false);
   const typeDef = componentTypeMap.get(data.componentType);
-  const IconComponent = iconMap[typeDef?.icon ?? ''] ?? Box;
+  const IconComponent = getIconByName(typeDef?.icon ?? '');
   const glowColor = typeDef ? categoryGlows[typeDef.category] : categoryGlows.External;
-  const accentToken = typeDef ? categoryAccents[typeDef.category] : null;
+  const accentToken = typeDef ? categoryAccentTokens[typeDef.category] : null;
   const accentColor = accentToken
     ? `hsl(var(${accentToken}))`
     : 'var(--node-icon-color)';

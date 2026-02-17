@@ -1,43 +1,34 @@
-import { toPng } from 'html-to-image';
+import {
+  createExportService,
+  DEFAULT_EXPORT_CONFIG,
+  type ExportConfig,
+  type ExportResult,
+} from '@/services/exportService';
 
+/**
+ * Export canvas as PNG - backward-compatible wrapper around ExportService
+ *
+ * This function maintains the existing API for components while using
+ * the new service layer internally for better testability and separation of concerns.
+ */
 export async function exportCanvasAsPng(
   elementId: string,
   filename: string = 'architecture-design.png',
 ): Promise<void> {
-  const element = document.getElementById(elementId);
-  if (!element) {
-    console.error(`Element with id "${elementId}" not found`);
-    return;
-  }
+  const exportService = createExportService();
 
-  try {
-    const backgroundToken = getComputedStyle(document.documentElement)
-      .getPropertyValue('--background')
-      .trim();
-    const backgroundColor = backgroundToken
-      ? `hsl(${backgroundToken})`
-      : '#0a0a0a';
+  const config: ExportConfig = {
+    elementId,
+    filename,
+    quality: DEFAULT_EXPORT_CONFIG.quality!,
+    pixelRatio: DEFAULT_EXPORT_CONFIG.pixelRatio!,
+    backgroundColor: '', // Will be computed by service
+    excludeClasses: DEFAULT_EXPORT_CONFIG.excludeClasses!,
+  };
 
-    const dataUrl = await toPng(element, {
-      backgroundColor,
-      quality: 0.95,
-      pixelRatio: 2,
-      filter: (node: HTMLElement) => {
-        // Exclude minimap and controls from the export for a cleaner image
-        const classList = node.classList;
-        if (!classList) return true;
-        return (
-          !classList.contains('react-flow__minimap') &&
-          !classList.contains('react-flow__controls')
-        );
-      },
-    });
+  const result: ExportResult = await exportService.exportCanvasAsPng(config);
 
-    const link = document.createElement('a');
-    link.download = filename;
-    link.href = dataUrl;
-    link.click();
-  } catch (error) {
-    console.error('Failed to export canvas as PNG:', error);
+  if (!result.success) {
+    console.error(result.error);
   }
 }

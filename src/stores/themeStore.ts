@@ -1,60 +1,22 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import {
+  type Theme,
+  type ThemeEffect,
+  getThemeEffect,
+  resolveInitialTheme,
+  toggleTheme as toggleThemePure,
+  DOMThemeEffect,
+} from '@/services/themeService';
 
-type Theme = 'light' | 'dark';
 const THEME_STORAGE_KEY = 'archmyback_theme';
 
-interface PersistedThemeShape {
-  state?: {
-    theme?: unknown;
-  };
-}
-
-function isTheme(value: unknown): value is Theme {
-  return value === 'light' || value === 'dark';
-}
-
-function getSystemTheme(): Theme {
-  if (typeof window === 'undefined') return 'dark';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light';
-}
-
-function getStoredTheme(): Theme | null {
-  if (typeof window === 'undefined') return null;
-
-  const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
-  if (!raw) return null;
-
-  // Supports both Zustand persist JSON payload and a plain-string fallback.
-  if (isTheme(raw)) return raw;
-
-  try {
-    const parsed = JSON.parse(raw) as PersistedThemeShape;
-    if (isTheme(parsed?.state?.theme)) return parsed.state.theme;
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
-function resolveInitialTheme(): Theme {
-  return getStoredTheme() ?? getSystemTheme();
-}
-
-function applyTheme(theme: Theme): void {
-  if (typeof document === 'undefined') return;
-
-  const root = document.documentElement;
-  root.classList.toggle('dark', theme === 'dark');
-  root.setAttribute('data-theme', theme);
-}
+// Get the theme effect instance (dependency injection)
+const themeEffect: ThemeEffect = getThemeEffect();
 
 export function initializeTheme(): Theme {
-  const initialTheme = resolveInitialTheme();
-  applyTheme(initialTheme);
+  const initialTheme = resolveInitialTheme(themeEffect);
+  themeEffect.applyTheme(initialTheme);
   return initialTheme;
 }
 
@@ -67,21 +29,29 @@ interface ThemeStore {
 export const useThemeStore = create<ThemeStore>()(
   persist(
     (set, get) => ({
-      theme: resolveInitialTheme(),
+      theme: resolveInitialTheme(themeEffect),
       setTheme: (theme) => {
-        applyTheme(theme);
+        themeEffect.applyTheme(theme);
+        // Update cache if using DOMThemeEffect
+        if (themeEffect instanceof DOMThemeEffect) {
+          themeEffect.updateCache(theme);
+        }
         set({ theme });
       },
       toggleTheme: () => {
-        const nextTheme = get().theme === 'dark' ? 'light' : 'dark';
-        applyTheme(nextTheme);
+        const nextTheme = toggleThemePure(get().theme);
+        themeEffect.applyTheme(nextTheme);
+        // Update cache if using DOMThemeEffect
+        if (themeEffect instanceof DOMThemeEffect) {
+          themeEffect.updateCache(nextTheme);
+        }
         set({ theme: nextTheme });
       },
     }),
     {
       name: THEME_STORAGE_KEY,
       onRehydrateStorage: () => (state) => {
-        applyTheme(state?.theme ?? resolveInitialTheme());
+        themeEffect.applyTheme(state?.theme ?? resolveInitialTheme(themeEffect));
       },
     }
   )

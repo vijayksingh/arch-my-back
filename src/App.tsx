@@ -1,17 +1,22 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { Toolbar } from '@/components/Toolbar';
 import { Sidebar } from '@/components/Sidebar';
 import Canvas from '@/components/Canvas';
 import { ConfigPanel } from '@/components/ConfigPanel';
+import { DocumentPanel } from '@/components/DocumentPanel';
+import { cn } from '@/lib/utils';
 import { useCanvasStore } from '@/stores/canvasStore';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { urlShortenerTemplate } from '@/templates/urlShortener';
 import { loadDesign, setupAutosave } from '@/lib/persistence';
 
 export default function App() {
+  const canvasShellRef = useRef<HTMLDivElement>(null);
   const fromJSON = useCanvasStore((s) => s.fromJSON);
   const loadDesignToStore = useCanvasStore((s) => s.loadDesign);
   const toJSON = useCanvasStore((s) => s.toJSON);
+  const viewMode = useWorkspaceStore((s) => s.viewMode);
 
   useEffect(() => {
     // Try to restore autosaved design
@@ -39,17 +44,36 @@ export default function App() {
 
       {/* Main content area below toolbar */}
       <div className="relative flex flex-1 overflow-hidden">
-        <Sidebar />
+        {viewMode !== 'canvas' && (
+          <div
+            className={cn(
+              'h-full min-w-0 bg-background/75',
+              viewMode === 'both' && 'w-[min(42rem,42vw)] max-w-2xl border-r ui-border-ghost',
+              viewMode === 'document' && 'w-full',
+            )}
+          >
+            <DocumentPanel />
+          </div>
+        )}
 
-        {/* Canvas area */}
-        <div id="react-flow-canvas" className="absolute inset-0 bg-background">
-          <ReactFlowProvider>
-            <Canvas />
-          </ReactFlowProvider>
-        </div>
+        {viewMode !== 'document' && (
+          <div
+            ref={canvasShellRef}
+            className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-background"
+          >
+            <Sidebar containerRef={canvasShellRef} />
 
-        {/* Config panel overlay */}
-        <ConfigPanel />
+            {/* Canvas area */}
+            <div id="react-flow-canvas" className="absolute inset-0 bg-background">
+              <ReactFlowProvider>
+                <Canvas />
+              </ReactFlowProvider>
+            </div>
+
+            {/* Config panel overlay */}
+            <ConfigPanel />
+          </div>
+        )}
       </div>
     </div>
   );

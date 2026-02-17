@@ -1,7 +1,14 @@
 import { useState, useCallback } from 'react';
-import { Download, Save, Trash2, BookOpen, Rocket, Moon, Sun } from 'lucide-react';
+import Download from 'lucide-react/dist/esm/icons/download';
+import Save from 'lucide-react/dist/esm/icons/save';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import BookOpen from 'lucide-react/dist/esm/icons/book-open';
+import Rocket from 'lucide-react/dist/esm/icons/rocket';
+import Moon from 'lucide-react/dist/esm/icons/moon';
+import Sun from 'lucide-react/dist/esm/icons/sun';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { WorkspaceModeTabs } from '@/components/WorkspaceModeTabs';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { urlShortenerTemplate } from '@/templates/urlShortener';
@@ -55,8 +62,8 @@ export function Toolbar() {
         </div>
       </div>
 
-      {/* Center: design name */}
-      <div className="flex flex-1 items-center justify-center">
+      {/* Center: design name + workspace mode */}
+      <div className="flex flex-1 items-center justify-center gap-3">
         {isEditing ? (
           <Input
             value={designName}
@@ -65,6 +72,8 @@ export function Toolbar() {
             onKeyDown={(e) => {
               if (e.key === 'Enter') setIsEditing(false);
             }}
+            name="designName"
+            autoComplete="off"
             autoFocus
             className="h-8 w-72 border-border/60 bg-background/70 text-center text-sm font-medium shadow-none"
           />
@@ -77,6 +86,7 @@ export function Toolbar() {
             {designName}
           </Button>
         )}
+        <WorkspaceModeTabs />
       </div>
 
       {/* Right: actions */}
@@ -87,6 +97,7 @@ export function Toolbar() {
             size="icon"
             onClick={toggleTheme}
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
           >
             {theme === 'dark' ? (
@@ -100,6 +111,7 @@ export function Toolbar() {
             size="icon"
             onClick={handleLoadTemplate}
             title="Load Template"
+            aria-label="Load Template"
             className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
           >
             <BookOpen className="h-3.5 w-3.5" />
@@ -109,6 +121,7 @@ export function Toolbar() {
             size="icon"
             onClick={handleExport}
             title="Export PNG"
+            aria-label="Export PNG"
             className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
           >
             <Download className="h-3.5 w-3.5" />
@@ -118,6 +131,7 @@ export function Toolbar() {
             size="icon"
             onClick={handleClear}
             title="Clear Canvas"
+            aria-label="Clear Canvas"
             className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
           >
             <Trash2 className="h-3.5 w-3.5" />
