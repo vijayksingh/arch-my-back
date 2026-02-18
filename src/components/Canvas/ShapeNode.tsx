@@ -1,8 +1,10 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import {
+  Handle,
   NodeResizer,
   type NodeProps,
+  Position,
   type ResizeDragEvent,
   type ResizeParams,
 } from '@xyflow/react';
@@ -30,6 +32,14 @@ function ShapeNodeComponent({
   const isCircle = type === 'shapeCircle';
   const isText = type === 'shapeText';
   const isEditing = activeShapeEditId === id;
+  // Handles are subtle by default; visible on node hover via `group-hover:` (root has `group` class).
+  const handleClassName =
+    'nodrag nopan z-30! h-2.5! w-2.5! rounded-full! border! opacity-0 group-hover:opacity-100 transition-opacity duration-150';
+  const handleBaseStyle: CSSProperties = {
+    backgroundColor: 'var(--node-handle)',
+    borderColor: 'var(--node-handle-border)',
+    pointerEvents: 'auto',
+  };
 
   useEffect(() => {
     if (!isEditing) return;
@@ -113,13 +123,17 @@ function ShapeNodeComponent({
         minWidth={isCircle ? 64 : 80}
         minHeight={isCircle ? 64 : 44}
         keepAspectRatio={isCircle}
-        lineStyle={{ borderColor: 'hsl(var(--ring) / 0.55)' }}
+        lineStyle={{
+          borderColor: 'hsl(var(--ring) / 0.55)',
+          pointerEvents: 'none',
+        }}
         handleStyle={{
           width: 8,
           height: 8,
           borderRadius: 999,
           backgroundColor: 'hsl(var(--card))',
           border: '1px solid hsl(var(--ring) / 0.72)',
+          zIndex: 20,
         }}
         onResizeEnd={handleResizeEnd}
       />
@@ -155,6 +169,21 @@ function ShapeNodeComponent({
           {data.label}
         </span>
       )}
+
+      <Handle
+        id="left-target"
+        type="target"
+        position={Position.Left}
+        className={handleClassName}
+        style={{ ...handleBaseStyle, left: -6 }}
+      />
+      <Handle
+        id="right-source"
+        type="source"
+        position={Position.Right}
+        className={handleClassName}
+        style={{ ...handleBaseStyle, right: -6 }}
+      />
     </div>
   );
 }

@@ -1,6 +1,13 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
 
+/* Tailwind v4: register custom animation utilities */
+@theme {
+  --animate-block-enter: block-enter 240ms cubic-bezier(.165,.84,.44,1) both;
+  --animate-block-exit:  block-exit  180ms ease-out forwards;
+  --animate-picker-enter: picker-enter 160ms cubic-bezier(.165,.84,.44,1) both;
+}
+
 @layer base {
   :root {
     color-scheme: light;
@@ -295,5 +302,34 @@
   }
   100% {
     stroke-dashoffset: 0;
+  }
+}
+
+@keyframes block-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes picker-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes block-exit {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
   }
 }

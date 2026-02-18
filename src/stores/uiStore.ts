@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type RailSection = 'components' | 'search';
+export type RailSection = 'components';
 export type SidebarCorner =
   | 'top-left'
   | 'top-right'

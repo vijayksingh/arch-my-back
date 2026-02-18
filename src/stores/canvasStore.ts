@@ -14,6 +14,8 @@ import type {
   CanvasNode,
   CanvasShapeKind,
   CanvasShapeNode,
+  NotebookBlockType,
+  SectionBadgeNode,
 } from '@/types';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { validateJSON, validateEdgeReferences } from '@/domain/validators';
@@ -36,6 +38,12 @@ interface CanvasStore {
     shape: CanvasShapeKind,
     position: { x: number; y: number },
   ) => string;
+  addShapeNodeWithSize: (
+    shape: CanvasShapeKind,
+    position: { x: number; y: number },
+    width: number,
+    height: number,
+  ) => string;
   removeNode: (nodeId: string) => void;
   updateNodeConfig: (
     nodeId: string,
@@ -56,6 +64,14 @@ interface CanvasStore {
   // Bulk operations
   loadDesign: (nodes: CanvasNode[], edges: ArchEdge[]) => void;
   clearCanvas: () => void;
+
+  // Notebook badge nodes
+  addSectionBadgeNode: (
+    blockId: string,
+    blockType: NotebookBlockType,
+    label: string,
+    position: { x: number; y: number },
+  ) => string;
 
   // Persistence
   toJSON: () => string;
@@ -129,53 +145,45 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     return true;
   },
 
-  addShapeNode: (shape, position) => {
-    const baseByShape = {
-      rectangle: {
-        type: 'shapeRect' as const,
-        label: 'Rectangle',
-        width: 180,
-        height: 110,
-        fontSize: undefined,
-      },
-      circle: {
-        type: 'shapeCircle' as const,
-        label: 'Circle',
-        width: 130,
-        height: 130,
-        fontSize: undefined,
-      },
-      text: {
-        type: 'shapeText' as const,
-        label: 'Text',
-        width: 180,
-        height: 44,
-        fontSize: 14,
-      },
-    }[shape];
-
-    const nextShapeId = generateNodeId();
+  addShapeNodeWithSize: (shape, position, width, height) => {
+    const typeByShape = {
+      rectangle: 'shapeRect' as const,
+      circle: 'shapeCircle' as const,
+      text: 'shapeText' as const,
+    };
+    const labelByShape = {
+      rectangle: 'Rectangle',
+      circle: 'Circle',
+      text: 'Text',
+    };
+    const id = generateNodeId();
     const newShapeNode: CanvasNode = {
-      id: nextShapeId,
-      type: baseByShape.type,
+      id,
+      type: typeByShape[shape],
       position,
       data: {
-        label: baseByShape.label,
+        label: labelByShape[shape],
         shape,
-        fontSize: baseByShape.fontSize,
+        fontSize: shape === 'text' ? 14 : undefined,
       },
-      style: {
-        width: baseByShape.width,
-        height: baseByShape.height,
-      },
+      style: { width, height },
     };
-
     set({
       nodes: [...get().nodes, newShapeNode],
-      selectedNodeId: nextShapeId,
+      selectedNodeId: id,
       activeShapeEditId: null,
     });
-    return nextShapeId;
+    return id;
+  },
+
+  addShapeNode: (shape, position) => {
+    const defaultSizes = {
+      rectangle: { width: 180, height: 110 },
+      circle: { width: 130, height: 130 },
+      text: { width: 180, height: 44 },
+    };
+    const { width, height } = defaultSizes[shape];
+    return get().addShapeNodeWithSize(shape, position, width, height);
   },
 
   removeNode: (nodeId) => {
@@ -296,6 +304,19 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
   clearCanvas: () => {
     set({ nodes: [], edges: [], selectedNodeId: null, activeShapeEditId: null });
+  },
+
+  addSectionBadgeNode: (blockId, blockType, label, position) => {
+    const id = generateNodeId();
+    const newNode: SectionBadgeNode = {
+      id,
+      type: 'sectionBadge',
+      position,
+      data: { blockId, blockType, label },
+      style: { width: 260 },
+    };
+    set({ nodes: [...get().nodes, newNode] });
+    return id;
   },
 
   toJSON: () => {

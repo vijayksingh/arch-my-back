@@ -53,7 +53,16 @@ export type CanvasShapeNode = Node<
   'shapeRect' | 'shapeCircle' | 'shapeText'
 >;
 
-export type CanvasNode = ArchNode | CanvasShapeNode;
+export interface SectionBadgeNodeData {
+  blockId: string;
+  blockType: NotebookBlockType;
+  label: string;
+  [key: string]: unknown;
+}
+
+export type SectionBadgeNode = Node<SectionBadgeNodeData, 'sectionBadge'>;
+
+export type CanvasNode = ArchNode | CanvasShapeNode | SectionBadgeNode;
 
 export interface ArchEdgeData {
   protocol?: string;
@@ -92,4 +101,76 @@ export interface CanvasSection {
   nodeIds: string[];
   bounds: CanvasBounds;
   createdAt: number;
+  linkedBlockId?: string;
 }
+
+// --- Notebook Block Types ---
+
+export type NotebookBlockType = 'text' | 'requirements' | 'schema' | 'api' | 'lld';
+
+interface NotebookBlockBase {
+  id: string;
+  type: NotebookBlockType;
+  sectionId: string | null;
+  createdAt: number;
+}
+
+export interface TextBlockData {
+  markdown: string;
+}
+
+export interface RequirementItem {
+  id: string;
+  text: string;
+  kind: 'functional' | 'non-functional';
+}
+
+export interface RequirementsBlockData {
+  items: RequirementItem[];
+}
+
+export interface SchemaField {
+  id: string;
+  name: string;
+  fieldType: string;
+  constraints: string;
+}
+
+export interface SchemaTable {
+  id: string;
+  name: string;
+  fields: SchemaField[];
+}
+
+export interface SchemaBlockData {
+  tables: SchemaTable[];
+}
+
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
+export interface ApiEndpoint {
+  id: string;
+  method: HttpMethod;
+  path: string;
+  description: string;
+  requestBody: string;
+  responseBody: string;
+}
+
+export interface ApiBlockData {
+  endpoints: ApiEndpoint[];
+}
+
+export interface LldBlockData {
+  title: string;
+  summary?: string;
+  content: string;
+  status?: 'draft' | 'review' | 'final';
+}
+
+export type NotebookBlock =
+  | (NotebookBlockBase & { type: 'text'; data: TextBlockData })
+  | (NotebookBlockBase & { type: 'requirements'; data: RequirementsBlockData })
+  | (NotebookBlockBase & { type: 'schema'; data: SchemaBlockData })
+  | (NotebookBlockBase & { type: 'api'; data: ApiBlockData })
+  | (NotebookBlockBase & { type: 'lld'; data: LldBlockData });

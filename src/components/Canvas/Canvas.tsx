@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import {
   ReactFlow,
@@ -9,21 +9,25 @@ import {
   BackgroundVariant,
   useReactFlow,
 } from '@xyflow/react';
-import type { EdgeTypes, Node, NodeTypes } from '@xyflow/react';
-import type { CanvasNode } from '@/types';
+import type { EdgeTypes, Node, NodeTypes, XYPosition } from '@xyflow/react';
+import type { CanvasNode, CanvasShapeKind } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { categoryColors } from '@/registry/categoryThemes';
+import { cn } from '@/lib/utils';
 import ArchNodeComponent from './ArchNode';
 import ArchEdge from './ArchEdge';
 import ShapeNode from './ShapeNode';
+import SectionBadgeNode from './SectionBadgeNode';
+import { SelectionActionBar } from './SelectionActionBar';
 
 const nodeTypes: NodeTypes = {
   archComponent: ArchNodeComponent,
   shapeRect: ShapeNode,
   shapeCircle: ShapeNode,
   shapeText: ShapeNode,
+  sectionBadge: SectionBadgeNode,
 };
 
 const edgeTypes: EdgeTypes = {
@@ -31,11 +35,28 @@ const edgeTypes: EdgeTypes = {
 };
 
 const DRAG_DATA_TYPE = 'application/archcomponent';
+const MIN_DRAG = 20; // minimum drag distance in screen pixels to create a shape
 
 const defaultEdgeOptions = {
   type: 'archEdge' as const,
   animated: false,
 };
+
+function isShapeTool(tool: string): tool is CanvasShapeKind {
+  return tool === 'rectangle' || tool === 'circle' || tool === 'text';
+}
+
+/** Returns true when the mouse event originates from the ReactFlow pane (background), not from a node, edge, or panel. */
+function isPaneTarget(target: EventTarget | null): boolean {
+  if (!target || !(target instanceof Element)) return false;
+  return (
+    !target.closest('.react-flow__node') &&
+    !target.closest('.react-flow__edge') &&
+    !target.closest('.react-flow__controls') &&
+    !target.closest('.react-flow__minimap') &&
+    !target.closest('.react-flow__panel')
+  );
+}
 
 export default function Canvas() {
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -47,7 +68,7 @@ export default function Canvas() {
   const onEdgesChange = useCanvasStore((s) => s.onEdgesChange);
   const onConnect = useCanvasStore((s) => s.onConnect);
   const addNode = useCanvasStore((s) => s.addNode);
-  const addShapeNode = useCanvasStore((s) => s.addShapeNode);
+  const addShapeNodeWithSize = useCanvasStore((s) => s.addShapeNodeWithSize);
   const setSelectedNode = useCanvasStore((s) => s.setSelectedNode);
   const startShapeInlineEdit = useCanvasStore((s) => s.startShapeInlineEdit);
   const stopShapeInlineEdit = useCanvasStore((s) => s.stopShapeInlineEdit);
@@ -58,6 +79,80 @@ export default function Canvas() {
     (s) => s.clearPendingFocusSection,
   );
 
+  // Drag-to-create state
+  const dragStart = useRef<{ screen: { x: number; y: number }; flow: XYPosition } | null>(null);
+  const activeDragTool = useRef<CanvasShapeKind | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+
+  // Stable ref for screenToFlowPosition so window listeners see the latest version
+  const screenToFlowPositionRef = useRef(screenToFlowPosition);
+  useEffect(() => { screenToFlowPositionRef.current = screenToFlowPosition; }, [screenToFlowPosition]);
+
+  const addShapeNodeWithSizeRef = useRef(addShapeNodeWithSize);
+  useEffect(() => { addShapeNodeWithSizeRef.current = addShapeNodeWithSize; }, [addShapeNodeWithSize]);
+
+  const startShapeInlineEditRef = useRef(startShapeInlineEdit);
+  useEffect(() => { startShapeInlineEditRef.current = startShapeInlineEdit; }, [startShapeInlineEdit]);
+
+  /**
+   * Container-level mousedown handler.
+   * When a shape tool is active, intercepts pane clicks to begin drag-to-create.
+   * Node/edge clicks are ignored (ReactFlow handles them normally).
+   */
+  const handleContainerMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!isShapeTool(activeCanvasTool) || e.button !== 0) return;
+      if (!isPaneTarget(e.target)) return;
+
+      const flowPos = screenToFlowPositionRef.current({ x: e.clientX, y: e.clientY });
+      dragStart.current = { screen: { x: e.clientX, y: e.clientY }, flow: flowPos };
+      activeDragTool.current = activeCanvasTool as CanvasShapeKind;
+
+      const handleMouseMove = (ev: MouseEvent) => {
+        if (!dragStart.current) return;
+        const dx = ev.clientX - dragStart.current.screen.x;
+        const dy = ev.clientY - dragStart.current.screen.y;
+        if (Math.hypot(dx, dy) < MIN_DRAG) { setDragPreview(null); return; }
+        setDragPreview({
+          x: Math.min(ev.clientX, dragStart.current.screen.x),
+          y: Math.min(ev.clientY, dragStart.current.screen.y),
+          w: Math.abs(dx),
+          h: Math.abs(dy),
+        });
+      };
+
+      const handleMouseUp = (ev: MouseEvent) => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+
+        if (!dragStart.current) return;
+        const start = dragStart.current;
+        const shape = activeDragTool.current;
+        dragStart.current = null;
+        activeDragTool.current = null;
+        setDragPreview(null);
+
+        if (!shape) return;
+        const dx = ev.clientX - start.screen.x;
+        const dy = ev.clientY - start.screen.y;
+        if (Math.hypot(dx, dy) < MIN_DRAG) return; // too small — ignore
+
+        const flowEnd = screenToFlowPositionRef.current({ x: ev.clientX, y: ev.clientY });
+        const x = Math.min(start.flow.x, flowEnd.x);
+        const y = Math.min(start.flow.y, flowEnd.y);
+        const w = Math.abs(flowEnd.x - start.flow.x);
+        const h = Math.abs(flowEnd.y - start.flow.y);
+
+        const shapeId = addShapeNodeWithSizeRef.current(shape, { x, y }, w, h);
+        if (shape === 'text') startShapeInlineEditRef.current(shapeId);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    },
+    [activeCanvasTool],
+  );
+
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: CanvasNode) => {
       setSelectedNode(node.id);
@@ -66,33 +161,13 @@ export default function Canvas() {
   );
 
   const onPaneClick = useCallback(
-    (event: React.MouseEvent) => {
-      if (activeCanvasTool === 'rectangle' || activeCanvasTool === 'circle' || activeCanvasTool === 'text') {
-        if (event.button !== 0) return;
-
-        const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-        const shapeId = addShapeNode(activeCanvasTool, position);
-        if (activeCanvasTool === 'text') {
-          startShapeInlineEdit(shapeId);
-        } else {
-          stopShapeInlineEdit();
-        }
-        return;
-      }
-
+    (_event: React.MouseEvent) => {
       if (activeCanvasTool === 'cursor' || activeCanvasTool === 'select') {
         setSelectedNode(null);
         stopShapeInlineEdit();
       }
     },
-    [
-      activeCanvasTool,
-      addShapeNode,
-      screenToFlowPosition,
-      setSelectedNode,
-      startShapeInlineEdit,
-      stopShapeInlineEdit,
-    ],
+    [activeCanvasTool, setSelectedNode, stopShapeInlineEdit],
   );
 
   const onSelectionChange = useCallback(
@@ -160,7 +235,10 @@ export default function Canvas() {
   ]);
 
   return (
-    <div className="w-full h-full">
+    <div
+      className="relative h-full w-full"
+      onMouseDown={handleContainerMouseDown}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -200,6 +278,28 @@ export default function Canvas() {
           zoomable
         />
       </ReactFlow>
+
+      {/* Ghost preview overlay during drag-to-create */}
+      {dragPreview && (
+        <div
+          style={{
+            position: 'fixed',
+            left: dragPreview.x,
+            top: dragPreview.y,
+            width: dragPreview.w,
+            height: dragPreview.h,
+            pointerEvents: 'none',
+            zIndex: 50,
+          }}
+          className={cn(
+            'border-2 border-dashed border-primary/60 bg-primary/5',
+            activeCanvasTool === 'circle' ? 'rounded-full' : 'rounded',
+          )}
+        />
+      )}
+
+      {/* Floating group/section action bar — visible when nodes are selected */}
+      <SelectionActionBar />
     </div>
   );
 }

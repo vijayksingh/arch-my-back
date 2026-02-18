@@ -57,11 +57,11 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
       <Handle
         type="target"
         position={Position.Left}
-        className="w-3! h-3! border-2! rounded-full!"
+        className="w-2.5! h-2.5! border! rounded-full! transition-opacity duration-150"
         style={{
           backgroundColor: 'var(--node-handle)',
           borderColor: 'var(--node-handle-border)',
-          boxShadow: `0 0 12px var(--node-handle-glow)`,
+          opacity: isHovered || selected ? 1 : 0,
         }}
       />
 
@@ -100,11 +100,11 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3! h-3! border-2! rounded-full!"
+        className="w-2.5! h-2.5! border! rounded-full! transition-opacity duration-150"
         style={{
           backgroundColor: 'var(--node-handle)',
           borderColor: 'var(--node-handle-border)',
-          boxShadow: `0 0 12px var(--node-handle-glow)`,
+          opacity: isHovered || selected ? 1 : 0,
         }}
       />
     </div>

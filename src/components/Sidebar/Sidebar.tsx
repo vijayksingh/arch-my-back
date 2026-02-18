@@ -33,7 +33,6 @@ const categoryOrder: ComponentCategory[] = [
 
 const railItems: { id: RailSection; label: string; icon: LucideIcon }[] = [
   { id: 'components', label: 'Components', icon: Boxes },
-  { id: 'search', label: 'Search', icon: Search },
 ];
 
 const SIDEBAR_TOP_INSET = 12;
@@ -43,7 +42,6 @@ const SIDEBAR_SNAP_THRESHOLD = 180;
 const FALLBACK_RAIL_WIDTH = 40;
 const FALLBACK_TRAY_WIDTH = 184;
 const FALLBACK_GAP = 8;
-const FALLBACK_TOOL_PANEL_WIDTH = 232;
 
 const toolItems: {
   id: CanvasTool;
@@ -120,21 +118,16 @@ export function Sidebar({ containerRef }: SidebarProps) {
     () => nodes.filter((node): node is CanvasNode => Boolean(node.selected)),
     [nodes],
   );
-  const requiresQuery = activeRailSection === 'search';
-  const trayTitle =
-    activeRailSection === 'search' ? 'Search Components' : 'Components';
+  const trayTitle = 'Components';
 
   const getViewportMetrics = useCallback(() => {
     const containerRect = containerRef.current?.getBoundingClientRect();
     const root = rootRef.current;
     const panelWidth =
       root?.offsetWidth ??
-      Math.max(
-        FALLBACK_TOOL_PANEL_WIDTH,
-        isTrayOpen
-          ? FALLBACK_RAIL_WIDTH + FALLBACK_GAP + FALLBACK_TRAY_WIDTH
-          : FALLBACK_RAIL_WIDTH,
-      );
+      (isTrayOpen
+        ? FALLBACK_RAIL_WIDTH + FALLBACK_GAP + FALLBACK_TRAY_WIDTH
+        : FALLBACK_RAIL_WIDTH);
     const panelHeight = root?.offsetHeight ?? 500;
 
     return {
@@ -166,10 +159,10 @@ export function Sidebar({ containerRef }: SidebarProps) {
   );
 
   useEffect(() => {
-    if (isTrayOpen && activeRailSection === 'search') {
+    if (isTrayOpen) {
       searchRef.current?.focus();
     }
-  }, [activeRailSection, isTrayOpen]);
+  }, [isTrayOpen]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -381,32 +374,80 @@ export function Sidebar({ containerRef }: SidebarProps) {
             <GripVertical className="h-3 w-3" />
           </button>
 
-          {railItems.map(({ id, label, icon: Icon }) => {
-            const isActive = isTrayOpen && activeRailSection === id;
+          <div className="my-0.5 h-px w-6 rounded-full bg-border/60" aria-hidden />
 
-            return (
-              <Button
-                key={id}
-                variant="ghost"
-                size="icon"
-                title={label}
-                aria-label={label}
-                onClick={() => {
-                  if (isActive) {
-                    toggleTray(id);
-                  } else {
-                    setActiveRailSection(id);
-                  }
-                }}
-                className={cn(
-                  'h-6 w-6 rounded-md text-muted-foreground transition-colors',
-                  isActive && 'bg-accent text-foreground shadow-sm',
-                )}
-              >
-                <Icon className="h-2.5 w-2.5" />
-              </Button>
-            );
-          })}
+          <div
+            role="toolbar"
+            aria-label="Sidebar sections"
+            className="flex flex-col items-center gap-1"
+          >
+            {railItems.map(({ id, label, icon: Icon }) => {
+              const isActive = isTrayOpen && activeRailSection === id;
+
+              return (
+                <Button
+                  key={id}
+                  variant="ghost"
+                  size="icon"
+                  title={label}
+                  aria-label={label}
+                  aria-pressed={isActive}
+                  onClick={() => {
+                    if (isActive) {
+                      toggleTray(id);
+                    } else {
+                      setActiveRailSection(id);
+                    }
+                  }}
+                  className={cn(
+                    'h-6 w-6 rounded-md border border-transparent text-muted-foreground transition-all',
+                    isActive
+                      ? 'border-primary/50 bg-accent text-foreground shadow-sm ring-1 ring-ring/45'
+                      : 'hover:border-border/70 hover:bg-accent/70 hover:text-foreground',
+                  )}
+                >
+                  <Icon className="h-2.5 w-2.5" />
+                </Button>
+              );
+            })}
+          </div>
+
+          <div className="my-1 h-px w-6 rounded-full bg-border/60" aria-hidden />
+
+          <div
+            role="toolbar"
+            aria-label="Canvas tools"
+            className="flex flex-col items-center gap-1"
+          >
+            {toolItems.map(({ id, label, icon: Icon }) => {
+              const isToolActive = activeCanvasTool === id;
+
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-label={label}
+                  aria-pressed={isToolActive}
+                  onClick={() => setActiveCanvasTool(id)}
+                  title={label}
+                  className={cn(
+                    'relative flex h-7 w-7 items-center justify-center rounded-md border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
+                    isToolActive
+                      ? 'border-primary/70 bg-primary/20 text-primary shadow-sm ring-2 ring-ring/70 ring-offset-1 ring-offset-background'
+                      : 'border-transparent text-muted-foreground hover:border-border/70 hover:bg-accent/60 hover:text-foreground',
+                  )}
+                >
+                  {isToolActive && (
+                    <span
+                      aria-hidden
+                      className="absolute -left-1 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-primary"
+                    />
+                  )}
+                  <Icon className="h-3.5 w-3.5" />
+                </button>
+              );
+            })}
+          </div>
         </aside>
 
         <aside
@@ -421,11 +462,7 @@ export function Sidebar({ containerRef }: SidebarProps) {
           <div className="flex items-center justify-between px-2 py-1.5">
             <div className="flex min-w-0 items-center gap-1.5">
               <div className="flex h-5 w-5 items-center justify-center rounded-md bg-secondary/65">
-                {activeRailSection === 'search' ? (
-                  <Search className="h-2.5 w-2.5 text-foreground/90" />
-                ) : (
-                  <Boxes className="h-2.5 w-2.5 text-foreground/90" />
-                )}
+                <Boxes className="h-2.5 w-2.5 text-foreground/90" />
               </div>
               <span className="truncate text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
                 {trayTitle}
@@ -461,17 +498,7 @@ export function Sidebar({ containerRef }: SidebarProps) {
           </div>
 
           <div className="flex-1 overflow-y-auto px-2 py-2">
-            {requiresQuery && !normalizedQuery && (
-              <div className="flex flex-col items-center px-1 py-6">
-                <Search className="h-6 w-6 text-muted-foreground/55" />
-                <p className="mt-2 text-center text-[10px] text-muted-foreground">
-                  Type to search components
-                </p>
-              </div>
-            )}
-
-            {(!requiresQuery || normalizedQuery) &&
-              categoryOrder.map((category) => {
+            {categoryOrder.map((category) => {
                 const components = componentsByCategory[category];
                 if (!components?.length) return null;
 
@@ -509,66 +536,52 @@ export function Sidebar({ containerRef }: SidebarProps) {
               </div>
             )}
           </div>
+
+          <div className="border-t border-border/55 px-2 py-1.5">
+            <div className="mb-1 flex items-center justify-between px-0.5">
+              <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Sections
+              </span>
+              <span className="text-[9px] text-muted-foreground">
+                {selectedNodes.length} selected
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Input
+                variant="ghost"
+                value={sectionTitle}
+                onChange={(e) => setSectionTitle(e.target.value)}
+                name="sectionTitle"
+                autoComplete="off"
+                className="h-7 flex-1 bg-background/50 px-2 text-[11px]"
+                placeholder={`Section ${sections.length + 1}`}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2.5 text-[11px]"
+                onClick={handleCreateSection}
+                disabled={selectedNodes.length === 0}
+                title={
+                  selectedNodes.length === 0 ? 'Select nodes first' : 'Create section'
+                }
+              >
+                Create
+              </Button>
+            </div>
+
+            {actionFeedback && (
+              <span
+                className="mt-1 block truncate px-1 text-[10px] text-muted-foreground"
+                aria-live="polite"
+              >
+                {actionFeedback}
+              </span>
+            )}
+          </div>
         </aside>
       </div>
-
-      <aside className="pointer-events-auto flex w-[232px] flex-col rounded-xl border ui-border-ghost bg-card/90 p-1.5 shadow-(--surface-shadow) backdrop-blur-xl">
-        <div className="mb-1 flex items-center justify-between px-1">
-          <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Canvas Tools
-          </span>
-          <span className="text-[9px] text-muted-foreground">
-            {selectedNodes.length} selected
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1 rounded-md bg-background/50 p-1">
-          {toolItems.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveCanvasTool(id)}
-              className={
-                activeCanvasTool === id
-                  ? 'flex h-7 w-7 items-center justify-center rounded-md bg-accent text-accent-foreground'
-                  : 'flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/55 hover:text-foreground'
-              }
-              title={label}
-              aria-label={label}
-            >
-              <Icon className="h-3.5 w-3.5" />
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-1 flex items-center gap-1">
-          <Input
-            variant="ghost"
-            value={sectionTitle}
-            onChange={(e) => setSectionTitle(e.target.value)}
-            name="sectionTitle"
-            autoComplete="off"
-            className="h-7 flex-1 bg-background/50 px-2 text-[11px]"
-            placeholder={`Section ${sections.length + 1}`}
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2.5 text-[11px]"
-            onClick={handleCreateSection}
-            disabled={selectedNodes.length === 0}
-            title={selectedNodes.length === 0 ? 'Select nodes first' : 'Create section'}
-          >
-            Create
-          </Button>
-        </div>
-
-        {actionFeedback && (
-          <span className="mt-1 truncate px-1 text-[10px] text-muted-foreground">
-            {actionFeedback}
-          </span>
-        )}
-      </aside>
     </div>
   );
 }
