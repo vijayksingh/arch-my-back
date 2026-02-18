@@ -93,11 +93,3 @@ export interface CanvasSection {
   bounds: CanvasBounds;
   createdAt: number;
 }
-
-// --- Store Types ---
-
-export interface CanvasState {
-  nodes: CanvasNode[];
-  edges: ArchEdge[];
-  selectedNodeId: string | null;
-}

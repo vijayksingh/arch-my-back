@@ -23,7 +23,7 @@ interface CanvasStore {
   nodes: CanvasNode[];
   edges: ArchEdge[];
   selectedNodeId: string | null;
-  errors: string[];
+  activeShapeEditId: string | null;
 
   // Node/edge operations (React Flow callbacks)
   onNodesChange: OnNodesChange<CanvasNode>;
@@ -35,17 +35,20 @@ interface CanvasStore {
   addShapeNode: (
     shape: CanvasShapeKind,
     position: { x: number; y: number },
-  ) => void;
+  ) => string;
   removeNode: (nodeId: string) => void;
   updateNodeConfig: (
     nodeId: string,
     config: Record<string, unknown>
   ) => boolean;
   updateNodeLabel: (nodeId: string, label: string) => void;
+  updateShapeStyle: (
+    nodeId: string,
+    style: { width?: number; height?: number; fontSize?: number }
+  ) => boolean;
   setSelectedNode: (nodeId: string | null) => void;
-
-  // Error handling
-  clearErrors: () => void;
+  startShapeInlineEdit: (nodeId: string) => void;
+  stopShapeInlineEdit: () => void;
 
   // Edge operations
   updateEdgeData: (edgeId: string, data: Partial<ArchEdge['data']>) => void;
@@ -69,10 +72,25 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   nodes: [],
   edges: [],
   selectedNodeId: null,
-  errors: [],
+  activeShapeEditId: null,
 
   onNodesChange: (changes) => {
-    set({ nodes: applyNodeChanges(changes, get().nodes) });
+    const nextNodes = applyNodeChanges(changes, get().nodes);
+    const selectedNodeId = get().selectedNodeId;
+    const activeShapeEditId = get().activeShapeEditId;
+    set({
+      nodes: nextNodes,
+      selectedNodeId: selectedNodeId && nextNodes.some((n) => n.id === selectedNodeId)
+        ? selectedNodeId
+        : null,
+      activeShapeEditId:
+        activeShapeEditId &&
+        nextNodes.some(
+          (n) => n.id === activeShapeEditId && n.type !== 'archComponent'
+        )
+          ? activeShapeEditId
+          : null,
+    });
   },
 
   onEdgesChange: (changes) => {
@@ -93,9 +111,6 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     // Validate component type exists
     const typeDef = componentTypeMap.get(componentType);
     if (!typeDef) {
-      set({
-        errors: [`Component type "${componentType}" does not exist in registry`],
-      });
       return false;
     }
 
@@ -110,7 +125,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       },
     };
 
-    set({ nodes: [...get().nodes, newNode], errors: [] });
+    set({ nodes: [...get().nodes, newNode] });
     return true;
   },
 
@@ -139,8 +154,9 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       },
     }[shape];
 
+    const nextShapeId = generateNodeId();
     const newShapeNode: CanvasNode = {
-      id: generateNodeId(),
+      id: nextShapeId,
       type: baseByShape.type,
       position,
       data: {
@@ -154,7 +170,12 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       },
     };
 
-    set({ nodes: [...get().nodes, newShapeNode] });
+    set({
+      nodes: [...get().nodes, newShapeNode],
+      selectedNodeId: nextShapeId,
+      activeShapeEditId: null,
+    });
+    return nextShapeId;
   },
 
   removeNode: (nodeId) => {
@@ -165,21 +186,16 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       ),
       selectedNodeId:
         get().selectedNodeId === nodeId ? null : get().selectedNodeId,
+      activeShapeEditId:
+        get().activeShapeEditId === nodeId ? null : get().activeShapeEditId,
     });
   },
 
   updateNodeConfig: (nodeId, config) => {
     // Validate node exists
     const node = get().nodes.find((n) => n.id === nodeId);
-    if (!node) {
-      set({ errors: [`Node with ID "${nodeId}" does not exist`] });
-      return false;
-    }
-
-    if (node.type !== 'archComponent') {
-      set({ errors: [`Node "${nodeId}" is not an architecture component`] });
-      return false;
-    }
+    if (!node) return false;
+    if (node.type !== 'archComponent') return false;
 
     set({
       nodes: get().nodes.map<CanvasNode>((n) => {
@@ -189,34 +205,81 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
           data: { ...n.data, config: { ...n.data.config, ...config } },
         };
       }),
-      errors: [],
     });
     return true;
   },
 
   updateNodeLabel: (nodeId, label) => {
     set({
-      nodes: get().nodes.map<CanvasNode>((n) => {
-        if (n.id !== nodeId) return n;
-        if (n.type === 'archComponent') {
-          const nextNode: ArchNode = { ...n, data: { ...n.data, label } };
-          return nextNode;
-        }
-        const nextShapeNode: CanvasShapeNode = {
-          ...n,
-          data: { ...n.data, label },
-        };
-        return nextShapeNode;
-      }),
+      nodes: get().nodes.map((n) =>
+        n.id === nodeId ? { ...n, data: { ...n.data, label } } : n
+      ),
     });
   },
 
-  setSelectedNode: (nodeId) => {
-    set({ selectedNodeId: nodeId });
+  updateShapeStyle: (nodeId, style) => {
+    const targetNode = get().nodes.find((node) => node.id === nodeId);
+    if (!targetNode) return false;
+    if (targetNode.type === 'archComponent') return false;
+
+    const width =
+      typeof style.width === 'number' && Number.isFinite(style.width)
+        ? Math.max(48, Math.round(style.width))
+        : undefined;
+    const height =
+      typeof style.height === 'number' && Number.isFinite(style.height)
+        ? Math.max(32, Math.round(style.height))
+        : undefined;
+    const fontSize =
+      typeof style.fontSize === 'number' && Number.isFinite(style.fontSize)
+        ? Math.min(96, Math.max(10, Math.round(style.fontSize)))
+        : undefined;
+
+    set({
+      nodes: get().nodes.map<CanvasNode>((node) => {
+        if (node.id !== nodeId || node.type === 'archComponent') return node;
+
+        const nextStyle = { ...(node.style ?? {}) };
+        const nextData = { ...node.data };
+
+        if (width !== undefined) nextStyle.width = width;
+        if (height !== undefined) nextStyle.height = height;
+        if (fontSize !== undefined) nextData.fontSize = fontSize;
+
+        const nextNode: CanvasShapeNode = {
+          ...node,
+          style: nextStyle,
+          data: nextData,
+        };
+        return nextNode;
+      }),
+    });
+    return true;
   },
 
-  clearErrors: () => {
-    set({ errors: [] });
+  setSelectedNode: (nodeId) => {
+    set((state) => ({
+      selectedNodeId: nodeId,
+      activeShapeEditId:
+        nodeId && state.activeShapeEditId === nodeId ? state.activeShapeEditId : null,
+    }));
+  },
+
+  startShapeInlineEdit: (nodeId) => {
+    set((state) => {
+      const targetNode = state.nodes.find((node) => node.id === nodeId);
+      if (!targetNode || targetNode.type === 'archComponent') {
+        return { activeShapeEditId: null };
+      }
+      return {
+        activeShapeEditId: nodeId,
+        selectedNodeId: nodeId,
+      };
+    });
+  },
+
+  stopShapeInlineEdit: () => {
+    set({ activeShapeEditId: null });
   },
 
   updateEdgeData: (edgeId, data) => {
@@ -228,11 +291,11 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   },
 
   loadDesign: (nodes, edges) => {
-    set({ nodes, edges, selectedNodeId: null });
+    set({ nodes, edges, selectedNodeId: null, activeShapeEditId: null });
   },
 
   clearCanvas: () => {
-    set({ nodes: [], edges: [], selectedNodeId: null });
+    set({ nodes: [], edges: [], selectedNodeId: null, activeShapeEditId: null });
   },
 
   toJSON: () => {
@@ -243,21 +306,20 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   fromJSON: (json) => {
     // Validate JSON structure
     const result = validateJSON(json);
-    if (!result.success) {
-      set({ errors: result.errors });
-      return false;
-    }
+    if (!result.success) return false;
 
     const { nodes, edges } = result.data;
 
     // Validate edge references
     const edgeValidation = validateEdgeReferences(edges, nodes);
-    if (!edgeValidation.success) {
-      set({ errors: edgeValidation.errors });
-      return false;
-    }
+    if (!edgeValidation.success) return false;
 
-    set({ nodes, edges, selectedNodeId: null, errors: [] });
+    set({
+      nodes,
+      edges,
+      selectedNodeId: null,
+      activeShapeEditId: null,
+    });
     return true;
   },
 }));

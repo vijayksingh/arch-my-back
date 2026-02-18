@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect } from 'react';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import {
   ReactFlow,
@@ -32,6 +32,11 @@ const edgeTypes: EdgeTypes = {
 
 const DRAG_DATA_TYPE = 'application/archcomponent';
 
+const defaultEdgeOptions = {
+  type: 'archEdge' as const,
+  animated: false,
+};
+
 export default function Canvas() {
   const prefersReducedMotion = usePrefersReducedMotion();
   const { screenToFlowPosition, fitBounds } = useReactFlow();
@@ -44,6 +49,8 @@ export default function Canvas() {
   const addNode = useCanvasStore((s) => s.addNode);
   const addShapeNode = useCanvasStore((s) => s.addShapeNode);
   const setSelectedNode = useCanvasStore((s) => s.setSelectedNode);
+  const startShapeInlineEdit = useCanvasStore((s) => s.startShapeInlineEdit);
+  const stopShapeInlineEdit = useCanvasStore((s) => s.stopShapeInlineEdit);
   const sections = useWorkspaceStore((s) => s.sections);
   const activeCanvasTool = useWorkspaceStore((s) => s.activeCanvasTool);
   const pendingFocusSectionId = useWorkspaceStore((s) => s.pendingFocusSectionId);
@@ -53,11 +60,7 @@ export default function Canvas() {
 
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: CanvasNode) => {
-      if (node.type === 'archComponent') {
-        setSelectedNode(node.id);
-        return;
-      }
-      setSelectedNode(null);
+      setSelectedNode(node.id);
     },
     [setSelectedNode],
   );
@@ -65,22 +68,36 @@ export default function Canvas() {
   const onPaneClick = useCallback(
     (event: React.MouseEvent) => {
       if (activeCanvasTool === 'rectangle' || activeCanvasTool === 'circle' || activeCanvasTool === 'text') {
+        if (event.button !== 0) return;
+
         const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-        addShapeNode(activeCanvasTool, position);
-        setSelectedNode(null);
+        const shapeId = addShapeNode(activeCanvasTool, position);
+        if (activeCanvasTool === 'text') {
+          startShapeInlineEdit(shapeId);
+        } else {
+          stopShapeInlineEdit();
+        }
         return;
       }
 
-      if (activeCanvasTool === 'cursor') {
+      if (activeCanvasTool === 'cursor' || activeCanvasTool === 'select') {
         setSelectedNode(null);
+        stopShapeInlineEdit();
       }
     },
-    [activeCanvasTool, addShapeNode, screenToFlowPosition, setSelectedNode],
+    [
+      activeCanvasTool,
+      addShapeNode,
+      screenToFlowPosition,
+      setSelectedNode,
+      startShapeInlineEdit,
+      stopShapeInlineEdit,
+    ],
   );
 
   const onSelectionChange = useCallback(
     ({ nodes: nextSelection }: { nodes: Node[] }) => {
-      if (nextSelection.length === 1 && nextSelection[0].type === 'archComponent') {
+      if (nextSelection.length === 1) {
         setSelectedNode(nextSelection[0].id);
       } else {
         setSelectedNode(null);
@@ -111,19 +128,10 @@ export default function Canvas() {
     [screenToFlowPosition, addNode],
   );
 
-  const defaultEdgeOptions = useMemo(
-    () => ({
-      type: 'archEdge' as const,
-      animated: false,
-    }),
-    [],
-  );
   const miniMapNodeColor = useCallback((node: CanvasNode) => {
     if (node.type !== 'archComponent') return 'hsl(var(--accent-foreground) / 0.65)';
 
     const componentType = node.data.componentType;
-    if (!componentType) return 'hsl(var(--muted-foreground))';
-
     const typeDef = componentTypeMap.get(componentType);
     if (!typeDef) return 'hsl(var(--muted-foreground))';
 
@@ -136,12 +144,7 @@ export default function Canvas() {
     const section = sections.find((entry) => entry.id === pendingFocusSectionId);
     if (section) {
       fitBounds(
-        {
-          x: section.bounds.x,
-          y: section.bounds.y,
-          width: section.bounds.width,
-          height: section.bounds.height,
-        },
+        section.bounds,
         { padding: 0.24, duration: prefersReducedMotion ? 0 : 420 },
       );
       setSelectedNode(null);
