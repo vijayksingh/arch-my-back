@@ -7,16 +7,39 @@
  * To use this script, import and call the seed functions from a Convex mutation.
  */
 
+/**
+ * Test User Credentials for Development
+ *
+ * To create a test user:
+ * 1. Navigate to http://localhost:5173
+ * 2. Click "Sign up"
+ * 3. Use these credentials:
+ *    - Email: test@example.com
+ *    - Password: testpassword123
+ *
+ * The Convex Auth Password provider will automatically create the user account.
+ *
+ * Alternatively, you can programmatically sign up using the signIn mutation:
+ *
+ * ```typescript
+ * import { signIn } from "convex/auth";
+ *
+ * await signIn('password', {
+ *   email: 'test@example.com',
+ *   password: 'testpassword123',
+ *   flow: 'signUp'
+ * });
+ * ```
+ */
+
 import { mutation } from './_generated/server';
+import type { MutationCtx } from './_generated/server';
+import { Password } from "@convex-dev/auth/providers/Password";
 
 /**
- * Example workspace template: E-commerce Architecture
- *
- * A complete microservices architecture for an e-commerce platform
+ * Helper function to seed e-commerce workspace
  */
-export const seedEcommerceWorkspace = mutation({
-  args: {},
-  handler: async (ctx) => {
+async function seedEcommerceWorkspaceHandler(ctx: MutationCtx) {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
@@ -278,17 +301,24 @@ Other services can subscribe to these events.
     });
 
     return { workspaceId, message: 'E-commerce workspace seeded successfully' };
+}
+
+/**
+ * Example workspace template: E-commerce Architecture
+ *
+ * A complete microservices architecture for an e-commerce platform
+ */
+export const seedEcommerceWorkspace = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return seedEcommerceWorkspaceHandler(ctx);
   },
 });
 
 /**
- * Example workspace template: Three-Tier Web Application
- *
- * A classic three-tier architecture (presentation, business logic, data)
+ * Helper function to seed three-tier workspace
  */
-export const seedThreeTierWorkspace = mutation({
-  args: {},
-  handler: async (ctx) => {
+async function seedThreeTierWorkspaceHandler(ctx: MutationCtx) {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
@@ -481,17 +511,24 @@ export const seedThreeTierWorkspace = mutation({
     });
 
     return { workspaceId, message: 'Three-tier workspace seeded successfully' };
+}
+
+/**
+ * Example workspace template: Three-Tier Web Application
+ *
+ * A classic three-tier architecture (presentation, business logic, data)
+ */
+export const seedThreeTierWorkspace = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return seedThreeTierWorkspaceHandler(ctx);
   },
 });
 
 /**
- * Example workspace template: Serverless Architecture
- *
- * A modern serverless architecture using cloud functions and managed services
+ * Helper function to seed serverless workspace
  */
-export const seedServerlessWorkspace = mutation({
-  args: {},
-  handler: async (ctx) => {
+async function seedServerlessWorkspaceHandler(ctx: MutationCtx) {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error('Not authenticated');
 
@@ -616,6 +653,15 @@ export const seedServerlessWorkspace = mutation({
     });
 
     return { workspaceId, message: 'Serverless workspace seeded successfully' };
+}
+
+/**
+ * Example workspace template: Serverless Architecture
+ */
+export const seedServerlessWorkspace = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return seedServerlessWorkspaceHandler(ctx);
   },
 });
 
@@ -628,21 +674,21 @@ export const seedAllExamples = mutation({
     const results = [];
 
     try {
-      const ecommerce = await seedEcommerceWorkspace(ctx, {});
+      const ecommerce = await seedEcommerceWorkspaceHandler(ctx);
       results.push(ecommerce);
     } catch (error) {
       results.push({ error: 'E-commerce seeding failed', details: error });
     }
 
     try {
-      const threeTier = await seedThreeTierWorkspace(ctx, {});
+      const threeTier = await seedThreeTierWorkspaceHandler(ctx);
       results.push(threeTier);
     } catch (error) {
       results.push({ error: 'Three-tier seeding failed', details: error });
     }
 
     try {
-      const serverless = await seedServerlessWorkspace(ctx, {});
+      const serverless = await seedServerlessWorkspaceHandler(ctx);
       results.push(serverless);
     } catch (error) {
       results.push({ error: 'Serverless seeding failed', details: error });

@@ -14,6 +14,7 @@ export function LoginForm() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
+    formData.append('flow', 'signIn');
 
     try {
       await signIn('password', formData);

@@ -14,6 +14,7 @@ export function SignupForm() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
+    formData.append('flow', 'signUp');
 
     try {
       await signIn('password', formData);

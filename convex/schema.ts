@@ -18,14 +18,14 @@ export default defineSchema({
   /**
    * Users table
    * Stores user account information
+   * Note: This extends the default Convex Auth users table with optional fields
    */
   users: defineTable({
-    userId: v.string(), // External auth provider user ID
-    name: v.string(),
+    userId: v.optional(v.string()), // External auth provider user ID
+    name: v.optional(v.string()),
     email: v.string(),
-    createdAt: v.number(), // Unix timestamp
+    createdAt: v.optional(v.number()), // Unix timestamp
   })
-    .index('by_userId', ['userId'])
     .index('by_email', ['email']),
 
   /**
