@@ -247,14 +247,23 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     // Validate node exists
     const node = get().nodes.find((n) => n.id === nodeId);
     if (!node) return false;
-    if (node.type !== 'archComponent') return false;
 
     set({
       nodes: get().nodes.map<CanvasNode>((n) => {
-        if (n.id !== nodeId || n.type !== 'archComponent') return n;
+        if (n.id !== nodeId) return n;
+
+        // For archComponent nodes, update nested config
+        if (n.type === 'archComponent') {
+          return {
+            ...n,
+            data: { ...n.data, config: { ...n.data.config, ...config } },
+          };
+        }
+
+        // For other node types (like sectionBadge), update data directly
         return {
           ...n,
-          data: { ...n.data, config: { ...n.data.config, ...config } },
+          data: { ...n.data, ...config },
         };
       }),
     });
