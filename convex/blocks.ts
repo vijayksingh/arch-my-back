@@ -8,6 +8,80 @@ import { auth } from './auth';
  */
 
 /**
+ * Create multiple notebook blocks at once (for migration)
+ */
+export const createBlocks = mutation({
+  args: {
+    workspaceId: v.id('workspaces'),
+    blocks: v.array(
+      v.object({
+        blockId: v.string(),
+        type: v.union(
+          v.literal('text'),
+          v.literal('requirements'),
+          v.literal('schema'),
+          v.literal('api'),
+          v.literal('lld')
+        ),
+        sectionId: v.union(v.string(), v.null()),
+        data: v.any(),
+        createdAt: v.number(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    // Get authenticated user
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      throw new Error('Unauthorized: Must be logged in to create blocks');
+    }
+
+    // Verify workspace ownership
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (!workspace) {
+      throw new Error('Workspace not found');
+    }
+    if (workspace.userId !== userId) {
+      throw new Error('Unauthorized: Cannot access this workspace');
+    }
+
+    const now = Date.now();
+    const results = [];
+
+    // Insert each block
+    for (const block of args.blocks) {
+      // Check if block with this blockId already exists
+      const existing = await ctx.db
+        .query('blocks')
+        .withIndex('by_workspaceId_blockId', (q) =>
+          q.eq('workspaceId', args.workspaceId).eq('blockId', block.blockId)
+        )
+        .first();
+
+      if (existing) {
+        // Skip existing blocks
+        continue;
+      }
+
+      // Create block
+      const id = await ctx.db.insert('blocks', {
+        workspaceId: args.workspaceId,
+        blockId: block.blockId,
+        type: block.type,
+        sectionId: block.sectionId,
+        data: block.data,
+        createdAt: block.createdAt,
+        updatedAt: now,
+      });
+
+      results.push({ id, blockId: block.blockId });
+    }
+
+    return { success: true, created: results.length };
+  },
+});
+
+/**
  * Create a new notebook block
  */
 export const createBlock = mutation({

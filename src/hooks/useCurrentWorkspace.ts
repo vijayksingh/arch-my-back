@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
+import { hasOldLocalStorageData, migrateLocalStorageToConvex } from '@/lib/migration';
 
 const STORAGE_KEY = 'current_workspace_id';
 
@@ -12,9 +13,13 @@ const STORAGE_KEY = 'current_workspace_id';
 export function useCurrentWorkspace() {
   const [workspaceId, setWorkspaceId] = useState<Id<'workspaces'> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const migrationAttempted = useRef(false);
 
   const workspaces = useQuery(api.workspaces.getWorkspaces);
   const createWorkspace = useMutation(api.workspaces.createWorkspace);
+  const saveDesign = useMutation(api.designs.saveDesign);
+  const createBlocks = useMutation(api.blocks.createBlocks);
 
   useEffect(() => {
     if (workspaces === undefined) return; // Still loading
@@ -41,7 +46,41 @@ export function useCurrentWorkspace() {
       setWorkspaceId(workspaces[0]._id);
       localStorage.setItem(STORAGE_KEY, workspaces[0]._id);
     } else {
-      // Create default workspace
+      // No workspaces exist - check if we need to migrate old data
+      if (!migrationAttempted.current && hasOldLocalStorageData()) {
+        migrationAttempted.current = true;
+        setIsMigrating(true);
+
+        // Run migration
+        migrateLocalStorageToConvex(
+          createWorkspace,
+          saveDesign,
+          createBlocks,
+        )
+          .then((result) => {
+            setIsMigrating(false);
+            if (result.success && result.workspaceId) {
+              setWorkspaceId(result.workspaceId as Id<'workspaces'>);
+              localStorage.setItem(STORAGE_KEY, result.workspaceId);
+              console.log('Migration successful:', result);
+            } else {
+              console.error('Migration failed:', result.error);
+              // Fall through to create default workspace
+              createDefaultWorkspace();
+            }
+          })
+          .catch((err) => {
+            console.error('Migration error:', err);
+            setIsMigrating(false);
+            createDefaultWorkspace();
+          });
+      } else {
+        // No migration needed, create default workspace
+        createDefaultWorkspace();
+      }
+    }
+
+    function createDefaultWorkspace() {
       createWorkspace({
         title: 'My Workspace',
         viewMode: 'both',
@@ -57,7 +96,7 @@ export function useCurrentWorkspace() {
           setError(err.message || 'Failed to create workspace');
         });
     }
-  }, [workspaces, createWorkspace]);
+  }, [workspaces, createWorkspace, saveDesign, createBlocks]);
 
   const changeWorkspace = useCallback((newWorkspaceId: Id<'workspaces'>) => {
     setWorkspaceId(newWorkspaceId);
@@ -67,7 +106,7 @@ export function useCurrentWorkspace() {
   return {
     workspaceId,
     changeWorkspace,
-    isLoading: workspaces === undefined,
+    isLoading: workspaces === undefined || isMigrating,
     error,
   };
 }
