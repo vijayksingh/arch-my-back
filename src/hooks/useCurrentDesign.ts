@@ -20,61 +20,61 @@ export function useCurrentDesign() {
   const [isMigrating, setIsMigrating] = useState(false);
   const migrationAttempted = useRef(false);
 
-  // Note: Using old workspace functions for now until migration to new designs table
-  const workspaces = useQuery(api.workspaces.getWorkspaces);
-  const createWorkspace = useMutation(api.workspaces.createWorkspace);
-  const saveDesign = useMutation(api.designs.saveDesign);
-  const createBlocks = useMutation(api.blocks.createBlocks);
+  // Query and mutations for new designs table
+  const designs = useQuery(api.newDesigns.list);
+  const createDesign = useMutation(api.newDesigns.create);
+  const saveCanvas = useMutation(api.designCanvases.save);
+  const saveBlocks = useMutation(api.designBlocks.save);
 
   // Use refs to stabilize mutation functions (prevent infinite loops)
-  const createWorkspaceRef = useRef(createWorkspace);
-  const saveDesignRef = useRef(saveDesign);
-  const createBlocksRef = useRef(createBlocks);
+  const createDesignRef = useRef(createDesign);
+  const saveCanvasRef = useRef(saveCanvas);
+  const saveBlocksRef = useRef(saveBlocks);
   useEffect(() => {
-    createWorkspaceRef.current = createWorkspace;
-  }, [createWorkspace]);
+    createDesignRef.current = createDesign;
+  }, [createDesign]);
   useEffect(() => {
-    saveDesignRef.current = saveDesign;
-  }, [saveDesign]);
+    saveCanvasRef.current = saveCanvas;
+  }, [saveCanvas]);
   useEffect(() => {
-    createBlocksRef.current = createBlocks;
-  }, [createBlocks]);
+    saveBlocksRef.current = saveBlocks;
+  }, [saveBlocks]);
 
   useEffect(() => {
-    if (workspaces === undefined) return; // Still loading
+    if (designs === undefined) return; // Still loading
 
     // Check for authentication error
-    if (workspaces === null) {
+    if (designs === null) {
       setError("Not authenticated");
       return;
     }
 
-    if (workspaces.length > 0) {
+    if (designs.length > 0) {
       // Try to restore from localStorage
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        // Check if saved workspace still exists
-        const exists = workspaces.some((w) => w._id === saved);
+        // Check if saved design still exists
+        const exists = designs.some((d) => d._id === saved);
         if (exists) {
           setDesignId(saved as DesignId);
           return;
         }
       }
 
-      // Fall back to first workspace
-      setDesignId(workspaces[0]._id as DesignId);
-      localStorage.setItem(STORAGE_KEY, workspaces[0]._id);
+      // Fall back to first design
+      setDesignId(designs[0]._id as DesignId);
+      localStorage.setItem(STORAGE_KEY, designs[0]._id);
     } else {
-      // No workspaces exist - check if we need to migrate old data
+      // No designs exist - check if we need to migrate old data
       if (!migrationAttempted.current && hasOldLocalStorageData()) {
         migrationAttempted.current = true;
         setIsMigrating(true);
 
         // Run migration with adapter functions
         migrateLocalStorageToConvex(
-          async (args) => createWorkspaceRef.current(args),
-          async (args) => saveDesignRef.current(args as any),
-          async (args) => createBlocksRef.current(args as any)
+          async (args) => createDesignRef.current(args),
+          async (args) => saveCanvasRef.current(args as any),
+          async (args) => saveBlocksRef.current(args as any)
         )
           .then((result) => {
             setIsMigrating(false);
@@ -84,39 +84,37 @@ export function useCurrentDesign() {
               console.log("Migration successful:", result);
             } else {
               console.error("Migration failed:", result.error);
-              // Fall through to create default workspace
-              createDefaultWorkspace();
+              // Fall through to create default design
+              createDefaultDesign();
             }
           })
           .catch((err) => {
             console.error("Migration error:", err);
             setIsMigrating(false);
-            createDefaultWorkspace();
+            createDefaultDesign();
           });
       } else {
-        // No migration needed, create default workspace
-        createDefaultWorkspace();
+        // No migration needed, create default design
+        createDefaultDesign();
       }
     }
 
-    function createDefaultWorkspace() {
-      createWorkspaceRef
+    function createDefaultDesign() {
+      createDesignRef
         .current({
-          title: "My Workspace",
-          viewMode: "both",
-          activeCanvasTool: "cursor",
-          documentEditorMode: "edit",
+          title: "My Design",
+          folderId: null,
         })
         .then((id) => {
           setDesignId(id as DesignId);
           localStorage.setItem(STORAGE_KEY, id);
         })
         .catch((err) => {
-          console.error("Failed to create workspace:", err);
-          setError(err.message || "Failed to create workspace");
+          console.error("Failed to create design:", err);
+          setError(err.message || "Failed to create design");
         });
     }
-  }, [workspaces]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [designs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const changeDesign = useCallback((newDesignId: DesignId) => {
     setDesignId(newDesignId);
@@ -126,7 +124,7 @@ export function useCurrentDesign() {
   return {
     designId,
     changeDesign,
-    isLoading: workspaces === undefined || isMigrating,
+    isLoading: designs === undefined || isMigrating,
     error,
   };
 }

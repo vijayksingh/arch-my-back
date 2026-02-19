@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import type { DesignId } from "@/types/design";
+import type { DesignId, CanvasSection, NotebookBlock } from "@/types/design";
+import type { CanvasNode, ArchEdge } from "@/types";
 import { useCanvasStore } from "@/stores/canvasStore";
 import { useDocumentStore } from "@/stores/documentStore";
 
@@ -80,8 +81,12 @@ export function useDesignSync(designId: DesignId | null) {
     if (!designId || hasLoadedRef.current) return;
 
     if (canvasData && blocksData) {
-      loadDesign(canvasData.nodes as any, canvasData.edges as any, canvasData.sections as any);
-      setBlocks(blocksData.blocks as any);
+      loadDesign(
+        canvasData.nodes as CanvasNode[],
+        canvasData.edges as ArchEdge[],
+        canvasData.sections as CanvasSection[]
+      );
+      setBlocks(blocksData.blocks as NotebookBlock[]);
       hasLoadedRef.current = true;
     }
   }, [canvasData, blocksData, designId, loadDesign, setBlocks]);
@@ -125,7 +130,7 @@ export function useDesignSync(designId: DesignId | null) {
         const { blocks } = useDocumentStore.getState();
         saveBlocks({
           designId,
-          blocks: blocks as any,
+          blocks: blocks as NotebookBlock[],
         }).catch((err: Error) => {
           console.error("Failed to save blocks:", err);
         });

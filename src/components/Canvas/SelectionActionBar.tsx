@@ -3,7 +3,6 @@ import { useReactFlow } from '@xyflow/react';
 import { Link2 } from 'lucide-react';
 import type { CanvasNode } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
-import { useCanvasStore } from '@/stores/canvasStore';
 
 function getNodeWidth(node: CanvasNode): number {
   const sw = node.style?.width;

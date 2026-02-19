@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import type { NotebookBlock, NotebookBlockType } from '@/types';
-import { useDocumentStore } from '@/stores/documentStore';
 import { useCanvasStore } from '@/stores/canvasStore';
+import { removeBlockWithSectionCleanup } from '@/actions/designActions';
 import { cn } from '@/lib/utils';
 import { SectionBadge } from './widgets/SectionBadge';
 import { TextWidget } from './widgets/TextWidget';
@@ -28,15 +28,14 @@ export function NotebookBlockComponent({
   autoFocus,
   addBlock,
 }: NotebookBlockProps) {
-  const removeBlock = useDocumentStore((s) => s.removeBlock);
   const sections = useCanvasStore((s) => s.sections);
   const [isHovered, setIsHovered] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
   const handleDelete = useCallback(() => {
     setIsExiting(true);
-    setTimeout(() => removeBlock(block.id), 180);
-  }, [block.id, removeBlock]);
+    setTimeout(() => removeBlockWithSectionCleanup(block.id), 180);
+  }, [block.id]);
 
   const linkedSection = block.sectionId
     ? sections.find((s) => s.id === block.sectionId)
@@ -44,10 +43,10 @@ export function NotebookBlockComponent({
 
   const handleReplaceWith = useCallback(
     (type: NotebookBlockType) => {
-      removeBlock(block.id);
+      removeBlockWithSectionCleanup(block.id);
       addBlock(type, index);
     },
-    [block.id, index, removeBlock, addBlock],
+    [block.id, index, addBlock],
   );
 
   const handleExitWidget = useCallback(() => {

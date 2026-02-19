@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useDocumentStore } from '@/stores/documentStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { addBlockWithSectionCoordination } from '@/actions/designActions';
 import type { NotebookBlockType } from '@/types';
 import { NotebookBlockComponent } from './NotebookBlock';
 
 export function DocumentPanel() {
   const blocks = useDocumentStore((s) => s.blocks);
-  const addBlockFromStore = useDocumentStore((s) => s.addBlock);
   const pendingFocusBlockId = useDocumentStore((s) => s.pendingFocusBlockId);
   const clearPendingFocusBlock = useDocumentStore((s) => s.clearPendingFocusBlock);
   const editorMode = useEditorStore((s) => s.documentEditorMode);
@@ -27,13 +27,14 @@ export function DocumentPanel() {
     : blocks;
 
   // Wrapped addBlock that tracks the newly added block for auto-focus
+  // Uses coordinated action to create section + badge for non-text blocks
   const addBlock = useCallback(
     (type: NotebookBlockType, atIndex?: number) => {
-      const block = addBlockFromStore(type, atIndex);
+      const block = addBlockWithSectionCoordination(type as any, atIndex);
       setNewBlockId(block.id);
       return block;
     },
-    [addBlockFromStore],
+    [],
   );
 
   // Clear newBlockId after one render cycle (enough for autoFocus to fire)

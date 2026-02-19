@@ -1,15 +1,26 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 import { authTables } from '@convex-dev/auth/server';
+import {
+  canvasNodeValidator,
+  canvasEdgeValidator,
+  canvasSectionValidator,
+  viewportValidator,
+  blockValidator,
+} from './validators';
 
 /**
  * Convex database schema for the architecture design tool.
  *
  * Tables:
  * - users: User accounts
- * - workspaces: User workspaces with view settings
- * - designs: Canvas designs with nodes, edges, and sections
- * - blocks: Notebook blocks (text, requirements, schema, api, lld)
+ * - workspaces: User workspaces with view settings (legacy)
+ * - designs: Canvas designs with nodes, edges, and sections (legacy)
+ * - blocks: Notebook blocks (text, requirements, schema, api, lld) (legacy)
+ * - folders: Design organization folders (new)
+ * - newDesigns: Design metadata (new - replaces workspace concept)
+ * - designCanvases: Canvas data per design (new - heavy data separated)
+ * - designBlocks: Document blocks per design (new - heavy data separated)
  * - authTables: Authentication tables (sessions, accounts, etc.) from @convex-dev/auth
  */
 
@@ -138,4 +149,67 @@ export default defineSchema({
     .index('by_workspaceId_blockId', ['workspaceId', 'blockId'])
     .index('by_workspaceId_type', ['workspaceId', 'type'])
     .index('by_workspaceId_createdAt', ['workspaceId', 'createdAt']),
+
+  // --- NEW SCHEMA (domain model refactor) ---
+
+  /**
+   * Folders table
+   * Organizes designs into flat folders (1 level)
+   */
+  folders: defineTable({
+    ownerId: v.string(),
+    title: v.string(),
+    color: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_ownerId', ['ownerId'])
+    .index('by_ownerId_updatedAt', ['ownerId', 'updatedAt']),
+
+  /**
+   * New Designs table (metadata only)
+   * Replaces workspace concept - design is the primary "file"
+   * Note: Named "newDesigns" to avoid conflict with legacy "designs" table during migration
+   */
+  newDesigns: defineTable({
+    ownerId: v.string(),
+    folderId: v.optional(v.id('folders')),
+    title: v.string(),
+    description: v.optional(v.string()),
+    isPublic: v.boolean(),
+    thumbnailStorageId: v.optional(v.id('_storage')),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_ownerId', ['ownerId'])
+    .index('by_ownerId_updatedAt', ['ownerId', 'updatedAt'])
+    .index('by_folderId', ['folderId'])
+    .searchIndex('search_title', { searchField: 'title' }),
+
+  /**
+   * Design Canvases table
+   * Heavy data - canvas nodes, edges, sections, viewport
+   * Loaded on-demand when opening a design
+   */
+  designCanvases: defineTable({
+    designId: v.id('newDesigns'),
+    nodes: v.array(canvasNodeValidator),
+    edges: v.array(canvasEdgeValidator),
+    sections: v.array(canvasSectionValidator),
+    viewport: v.optional(viewportValidator),
+    version: v.number(),
+    updatedAt: v.number(),
+  }).index('by_designId', ['designId']),
+
+  /**
+   * Design Blocks table
+   * Heavy data - document blocks (text, requirements, schema, api, lld)
+   * Loaded on-demand when opening a design
+   * Stored as single array for simplicity (blocks always loaded together)
+   */
+  designBlocks: defineTable({
+    designId: v.id('newDesigns'),
+    blocks: v.array(blockValidator),
+    updatedAt: v.number(),
+  }).index('by_designId', ['designId']),
 });

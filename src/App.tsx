@@ -1,140 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ReactFlowProvider } from '@xyflow/react';
-import { Toolbar } from '@/components/Toolbar';
-import { Sidebar } from '@/components/Sidebar';
-import Canvas from '@/components/Canvas';
-import { ConfigPanel } from '@/components/ConfigPanel';
-import { DocumentPanel } from '@/components/DocumentPanel';
-import { CommandPalette } from '@/components/CommandPalette';
-import { AuthPage } from '@/components/Auth/AuthPage';
-import { cn } from '@/lib/utils';
-import { Authenticated, Unauthenticated } from '@/lib/auth';
-import { useEditorStore, type CanvasTool } from '@/stores/editorStore';
-import { useCurrentWorkspace } from '@/hooks/useCurrentWorkspace';
-import { useWorkspaceSync } from '@/hooks/useWorkspaceSync';
+import { RouterProvider, createRouter } from '@tanstack/react-router';
+import { routeTree } from './routeTree.gen';
 
-export default function App() {
-  return (
-    <>
-      <Unauthenticated>
-        <AuthPage />
-      </Unauthenticated>
-      <Authenticated>
-        <AuthenticatedApp />
-      </Authenticated>
-    </>
-  );
+// Create the router instance
+const router = createRouter({ routeTree });
+
+// Register the router for type safety
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router;
+  }
 }
 
-function AuthenticatedApp() {
-  const canvasShellRef = useRef<HTMLDivElement>(null);
-
-  // Get current workspace (creates one if needed)
-  const { workspaceId, changeWorkspace, isLoading: workspaceLoading } = useCurrentWorkspace();
-
-  // Sync workspace and canvas with Convex
-  const { isLoading: syncLoading } = useWorkspaceSync(workspaceId);
-
-  const viewMode = useEditorStore((s) => s.viewMode);
-  const cycleViewMode = useEditorStore((s) => s.cycleViewMode);
-  const setActiveCanvasTool = useEditorStore((s) => s.setActiveCanvasTool);
-  const toggleDocumentEditorMode = useEditorStore((s) => s.toggleDocumentEditorMode);
-
-  const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
-  const closePalette = useCallback(() => setCmdPaletteOpen(false), []);
-
-  const isLoading = workspaceLoading || syncLoading;
-
-  useEffect(() => {
-    const TOOL_KEYS: Record<string, CanvasTool> = {
-      v: 'cursor', s: 'select', r: 'rectangle', c: 'circle', t: 'text',
-    };
-
-    const handler = (e: KeyboardEvent) => {
-      // Cmd+K / Ctrl+K — open command palette
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setCmdPaletteOpen((v) => !v);
-        return;
-      }
-
-      // Cmd/Ctrl+Shift+P — toggle document preview mode
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'P') {
-        e.preventDefault();
-        toggleDocumentEditorMode();
-        return;
-      }
-
-      // Cmd/Ctrl+\ — cycle view mode
-      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
-        e.preventDefault();
-        cycleViewMode();
-        return;
-      }
-
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-
-      const tag = (document.activeElement?.tagName ?? '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || document.activeElement?.getAttribute('contenteditable')) return;
-
-      const tool = TOOL_KEYS[e.key.toLowerCase()];
-      if (tool) setActiveCanvasTool(tool);
-    };
-
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [setActiveCanvasTool, cycleViewMode, toggleDocumentEditorMode]);
-
-  // Show loading state while workspace is being set up
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background text-foreground">
-        <div className="text-center">
-          <div className="mb-4 text-lg">Loading workspace...</div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
-      {/* Top toolbar */}
-      <Toolbar currentWorkspaceId={workspaceId} onWorkspaceChange={changeWorkspace} />
-      <CommandPalette open={cmdPaletteOpen} onClose={closePalette} />
-
-      {/* Main content area below toolbar */}
-      <div className="relative flex flex-1 overflow-hidden">
-        {viewMode !== 'canvas' && (
-          <div
-            className={cn(
-              'h-full min-w-0 bg-background/75',
-              viewMode === 'both' && 'w-[min(42rem,42vw)] max-w-2xl border-r ui-border-ghost',
-              viewMode === 'document' && 'w-full',
-            )}
-          >
-            <DocumentPanel />
-          </div>
-        )}
-
-        {viewMode !== 'document' && (
-          <div
-            ref={canvasShellRef}
-            className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-background"
-          >
-            <Sidebar containerRef={canvasShellRef} />
-
-            {/* Canvas area */}
-            <div id="react-flow-canvas" className="absolute inset-0 bg-background">
-              <ReactFlowProvider>
-                <Canvas />
-              </ReactFlowProvider>
-            </div>
-
-            {/* Config panel overlay */}
-            <ConfigPanel />
-          </div>
-        )}
-      </div>
-    </div>
-  );
+export default function App() {
+  return <RouterProvider router={router} />;
 }
