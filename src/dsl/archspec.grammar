@@ -2,58 +2,72 @@
 
 @detectDelim
 
-Header { kw<"archspec"> version }
+Header { archspecKeyword version }
+
+archspecKeyword { @specialize[@name="archspec"]<identifier, "archspec"> }
 
 Architecture {
-  kw<"architecture"> string Body
+  architectureKeyword string Body
 }
+
+architectureKeyword { @specialize[@name="architecture"]<identifier, "architecture"> }
 
 Body {
   "{" BodyItem* "}"
 }
 
 BodyItem {
-  VarsBlock | Declaration | Connection | SimulationBlock
-}
-
-Declaration {
-  Identifier "=" (GroupDecl | ComponentDecl)
+  VarsBlock | SimulationBlock | GroupDecl | ComponentDecl | Connection
 }
 
 GroupDecl {
-  kw<"group"> string Body
+  identifier "=" groupKeyword string Body
 }
 
+groupKeyword { @specialize[@name="group"]<identifier, "group"> }
+
 ComponentDecl {
-  ComponentType string PropertyBlock
+  identifier "=" ComponentType string PropertyBlock
 }
 
 VarsBlock {
-  kw<"vars"> "{" VarDecl* "}"
+  varsKeyword "{" VarDecl* "}"
 }
 
+varsKeyword { @specialize[@name="vars"]<identifier, "vars"> }
+
 VarDecl {
-  Identifier ":" Value
+  identifier ":" Value
 }
 
 ComponentType {
-  kw<"cdn"> |
-  kw<"waf"> |
-  kw<"api_gateway"> |
-  kw<"app_server"> |
-  kw<"worker"> |
-  kw<"postgres"> |
-  kw<"cache"> |
-  kw<"object_storage"> |
-  kw<"event_stream">
+  cdnKeyword |
+  wafKeyword |
+  apiGatewayKeyword |
+  appServerKeyword |
+  workerKeyword |
+  postgresKeyword |
+  cacheKeyword |
+  objectStorageKeyword |
+  eventStreamKeyword
 }
+
+cdnKeyword[@dynamicPrecedence=1] { @specialize[@name="cdn"]<identifier, "cdn"> }
+wafKeyword[@dynamicPrecedence=1] { @specialize[@name="waf"]<identifier, "waf"> }
+apiGatewayKeyword[@dynamicPrecedence=1] { @specialize[@name="api_gateway"]<identifier, "api_gateway"> }
+appServerKeyword[@dynamicPrecedence=1] { @specialize[@name="app_server"]<identifier, "app_server"> }
+workerKeyword[@dynamicPrecedence=1] { @specialize[@name="worker"]<identifier, "worker"> }
+postgresKeyword[@dynamicPrecedence=1] { @specialize[@name="postgres"]<identifier, "postgres"> }
+cacheKeyword[@dynamicPrecedence=1] { @specialize[@name="cache"]<identifier, "cache"> }
+objectStorageKeyword[@dynamicPrecedence=1] { @specialize[@name="object_storage"]<identifier, "object_storage"> }
+eventStreamKeyword[@dynamicPrecedence=1] { @specialize[@name="event_stream"]<identifier, "event_stream"> }
 
 PropertyBlock {
   "{" Property* "}"
 }
 
 Property {
-  Identifier ":" Value
+  identifier ":" Value
 }
 
 Connection {
@@ -65,7 +79,7 @@ ConnectionChain {
 }
 
 ConnectionNode {
-  Identifier
+  identifier
 }
 
 ConnectionOp {
@@ -73,32 +87,34 @@ ConnectionOp {
 }
 
 SimulationBlock {
-  kw<"simulation"> PropertyBlock
+  simulationKeyword PropertyBlock
 }
+
+simulationKeyword { @specialize[@name="simulation"]<identifier, "simulation"> }
 
 Value {
   string |
   number |
-  kw<"true"> |
-  kw<"false"> |
-  kw<"null"> |
+  trueKeyword |
+  falseKeyword |
+  nullKeyword |
   array |
   VariableRef
 }
 
+trueKeyword { @specialize[@name="true"]<identifier, "true"> }
+falseKeyword { @specialize[@name="false"]<identifier, "false"> }
+nullKeyword { @specialize[@name="null"]<identifier, "null"> }
+
 VariableRef {
-  dollarBrace Identifier "}"
+  dollarBrace identifier "}"
 }
 
 array {
   "[" (Value ("," Value)*)? "]"
 }
 
-kw<term> { @specialize[@name={term}]<Identifier, term> }
-
 @tokens {
-  Identifier { $[a-zA-Z_] $[a-zA-Z0-9_]* }
-
   string { '"' (!["\\] | "\\" _)* '"' }
 
   number {
@@ -106,9 +122,11 @@ kw<term> { @specialize[@name={term}]<Identifier, term> }
     "." $[0-9]+
   }
 
-  @precedence { version, Identifier }
-
   version { "v" $[0-9]+ }
+
+  identifier { $[a-zA-Z_] $[a-zA-Z0-9_]* }
+
+  @precedence { version, identifier }
 
   space { $[ \t\n\r]+ }
 
