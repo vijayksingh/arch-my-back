@@ -1,13 +1,53 @@
 import { useNavigate } from '@tanstack/react-router';
 import { MoreVertical, FolderInput, Copy, Trash2 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import type { Doc, Id } from '../../../convex/_generated/dataModel';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogFooter,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 
 interface DesignCardProps {
   design: Doc<'newDesigns'>;
 }
+
+// Hash string to deterministic number for gradient selection
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+}
+
+// Subtle gradient presets for preview area
+const gradients = [
+  'bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10',
+  'bg-gradient-to-br from-emerald-500/10 via-teal-500/10 to-cyan-500/10',
+  'bg-gradient-to-br from-orange-500/10 via-amber-500/10 to-yellow-500/10',
+  'bg-gradient-to-br from-violet-500/10 via-indigo-500/10 to-blue-500/10',
+  'bg-gradient-to-br from-rose-500/10 via-pink-500/10 to-fuchsia-500/10',
+  'bg-gradient-to-br from-slate-500/10 via-gray-500/10 to-zinc-500/10',
+];
 
 export function DesignCard({ design }: DesignCardProps) {
   const navigate = useNavigate();
@@ -16,24 +56,8 @@ export function DesignCard({ design }: DesignCardProps) {
   const duplicateDesign = useMutation(api.newDesigns.duplicate);
   const deleteDesign = useMutation(api.newDesigns.remove);
 
-  const [showMenu, setShowMenu] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-
-    if (showMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showMenu]);
 
   const handleClick = () => {
     navigate({ to: '/design/$designId', params: { designId: design._id } });
@@ -48,16 +72,13 @@ export function DesignCard({ design }: DesignCardProps) {
     }
   };
 
-  const handleDuplicate = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDuplicate = async () => {
     try {
       const newDesignId = await duplicateDesign({ designId: design._id });
-      // Optionally navigate to the new design
       navigate({ to: '/design/$designId', params: { designId: newDesignId } });
     } catch (error) {
       console.error('Failed to duplicate design:', error);
     }
-    setShowMenu(false);
   };
 
   const handleDelete = async () => {
@@ -74,80 +95,93 @@ export function DesignCard({ design }: DesignCardProps) {
     year: 'numeric',
   });
 
+  // Select gradient based on title hash
+  const gradientClass = gradients[hashString(design.title) % gradients.length];
+
   return (
     <>
-      <div
-        onClick={handleClick}
-        className="group relative flex flex-col items-start rounded-lg border border-border bg-card p-4 text-left transition-all hover:border-accent hover:shadow-md cursor-pointer"
-      >
-        <div className="mb-2 flex w-full items-start justify-between gap-2">
-          <h3 className="flex-1 text-lg font-semibold text-foreground group-hover:text-accent">
+      <div className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:border-border/80 hover:shadow-md cursor-pointer">
+        {/* Preview Area */}
+        <div
+          onClick={handleClick}
+          className={`aspect-[16/10] w-full ${gradientClass} relative`}
+        >
+          {/* Grid dot pattern overlay */}
+          <div
+            className="absolute inset-0 opacity-30"
+            style={{
+              backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`,
+              backgroundSize: '20px 20px',
+            }}
+          />
+          {/* Future: thumbnailStorageId will render actual thumbnail here */}
+        </div>
+
+        {/* Content Area */}
+        <div onClick={handleClick} className="flex flex-col gap-1 p-3">
+          <h3 className="text-sm font-medium text-foreground truncate">
             {design.title}
           </h3>
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(!showMenu);
-              }}
-              className="rounded p-1 opacity-0 transition-all hover:bg-accent/10 group-hover:opacity-100 focus:opacity-100"
-            >
-              <MoreVertical className="h-4 w-4 text-muted-foreground" />
-            </button>
-            {showMenu && (
-              <div className="absolute right-0 top-8 z-10 w-44 rounded-lg border border-border bg-background shadow-lg">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMoveDialog(true);
-                    setShowMenu(false);
-                  }}
-                  className="flex w-full items-center gap-2 rounded-t-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
-                >
-                  <FolderInput className="h-4 w-4" />
-                  Move to folder
-                </button>
-                <button
-                  onClick={handleDuplicate}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
-                >
-                  <Copy className="h-4 w-4" />
-                  Duplicate
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDeleteConfirm(true);
-                    setShowMenu(false);
-                  }}
-                  className="flex w-full items-center gap-2 rounded-b-lg px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </button>
-              </div>
-            )}
+          {design.description && (
+            <p className="text-xs text-muted-foreground line-clamp-1">
+              {design.description}
+            </p>
+          )}
+          <div className="text-xs text-muted-foreground">
+            Updated {lastUpdated}
           </div>
         </div>
-        {design.description && (
-          <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">
-            {design.description}
-          </p>
-        )}
-        <div className="mt-auto text-xs text-muted-foreground">
-          Updated {lastUpdated}
+
+        {/* Three-dot Menu (visible on hover) */}
+        <div className="absolute top-2 right-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100 bg-card/80 backdrop-blur-sm hover:bg-card"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={() => setShowMoveDialog(true)}>
+                <FolderInput className="mr-2 h-4 w-4" />
+                Move to folder
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDuplicate}>
+                <Copy className="mr-2 h-4 w-4" />
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {/* Move to folder dialog */}
+      {/* Move to folder dialog (custom, not AlertDialog since it's a selection) */}
       {showMoveDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowMoveDialog(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="mb-4 text-lg font-semibold text-foreground">Move to Folder</h2>
             <div className="mb-4 max-h-64 space-y-2 overflow-y-auto">
               <button
                 onClick={() => handleMove(null)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent/10"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent/70"
               >
                 📁 Root (No folder)
               </button>
@@ -155,52 +189,41 @@ export function DesignCard({ design }: DesignCardProps) {
                 <button
                   key={folder._id}
                   onClick={() => handleMove(folder._id)}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent/10"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent/70"
                 >
                   📁 {folder.title}
                 </button>
               ))}
             </div>
             <div className="flex justify-end">
-              <button
+              <Button
+                variant="outline"
                 onClick={() => setShowMoveDialog(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete confirmation dialog */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg">
-            <h2 className="mb-2 text-lg font-semibold text-foreground">Delete Design</h2>
-            <p className="mb-4 text-sm text-muted-foreground">
+      {/* Delete confirmation dialog using shadcn AlertDialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Design</AlertDialogTitle>
+            <AlertDialogDescription>
               Are you sure you want to delete "{design.title}"? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  handleDelete();
-                  setShowDeleteConfirm(false);
-                }}
-                className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleDelete}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
