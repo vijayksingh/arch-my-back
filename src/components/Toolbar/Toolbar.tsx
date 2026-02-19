@@ -134,9 +134,15 @@ export function Toolbar() {
         {user && (
           <div className="flex items-center gap-2 rounded-xl border border-border/75 bg-background/65 px-3 py-1.5 shadow-sm">
             <div className="flex items-center gap-2">
-              <User className="h-3.5 w-3.5 text-muted-foreground" />
+              {/* Avatar circle with initial */}
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                {user.email && user.email !== 'Unknown'
+                  ? user.email.charAt(0).toUpperCase()
+                  : <User className="h-3 w-3" />
+                }
+              </div>
               <span className="text-xs font-medium text-foreground/90">
-                {user.email}
+                {user.email && user.email !== 'Unknown' ? user.email : 'Account'}
               </span>
             </div>
             <Button
