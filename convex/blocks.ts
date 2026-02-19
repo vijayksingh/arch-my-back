@@ -1,6 +1,5 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
-import { auth } from './auth';
 
 /**
  * Notebook block operations
@@ -31,8 +30,8 @@ export const createBlocks = mutation({
   },
   handler: async (ctx, args) => {
     // Get authenticated user
-    const userId = await auth.getUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error('Unauthorized: Must be logged in to create blocks');
     }
 
@@ -41,7 +40,7 @@ export const createBlocks = mutation({
     if (!workspace) {
       throw new Error('Workspace not found');
     }
-    if (workspace.userId !== userId) {
+    if (workspace.userId !== identity.subject) {
       throw new Error('Unauthorized: Cannot access this workspace');
     }
 
@@ -100,8 +99,8 @@ export const createBlock = mutation({
   },
   handler: async (ctx, args) => {
     // Get authenticated user
-    const userId = await auth.getUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error('Unauthorized: Must be logged in to create blocks');
     }
 
@@ -110,7 +109,7 @@ export const createBlock = mutation({
     if (!workspace) {
       throw new Error('Workspace not found');
     }
-    if (workspace.userId !== userId) {
+    if (workspace.userId !== identity.subject) {
       throw new Error('Unauthorized: Cannot access this workspace');
     }
 
@@ -155,8 +154,8 @@ export const updateBlock = mutation({
   },
   handler: async (ctx, args) => {
     // Get authenticated user
-    const userId = await auth.getUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error('Unauthorized: Must be logged in to update blocks');
     }
 
@@ -165,7 +164,7 @@ export const updateBlock = mutation({
     if (!workspace) {
       throw new Error('Workspace not found');
     }
-    if (workspace.userId !== userId) {
+    if (workspace.userId !== identity.subject) {
       throw new Error('Unauthorized: Cannot access this workspace');
     }
 
@@ -213,8 +212,8 @@ export const deleteBlock = mutation({
   },
   handler: async (ctx, args) => {
     // Get authenticated user
-    const userId = await auth.getUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error('Unauthorized: Must be logged in to delete blocks');
     }
 
@@ -223,7 +222,7 @@ export const deleteBlock = mutation({
     if (!workspace) {
       throw new Error('Workspace not found');
     }
-    if (workspace.userId !== userId) {
+    if (workspace.userId !== identity.subject) {
       throw new Error('Unauthorized: Cannot access this workspace');
     }
 
@@ -265,8 +264,8 @@ export const getBlocks = query({
   },
   handler: async (ctx, args) => {
     // Get authenticated user
-    const userId = await auth.getUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error('Unauthorized: Must be logged in to view blocks');
     }
 
@@ -275,7 +274,7 @@ export const getBlocks = query({
     if (!workspace) {
       throw new Error('Workspace not found');
     }
-    if (workspace.userId !== userId) {
+    if (workspace.userId !== identity.subject) {
       throw new Error('Unauthorized: Cannot access this workspace');
     }
 
@@ -324,8 +323,8 @@ export const getBlock = query({
   },
   handler: async (ctx, args) => {
     // Get authenticated user
-    const userId = await auth.getUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error('Unauthorized: Must be logged in to view blocks');
     }
 
@@ -334,7 +333,7 @@ export const getBlock = query({
     if (!workspace) {
       throw new Error('Workspace not found');
     }
-    if (workspace.userId !== userId) {
+    if (workspace.userId !== identity.subject) {
       throw new Error('Unauthorized: Cannot access this workspace');
     }
 

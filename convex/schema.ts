@@ -73,6 +73,7 @@ export default defineSchema({
         style: v.optional(v.any()), // Optional style object
         selected: v.optional(v.boolean()),
         dragging: v.optional(v.boolean()),
+        measured: v.optional(v.object({ width: v.number(), height: v.number() })),
       })
     ),
     // Canvas edges (connections between nodes)

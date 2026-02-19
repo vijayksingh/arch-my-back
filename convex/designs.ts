@@ -1,6 +1,5 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
-import { auth } from './auth';
 
 /**
  * Canvas design operations
@@ -26,6 +25,7 @@ export const saveDesign = mutation({
         style: v.optional(v.any()),
         selected: v.optional(v.boolean()),
         dragging: v.optional(v.boolean()),
+        measured: v.optional(v.object({ width: v.number(), height: v.number() })),
       })
     ),
     edges: v.array(
@@ -58,8 +58,8 @@ export const saveDesign = mutation({
   },
   handler: async (ctx, args) => {
     // Get authenticated user
-    const userId = await auth.getUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error('Unauthorized: Must be logged in to save designs');
     }
 
@@ -68,7 +68,7 @@ export const saveDesign = mutation({
     if (!workspace) {
       throw new Error('Workspace not found');
     }
-    if (workspace.userId !== userId) {
+    if (workspace.userId !== identity.subject) {
       throw new Error('Unauthorized: Cannot access this workspace');
     }
 
@@ -115,8 +115,8 @@ export const getDesign = query({
   },
   handler: async (ctx, args) => {
     // Get authenticated user
-    const userId = await auth.getUserId(ctx);
-    if (!userId) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
       throw new Error('Unauthorized: Must be logged in to view designs');
     }
 
@@ -125,7 +125,7 @@ export const getDesign = query({
     if (!workspace) {
       throw new Error('Workspace not found');
     }
-    if (workspace.userId !== userId) {
+    if (workspace.userId !== identity.subject) {
       throw new Error('Unauthorized: Cannot access this workspace');
     }
 
