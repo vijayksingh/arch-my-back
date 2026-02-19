@@ -6,18 +6,36 @@ import Canvas from '@/components/Canvas';
 import { ConfigPanel } from '@/components/ConfigPanel';
 import { DocumentPanel } from '@/components/DocumentPanel';
 import { CommandPalette } from '@/components/CommandPalette';
+import { AuthPage } from '@/components/Auth/AuthPage';
 import { cn } from '@/lib/utils';
-import { useCanvasStore } from '@/stores/canvasStore';
+import { Authenticated, Unauthenticated } from '@/lib/auth';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import { urlShortenerTemplate } from '@/templates/urlShortener';
-import { loadDesign, setupAutosave } from '@/lib/persistence';
+import { useCurrentWorkspace } from '@/hooks/useCurrentWorkspace';
+import { useWorkspaceSync } from '@/hooks/useWorkspaceSync';
 import type { CanvasTool } from '@/types';
 
 export default function App() {
+  return (
+    <>
+      <Unauthenticated>
+        <AuthPage />
+      </Unauthenticated>
+      <Authenticated>
+        <AuthenticatedApp />
+      </Authenticated>
+    </>
+  );
+}
+
+function AuthenticatedApp() {
   const canvasShellRef = useRef<HTMLDivElement>(null);
-  const fromJSON = useCanvasStore((s) => s.fromJSON);
-  const loadDesignToStore = useCanvasStore((s) => s.loadDesign);
-  const toJSON = useCanvasStore((s) => s.toJSON);
+
+  // Get current workspace (creates one if needed)
+  const { workspaceId, changeWorkspace, isLoading: workspaceLoading } = useCurrentWorkspace();
+
+  // Sync workspace and canvas with Convex
+  const { isLoading: syncLoading } = useWorkspaceSync(workspaceId);
+
   const viewMode = useWorkspaceStore((s) => s.viewMode);
   const cycleViewMode = useWorkspaceStore((s) => s.cycleViewMode);
   const setActiveCanvasTool = useWorkspaceStore((s) => s.setActiveCanvasTool);
@@ -26,24 +44,7 @@ export default function App() {
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const closePalette = useCallback(() => setCmdPaletteOpen(false), []);
 
-  useEffect(() => {
-    // Try to restore autosaved design
-    const saved = loadDesign('autosave');
-    if (saved) {
-      fromJSON(saved);
-    } else {
-      // Load default template so canvas isn't empty
-      loadDesignToStore(
-        urlShortenerTemplate.nodes,
-        urlShortenerTemplate.edges,
-      );
-    }
-  }, [fromJSON, loadDesignToStore]);
-
-  useEffect(() => {
-    const cleanup = setupAutosave(() => toJSON(), 30000);
-    return cleanup;
-  }, [toJSON]);
+  const isLoading = workspaceLoading || syncLoading;
 
   useEffect(() => {
     const TOOL_KEYS: Record<string, CanvasTool> = {
@@ -85,10 +86,21 @@ export default function App() {
     return () => document.removeEventListener('keydown', handler);
   }, [setActiveCanvasTool, cycleViewMode, toggleDocumentEditorMode]);
 
+  // Show loading state while workspace is being set up
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background text-foreground">
+        <div className="text-center">
+          <div className="mb-4 text-lg">Loading workspace...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
       {/* Top toolbar */}
-      <Toolbar />
+      <Toolbar currentWorkspaceId={workspaceId} onWorkspaceChange={changeWorkspace} />
       <CommandPalette open={cmdPaletteOpen} onClose={closePalette} />
 
       {/* Main content area below toolbar */}
