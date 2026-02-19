@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
+import { authTables } from '@convex-dev/auth/server';
 
 /**
  * Convex database schema for the architecture design tool.
@@ -9,9 +10,11 @@ import { v } from 'convex/values';
  * - workspaces: User workspaces with view settings
  * - designs: Canvas designs with nodes, edges, and sections
  * - blocks: Notebook blocks (text, requirements, schema, api, lld)
+ * - authTables: Authentication tables (sessions, accounts, etc.) from @convex-dev/auth
  */
 
 export default defineSchema({
+  ...authTables,
   /**
    * Users table
    * Stores user account information
