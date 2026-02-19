@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import X from 'lucide-react/dist/esm/icons/x';
-import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import { X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -140,7 +139,7 @@ export function ConfigPanel() {
   const setSelectedNode = useCanvasStore((s) => s.setSelectedNode);
 
   const componentNode = node && node.type === 'archComponent' ? node : null;
-  const shapeNode = node && node.type !== 'archComponent' ? node : null;
+  const shapeNode = node && (node.type === 'shapeRect' || node.type === 'shapeCircle' || node.type === 'shapeText') ? node : null;
   const typeDef =
     componentNode
       ? componentTypeMap.get(componentNode.data.componentType)

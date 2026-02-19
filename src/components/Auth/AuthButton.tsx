@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import LogOut from 'lucide-react/dist/esm/icons/log-out';
-import User from 'lucide-react/dist/esm/icons/user';
+import { LogOut, User } from 'lucide-react';
 import { useAuthActions, useQuery } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { api } from '../../../convex/_generated/api';

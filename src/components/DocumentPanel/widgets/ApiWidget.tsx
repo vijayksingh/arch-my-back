@@ -1,7 +1,5 @@
 import { useCallback } from 'react';
-import Globe from 'lucide-react/dist/esm/icons/globe';
-import Minus from 'lucide-react/dist/esm/icons/minus';
-import Plus from 'lucide-react/dist/esm/icons/plus';
+import { Globe, Minus, Plus } from 'lucide-react';
 import type { ApiEndpoint, HttpMethod, NotebookBlock } from '@/types';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { WidgetPreviewCard } from './WidgetPreviewCard';

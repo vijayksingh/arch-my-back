@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import FileText from 'lucide-react/dist/esm/icons/file-text';
+import { FileText } from 'lucide-react';
 import type { NotebookBlock } from '@/types';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { WidgetPreviewCard } from './WidgetPreviewCard';

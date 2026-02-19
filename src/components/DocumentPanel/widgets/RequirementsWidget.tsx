@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import ListChecks from 'lucide-react/dist/esm/icons/list-checks';
-import Minus from 'lucide-react/dist/esm/icons/minus';
-import Plus from 'lucide-react/dist/esm/icons/plus';
+import { ListChecks, Minus, Plus } from 'lucide-react';
 import type { NotebookBlock, RequirementItem } from '@/types';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { WidgetPreviewCard } from './WidgetPreviewCard';

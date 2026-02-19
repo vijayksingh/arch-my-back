@@ -1,8 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import Database from 'lucide-react/dist/esm/icons/database';
-import Minus from 'lucide-react/dist/esm/icons/minus';
-import Plus from 'lucide-react/dist/esm/icons/plus';
+import { Database, Minus, Plus } from 'lucide-react';
 import type { NotebookBlock, SchemaField, SchemaTable } from '@/types';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { WidgetPreviewCard } from './WidgetPreviewCard';

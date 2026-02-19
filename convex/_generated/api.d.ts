@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as blocks from "../blocks.js";
 import type * as designs from "../designs.js";
+import type * as http from "../http.js";
 import type * as seedData from "../seedData.js";
 import type * as users from "../users.js";
 import type * as workspaces from "../workspaces.js";
@@ -25,6 +26,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   blocks: typeof blocks;
   designs: typeof designs;
+  http: typeof http;
   seedData: typeof seedData;
   users: typeof users;
   workspaces: typeof workspaces;

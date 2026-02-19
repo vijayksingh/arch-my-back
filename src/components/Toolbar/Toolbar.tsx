@@ -1,12 +1,5 @@
 import { useState, useCallback } from 'react';
-import Download from 'lucide-react/dist/esm/icons/download';
-import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
-import BookOpen from 'lucide-react/dist/esm/icons/book-open';
-import Rocket from 'lucide-react/dist/esm/icons/rocket';
-import Moon from 'lucide-react/dist/esm/icons/moon';
-import Sun from 'lucide-react/dist/esm/icons/sun';
-import LogOut from 'lucide-react/dist/esm/icons/log-out';
-import User from 'lucide-react/dist/esm/icons/user';
+import { Download, Trash2, BookOpen, Rocket, Moon, Sun, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { WorkspaceModeTabs } from '@/components/WorkspaceModeTabs';

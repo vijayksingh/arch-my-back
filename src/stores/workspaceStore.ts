@@ -230,7 +230,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
               ? ({
                   ...b,
                   data: { ...(b.data as object), ...data },
-                } as NotebookBlock)
+                } as unknown as NotebookBlock)
               : b,
           ),
         }));

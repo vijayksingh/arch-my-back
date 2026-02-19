@@ -51,11 +51,11 @@ export function useCurrentWorkspace() {
         migrationAttempted.current = true;
         setIsMigrating(true);
 
-        // Run migration
+        // Run migration with adapter functions
         migrateLocalStorageToConvex(
-          createWorkspace,
-          saveDesign,
-          createBlocks,
+          async (args) => createWorkspace(args),
+          async (args) => saveDesign(args as any),
+          async (args) => createBlocks(args as any),
         )
           .then((result) => {
             setIsMigrating(false);

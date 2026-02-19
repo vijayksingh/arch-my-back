@@ -1,9 +1,5 @@
 import { useState, useEffect } from 'react';
-import Type from 'lucide-react/dist/esm/icons/type';
-import ListChecks from 'lucide-react/dist/esm/icons/list-checks';
-import Database from 'lucide-react/dist/esm/icons/database';
-import Globe from 'lucide-react/dist/esm/icons/globe';
-import FileText from 'lucide-react/dist/esm/icons/file-text';
+import { Type, ListChecks, Database, Globe, FileText } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { NotebookBlockType } from '@/types';
 import { cn } from '@/lib/utils';

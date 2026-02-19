@@ -215,7 +215,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   updateNodeLabel: (nodeId, label) => {
     set({
       nodes: get().nodes.map((n) =>
-        n.id === nodeId ? { ...n, data: { ...n.data, label } } : n
+        n.id === nodeId ? { ...n, data: { ...n.data, label } } as CanvasNode : n
       ),
     });
   },
@@ -249,11 +249,11 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
         if (height !== undefined) nextStyle.height = height;
         if (fontSize !== undefined) nextData.fontSize = fontSize;
 
-        const nextNode: CanvasShapeNode = {
+        const nextNode = {
           ...node,
           style: nextStyle,
           data: nextData,
-        };
+        } as CanvasShapeNode;
         return nextNode;
       }),
     });

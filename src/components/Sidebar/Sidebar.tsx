@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
-import Search from 'lucide-react/dist/esm/icons/search';
-import Boxes from 'lucide-react/dist/esm/icons/boxes';
-import X from 'lucide-react/dist/esm/icons/x';
-import GripVertical from 'lucide-react/dist/esm/icons/grip-vertical';
-import MousePointer2 from 'lucide-react/dist/esm/icons/mouse-pointer-2';
-import BoxSelect from 'lucide-react/dist/esm/icons/box-select';
-import Square from 'lucide-react/dist/esm/icons/square';
-import Circle from 'lucide-react/dist/esm/icons/circle';
-import Type from 'lucide-react/dist/esm/icons/type';
+import { Search, Boxes, X, GripVertical, MousePointer2, BoxSelect, Square, Circle, Type } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

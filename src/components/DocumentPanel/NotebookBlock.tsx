@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import { Trash2 } from 'lucide-react';
 import type { NotebookBlock, NotebookBlockType } from '@/types';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { cn } from '@/lib/utils';

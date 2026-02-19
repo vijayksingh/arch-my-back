@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Rocket from 'lucide-react/dist/esm/icons/rocket';
+import { Rocket } from 'lucide-react';
 import { LoginForm } from './LoginForm';
 import { SignupForm } from './SignupForm';
 import { Button } from '@/components/ui/button';

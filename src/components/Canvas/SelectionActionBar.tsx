@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import Link2 from 'lucide-react/dist/esm/icons/link-2';
+import { Link2 } from 'lucide-react';
 import type { CanvasNode } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';

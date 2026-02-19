@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import ExternalLink from 'lucide-react/dist/esm/icons/external-link';
+import { ExternalLink } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 
 interface SectionBadgeProps {

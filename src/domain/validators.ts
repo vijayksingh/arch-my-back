@@ -1,4 +1,4 @@
-import type { CanvasNode, ArchEdge, CanvasBounds, ArchNode, CanvasShapeNode } from '@/types';
+import type { CanvasNode, ArchEdge, CanvasBounds } from '@/types';
 import { componentTypeMap } from '@/registry/componentTypes';
 
 /**
@@ -198,7 +198,7 @@ export function validateBounds(bounds: unknown): ValidationResult<CanvasBounds> 
     return failure(errors);
   }
 
-  return success(bounds as CanvasBounds);
+  return success(bounds as unknown as CanvasBounds);
 }
 
 /**

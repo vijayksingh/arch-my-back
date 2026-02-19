@@ -2,10 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
-import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
-import Plus from 'lucide-react/dist/esm/icons/plus';
-import Check from 'lucide-react/dist/esm/icons/check';
-import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import { ChevronDown, Plus, Check, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,

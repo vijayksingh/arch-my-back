@@ -215,7 +215,10 @@ export class MockExportEffect implements ExportEffect {
  * Export service that orchestrates canvas export using injected effects
  */
 export class ExportService {
-  constructor(private effect: ExportEffect) {}
+  private effect: ExportEffect;
+  constructor(effect: ExportEffect) {
+    this.effect = effect;
+  }
 
   /**
    * Export canvas as PNG
