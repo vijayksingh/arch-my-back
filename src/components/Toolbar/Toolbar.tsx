@@ -1,29 +1,40 @@
 import { useState, useCallback } from 'react';
 import Download from 'lucide-react/dist/esm/icons/download';
-import Save from 'lucide-react/dist/esm/icons/save';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import BookOpen from 'lucide-react/dist/esm/icons/book-open';
 import Rocket from 'lucide-react/dist/esm/icons/rocket';
 import Moon from 'lucide-react/dist/esm/icons/moon';
 import Sun from 'lucide-react/dist/esm/icons/sun';
+import LogOut from 'lucide-react/dist/esm/icons/log-out';
+import User from 'lucide-react/dist/esm/icons/user';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { WorkspaceModeTabs } from '@/components/WorkspaceModeTabs';
+import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { urlShortenerTemplate } from '@/templates/urlShortener';
-import { saveDesign } from '@/lib/persistence';
 import { exportCanvasAsPng } from '@/lib/exportImage';
+import { useAuthActions, useQuery } from '@/lib/auth';
+import { api } from '../../../convex/_generated/api';
+import type { Id } from '../../../convex/_generated/dataModel';
 
-export function Toolbar() {
+interface ToolbarProps {
+  currentWorkspaceId: Id<'workspaces'> | null;
+  onWorkspaceChange: (workspaceId: Id<'workspaces'>) => void;
+}
+
+export function Toolbar({ currentWorkspaceId, onWorkspaceChange }: ToolbarProps) {
   const [designName, setDesignName] = useState('Untitled Design');
   const [isEditing, setIsEditing] = useState(false);
 
   const loadDesign = useCanvasStore((s) => s.loadDesign);
   const clearCanvas = useCanvasStore((s) => s.clearCanvas);
-  const toJSON = useCanvasStore((s) => s.toJSON);
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
+
+  const { signOut } = useAuthActions();
+  const user = useQuery(api.users.getCurrentUser);
 
   const handleLoadTemplate = useCallback(() => {
     loadDesign(urlShortenerTemplate.nodes, urlShortenerTemplate.edges);
@@ -33,12 +44,6 @@ export function Toolbar() {
   const handleExport = useCallback(() => {
     exportCanvasAsPng('react-flow-canvas', `${designName}.png`);
   }, [designName]);
-
-  const handleSave = useCallback(() => {
-    const json = toJSON();
-    const key = designName.toLowerCase().replace(/\s+/g, '-');
-    saveDesign(key, json);
-  }, [toJSON, designName]);
 
   const handleClear = useCallback(() => {
     if (window.confirm('Clear the entire canvas? This cannot be undone.')) {
@@ -62,8 +67,12 @@ export function Toolbar() {
         </div>
       </div>
 
-      {/* Center: design name + workspace mode */}
+      {/* Center: workspace switcher + design name + workspace mode */}
       <div className="flex flex-1 items-center justify-center gap-3">
+        <WorkspaceSwitcher
+          currentWorkspaceId={currentWorkspaceId}
+          onWorkspaceChange={onWorkspaceChange}
+        />
         {isEditing ? (
           <Input
             value={designName}
@@ -137,10 +146,29 @@ export function Toolbar() {
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
-        <Button onClick={handleSave} size="sm" className="h-8 px-3.5">
-          <Save className="mr-1.5 h-3.5 w-3.5" />
-          Save
-        </Button>
+        {/* Note: Autosave to Convex happens automatically via useWorkspaceSync */}
+
+        {/* Auth button */}
+        {user && (
+          <div className="flex items-center gap-2 rounded-xl border border-border/75 bg-background/65 px-3 py-1.5 shadow-sm">
+            <div className="flex items-center gap-2">
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium text-foreground/90">
+                {user.email}
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => void signOut()}
+              title="Sign out"
+              aria-label="Sign out"
+              className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
       </div>
     </header>
   );
