@@ -10,10 +10,38 @@ The following has been set up for you:
 
 1. **Package Installation**: `@convex-dev/auth` is installed
 2. **Auth Configuration**: `convex/auth.ts` configures Password and Google OAuth providers
-3. **Schema Integration**: `convex/schema.ts` includes auth tables
-4. **Provider Setup**: `<ConvexAuthProvider>` wraps the app in `src/main.tsx`
-5. **Utility Exports**: `src/lib/auth.ts` exports useful auth hooks
-6. **Convex Client**: `src/lib/convex.ts` configures the Convex React client
+3. **HTTP Routes**: `convex/http.ts` exposes auth endpoints at `/api/auth/*`
+4. **Schema Integration**: `convex/schema.ts` includes auth tables
+5. **Provider Setup**: `<ConvexAuthProvider>` wraps the app in `src/main.tsx`
+6. **Utility Exports**: `src/lib/auth.ts` exports useful auth hooks
+7. **Convex Client**: `src/lib/convex.ts` configures the Convex React client
+
+## 🔌 HTTP Routes Configuration
+
+Convex Auth requires HTTP routes to be registered to handle authentication requests from your frontend. This is done in `convex/http.ts`:
+
+```typescript
+import { httpRouter } from "convex/server";
+import { auth } from "./auth";
+
+const http = httpRouter();
+
+// Register authentication HTTP routes
+// This exposes endpoints at /api/auth/* for signin, signup, OAuth callbacks, etc.
+auth.addHttpRoutes(http);
+
+export default http;
+```
+
+**Why is this required?**
+
+Without this file, your frontend authentication requests have no backend endpoint to connect to. The `auth.addHttpRoutes(http)` call automatically creates all necessary endpoints:
+- `/api/auth/signin` - Email/password sign in
+- `/api/auth/signout` - Sign out
+- `/api/auth/callback/google` - Google OAuth callback
+- And other authentication-related endpoints
+
+This is a **critical file** - authentication will not work without it.
 
 ## 🚀 Quick Start
 
