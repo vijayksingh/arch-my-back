@@ -7,6 +7,7 @@ import Canvas from '@/components/Canvas';
 import { ConfigPanel } from '@/components/ConfigPanel';
 import { DocumentPanel } from '@/components/DocumentPanel';
 import { CommandPalette } from '@/components/CommandPalette';
+import { DesignHeader } from '@/components/DesignHeader';
 import { cn } from '@/lib/utils';
 import { useEditorStore, type CanvasTool } from '@/stores/editorStore';
 import { useCurrentDesign } from '@/hooks/useCurrentDesign';
@@ -25,11 +26,11 @@ function DesignEditorPage() {
 
   // Set the current design to match the URL param
   useEffect(() => {
-    changeDesign(designId);
+    changeDesign(designId as any);
   }, [designId, changeDesign]);
 
   // Sync design canvas and blocks with Convex
-  const { isLoading: syncLoading } = useDesignSync(designId);
+  const { isLoading: syncLoading } = useDesignSync(designId as any);
 
   const viewMode = useEditorStore((s) => s.viewMode);
   const cycleViewMode = useEditorStore((s) => s.cycleViewMode);
@@ -95,8 +96,11 @@ function DesignEditorPage() {
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
       {/* Top toolbar */}
-      <Toolbar currentWorkspaceId={designId} onWorkspaceChange={changeDesign} />
+      <Toolbar />
       <CommandPalette open={cmdPaletteOpen} onClose={closePalette} />
+
+      {/* Breadcrumb header */}
+      <DesignHeader designId={designId as any} />
 
       {/* Main content area below toolbar */}
       <div className="relative flex flex-1 overflow-hidden">

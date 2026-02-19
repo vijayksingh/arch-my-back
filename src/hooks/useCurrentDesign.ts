@@ -12,7 +12,7 @@ const STORAGE_KEY = "current_design_id";
 /**
  * Hook to get or create the current user's design
  * Persists design selection in localStorage and supports switching
- * Replaces useCurrentWorkspace
+ * Manages which design is currently open
  */
 export function useCurrentDesign() {
   const [designId, setDesignId] = useState<DesignId | null>(null);

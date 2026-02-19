@@ -3,21 +3,14 @@ import { Download, Trash2, BookOpen, Rocket, Moon, Sun, LogOut, User } from 'luc
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { WorkspaceModeTabs } from '@/components/WorkspaceModeTabs';
-import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { urlShortenerTemplate } from '@/templates/urlShortener';
 import { exportCanvasAsPng } from '@/lib/exportImage';
 import { useAuthActions, useQuery } from '@/lib/auth';
 import { api } from '../../../convex/_generated/api';
-import type { Id } from '../../../convex/_generated/dataModel';
 
-interface ToolbarProps {
-  currentWorkspaceId: Id<'workspaces'> | null;
-  onWorkspaceChange: (workspaceId: Id<'workspaces'>) => void;
-}
-
-export function Toolbar({ currentWorkspaceId, onWorkspaceChange }: ToolbarProps) {
+export function Toolbar() {
   const [designName, setDesignName] = useState('Untitled Design');
   const [isEditing, setIsEditing] = useState(false);
 
@@ -60,12 +53,8 @@ export function Toolbar({ currentWorkspaceId, onWorkspaceChange }: ToolbarProps)
         </div>
       </div>
 
-      {/* Center: workspace switcher + design name + workspace mode */}
+      {/* Center: design name + workspace mode */}
       <div className="flex flex-1 items-center justify-center gap-3">
-        <WorkspaceSwitcher
-          currentWorkspaceId={currentWorkspaceId}
-          onWorkspaceChange={onWorkspaceChange}
-        />
         {isEditing ? (
           <Input
             value={designName}
@@ -139,7 +128,7 @@ export function Toolbar({ currentWorkspaceId, onWorkspaceChange }: ToolbarProps)
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
-        {/* Note: Autosave to Convex happens automatically via useWorkspaceSync */}
+        {/* Note: Autosave to Convex happens automatically via useDesignSync */}
 
         {/* Auth button */}
         {user && (

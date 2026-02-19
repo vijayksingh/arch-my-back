@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from 'convex/react';
 import { useNavigate } from '@tanstack/react-router';
-import { PlusIcon } from 'lucide-react';
+import { PlusIcon, FolderPlus } from 'lucide-react';
+import { useState } from 'react';
 import { api } from '../../../convex/_generated/api';
 import { DesignCard } from './DesignCard';
 import { FolderCard } from './FolderCard';
@@ -10,6 +11,10 @@ export function DashboardPage() {
   const designs = useQuery(api.newDesigns.list);
   const folders = useQuery(api.folders.list);
   const createDesign = useMutation(api.newDesigns.create);
+  const createFolder = useMutation(api.folders.create);
+
+  const [showFolderDialog, setShowFolderDialog] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
 
   const handleCreateDesign = async () => {
     const now = new Date();
@@ -20,6 +25,27 @@ export function DashboardPage() {
       navigate({ to: '/design/$designId', params: { designId } });
     } catch (error) {
       console.error('Failed to create design:', error);
+    }
+  };
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return;
+
+    try {
+      await createFolder({ title: newFolderName.trim() });
+      setNewFolderName('');
+      setShowFolderDialog(false);
+    } catch (error) {
+      console.error('Failed to create folder:', error);
+    }
+  };
+
+  const handleFolderDialogKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleCreateFolder();
+    } else if (e.key === 'Escape') {
+      setShowFolderDialog(false);
+      setNewFolderName('');
     }
   };
 
@@ -54,13 +80,22 @@ export function DashboardPage() {
       <div className="border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">My Designs</h1>
-          <button
-            onClick={handleCreateDesign}
-            className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
-          >
-            <PlusIcon className="h-4 w-4" />
-            New Design
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowFolderDialog(true)}
+              className="flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+            >
+              <FolderPlus className="h-4 w-4" />
+              New Folder
+            </button>
+            <button
+              onClick={handleCreateDesign}
+              className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+            >
+              <PlusIcon className="h-4 w-4" />
+              New Design
+            </button>
+          </div>
         </div>
       </div>
 
@@ -110,6 +145,42 @@ export function DashboardPage() {
           )
         )}
       </div>
+
+      {/* Folder creation dialog */}
+      {showFolderDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">Create New Folder</h2>
+            <input
+              type="text"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={handleFolderDialogKeyDown}
+              placeholder="Folder name"
+              autoFocus
+              className="mb-4 w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowFolderDialog(false);
+                  setNewFolderName('');
+                }}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateFolder}
+                disabled={!newFolderName.trim()}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

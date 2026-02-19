@@ -28,7 +28,14 @@ import { internal } from './_generated/api';
  */
 export const migrateToNewSchema = action({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{
+    success: boolean;
+    workspacesMigrated: number;
+    canvasesMigrated: number;
+    blocksMigrated: number;
+    totalWorkspaces: number;
+    errors: string[];
+  }> => {
     console.log('Starting migration...');
 
     // Call internal mutations to do the work
@@ -98,7 +105,7 @@ export const runMigration = internalMutation({
 
           await ctx.db.insert('designCanvases', {
             designId: newDesignId,
-            nodes: oldDesign.nodes,
+            nodes: oldDesign.nodes as any, // Type cast old node format to new format
             edges: normalizedEdges,
             sections: oldDesign.sections,
             viewport: undefined, // Old schema didn't have viewport

@@ -10,10 +10,16 @@
 
 import type * as auth from "../auth.js";
 import type * as blocks from "../blocks.js";
+import type * as designBlocks from "../designBlocks.js";
+import type * as designCanvases from "../designCanvases.js";
 import type * as designs from "../designs.js";
+import type * as folders from "../folders.js";
 import type * as http from "../http.js";
+import type * as migrate from "../migrate.js";
+import type * as newDesigns from "../newDesigns.js";
 import type * as seedData from "../seedData.js";
 import type * as users from "../users.js";
+import type * as validators from "../validators.js";
 import type * as workspaces from "../workspaces.js";
 
 import type {
@@ -25,10 +31,16 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   blocks: typeof blocks;
+  designBlocks: typeof designBlocks;
+  designCanvases: typeof designCanvases;
   designs: typeof designs;
+  folders: typeof folders;
   http: typeof http;
+  migrate: typeof migrate;
+  newDesigns: typeof newDesigns;
   seedData: typeof seedData;
   users: typeof users;
+  validators: typeof validators;
   workspaces: typeof workspaces;
 }>;
 

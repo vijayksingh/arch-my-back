@@ -10,7 +10,6 @@ import { componentsByCategory } from '@/registry/componentTypes';
 import type { RailSection } from '@/stores/uiStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useCanvasStore } from '@/stores/canvasStore';
-import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
 import type { CanvasNode, CanvasTool, ComponentCategory } from '@/types';
 import { ComponentCard } from './ComponentCard';
