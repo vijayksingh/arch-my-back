@@ -5,6 +5,30 @@ import type { Id } from '../../convex/_generated/dataModel';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 
+/** Extract only domain fields from a React Flow node — strips runtime state */
+function cleanNodeForStorage(node: { id: string; type: string; position: { x: number; y: number }; data: unknown; style?: unknown }) {
+  return {
+    id: node.id,
+    type: node.type,
+    position: { x: node.position.x, y: node.position.y },
+    data: node.data,
+    ...(node.style != null ? { style: node.style } : {}),
+  };
+}
+
+/** Extract only domain fields from a React Flow edge — strips runtime state */
+function cleanEdgeForStorage(edge: { id: string; source: string; target: string; type?: string; data?: unknown; sourceHandle?: string | null; targetHandle?: string | null }) {
+  return {
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    ...(edge.type != null ? { type: edge.type } : {}),
+    ...(edge.data != null ? { data: edge.data } : {}),
+    ...(edge.sourceHandle != null ? { sourceHandle: edge.sourceHandle } : {}),
+    ...(edge.targetHandle != null ? { targetHandle: edge.targetHandle } : {}),
+  };
+}
+
 /**
  * Hook to sync workspace and canvas state with Convex
  * Handles debounced autosave and real-time loading
@@ -59,9 +83,9 @@ export function useWorkspaceSync(workspaceId: Id<'workspaces'> | null) {
         const { sections } = useWorkspaceStore.getState();
         saveDesign({
           workspaceId,
-          nodes: nodes as any,
-          edges: edges as any,
-          sections: sections as any,
+          nodes: nodes.map(cleanNodeForStorage),
+          edges: edges.map(cleanEdgeForStorage),
+          sections,
         }).catch((err: Error) => {
           console.error('Failed to save design:', err);
         });
@@ -138,9 +162,9 @@ export function useWorkspaceSync(workspaceId: Id<'workspaces'> | null) {
           const { sections } = useWorkspaceStore.getState();
           saveDesign({
             workspaceId,
-            nodes: nodes as any,
-            edges: edges as any,
-            sections: sections as any,
+            nodes: nodes.map(cleanNodeForStorage),
+            edges: edges.map(cleanEdgeForStorage),
+            sections,
           }).catch((err: Error) => {
             console.error('Failed to save design:', err);
           });

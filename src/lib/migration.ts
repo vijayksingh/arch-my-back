@@ -158,8 +158,22 @@ export async function migrateLocalStorageToConvex(
     if (data.nodes || data.edges || data.sections) {
       await saveDesign({
         workspaceId: workspaceId as string,
-        nodes: data.nodes || [],
-        edges: data.edges || [],
+        nodes: (data.nodes || []).map((n: any) => ({
+          id: n.id,
+          type: n.type,
+          position: { x: n.position.x, y: n.position.y },
+          data: n.data,
+          ...(n.style != null ? { style: n.style } : {}),
+        })),
+        edges: (data.edges || []).map((e: any) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          ...(e.type != null ? { type: e.type } : {}),
+          ...(e.data != null ? { data: e.data } : {}),
+          ...(e.sourceHandle != null ? { sourceHandle: e.sourceHandle } : {}),
+          ...(e.targetHandle != null ? { targetHandle: e.targetHandle } : {}),
+        })),
         sections: data.sections || [],
       });
     }

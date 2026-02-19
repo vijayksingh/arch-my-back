@@ -71,9 +71,6 @@ export default defineSchema({
         }),
         data: v.any(), // Node-specific data (varies by type)
         style: v.optional(v.any()), // Optional style object
-        selected: v.optional(v.boolean()),
-        dragging: v.optional(v.boolean()),
-        measured: v.optional(v.object({ width: v.number(), height: v.number() })),
       })
     ),
     // Canvas edges (connections between nodes)
@@ -84,7 +81,6 @@ export default defineSchema({
         target: v.string(),
         type: v.optional(v.string()),
         data: v.optional(v.any()), // Edge-specific data (protocol, port, label)
-        selected: v.optional(v.boolean()),
         sourceHandle: v.optional(v.string()),
         targetHandle: v.optional(v.string()),
       })

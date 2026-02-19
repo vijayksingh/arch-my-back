@@ -23,9 +23,6 @@ export const saveDesign = mutation({
         }),
         data: v.any(),
         style: v.optional(v.any()),
-        selected: v.optional(v.boolean()),
-        dragging: v.optional(v.boolean()),
-        measured: v.optional(v.object({ width: v.number(), height: v.number() })),
       })
     ),
     edges: v.array(
@@ -35,7 +32,6 @@ export const saveDesign = mutation({
         target: v.string(),
         type: v.optional(v.string()),
         data: v.optional(v.any()),
-        selected: v.optional(v.boolean()),
         sourceHandle: v.optional(v.string()),
         targetHandle: v.optional(v.string()),
       })
@@ -142,8 +138,8 @@ export const getDesign = query({
         edges: [],
         sections: [],
         version: 1,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: 0,
+        updatedAt: 0,
       };
     }
 
