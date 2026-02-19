@@ -21,6 +21,14 @@ export function useCurrentWorkspace() {
   const saveDesign = useMutation(api.designs.saveDesign);
   const createBlocks = useMutation(api.blocks.createBlocks);
 
+  // Use refs to stabilize mutation functions (prevent infinite loops)
+  const createWorkspaceRef = useRef(createWorkspace);
+  const saveDesignRef = useRef(saveDesign);
+  const createBlocksRef = useRef(createBlocks);
+  useEffect(() => { createWorkspaceRef.current = createWorkspace; }, [createWorkspace]);
+  useEffect(() => { saveDesignRef.current = saveDesign; }, [saveDesign]);
+  useEffect(() => { createBlocksRef.current = createBlocks; }, [createBlocks]);
+
   useEffect(() => {
     if (workspaces === undefined) return; // Still loading
 
@@ -53,9 +61,9 @@ export function useCurrentWorkspace() {
 
         // Run migration with adapter functions
         migrateLocalStorageToConvex(
-          async (args) => createWorkspace(args),
-          async (args) => saveDesign(args as any),
-          async (args) => createBlocks(args as any),
+          async (args) => createWorkspaceRef.current(args),
+          async (args) => saveDesignRef.current(args as any),
+          async (args) => createBlocksRef.current(args as any),
         )
           .then((result) => {
             setIsMigrating(false);
@@ -81,7 +89,7 @@ export function useCurrentWorkspace() {
     }
 
     function createDefaultWorkspace() {
-      createWorkspace({
+      createWorkspaceRef.current({
         title: 'My Workspace',
         viewMode: 'both',
         activeCanvasTool: 'cursor',
@@ -96,7 +104,7 @@ export function useCurrentWorkspace() {
           setError(err.message || 'Failed to create workspace');
         });
     }
-  }, [workspaces, createWorkspace, saveDesign, createBlocks]);
+  }, [workspaces]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const changeWorkspace = useCallback((newWorkspaceId: Id<'workspaces'>) => {
     setWorkspaceId(newWorkspaceId);

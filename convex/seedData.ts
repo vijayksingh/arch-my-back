@@ -34,7 +34,6 @@
 
 import { mutation } from './_generated/server';
 import type { MutationCtx } from './_generated/server';
-import { Password } from "@convex-dev/auth/providers/Password";
 
 /**
  * Helper function to seed e-commerce workspace

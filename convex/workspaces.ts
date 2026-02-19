@@ -216,6 +216,24 @@ export const deleteWorkspace = mutation({
       throw new Error('Unauthorized: You do not have access to this workspace');
     }
 
+    // Delete associated designs
+    const designs = await ctx.db
+      .query('designs')
+      .withIndex('by_workspaceId', (q) => q.eq('workspaceId', args.workspaceId))
+      .collect();
+    for (const design of designs) {
+      await ctx.db.delete(design._id);
+    }
+
+    // Delete associated blocks
+    const blocks = await ctx.db
+      .query('blocks')
+      .withIndex('by_workspaceId', (q) => q.eq('workspaceId', args.workspaceId))
+      .collect();
+    for (const block of blocks) {
+      await ctx.db.delete(block._id);
+    }
+
     // Delete workspace
     await ctx.db.delete(args.workspaceId);
 

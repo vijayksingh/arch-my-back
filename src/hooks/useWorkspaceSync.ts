@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
@@ -13,36 +13,21 @@ export function useWorkspaceSync(workspaceId: Id<'workspaces'> | null) {
   const updateWorkspace = useMutation(api.workspaces.updateWorkspace);
   const saveDesign = useMutation(api.designs.saveDesign);
 
-  // Query workspace settings
   const workspace = useQuery(
     api.workspaces.getWorkspace,
     workspaceId ? { workspaceId } : 'skip'
   );
 
-  // Query design (canvas + sections)
   const design = useQuery(
     api.designs.getDesign,
     workspaceId ? { workspaceId } : 'skip'
   );
 
-  // Track if we've loaded initial data
   const hasLoadedRef = useRef(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Get store state and actions
-  const canvasState = useCanvasStore((s) => ({
-    nodes: s.nodes,
-    edges: s.edges,
-  }));
+  // Use individual selectors (stable references)
   const loadDesign = useCanvasStore((s) => s.loadDesign);
-
-  const workspaceState = useWorkspaceStore((s) => ({
-    viewMode: s.viewMode,
-    activeCanvasTool: s.activeCanvasTool,
-    documentEditorMode: s.documentEditorMode,
-    sections: s.sections,
-    blocks: s.blocks,
-  }));
   const setViewMode = useWorkspaceStore((s) => s.setViewMode);
   const setActiveCanvasTool = useWorkspaceStore((s) => s.setActiveCanvasTool);
   const setDocumentEditorMode = useWorkspaceStore((s) => s.setDocumentEditorMode);
@@ -52,83 +37,119 @@ export function useWorkspaceSync(workspaceId: Id<'workspaces'> | null) {
     if (!workspaceId || hasLoadedRef.current) return;
 
     if (workspace && design) {
-      // Load workspace settings
       setViewMode(workspace.viewMode);
       setActiveCanvasTool(workspace.activeCanvasTool);
       setDocumentEditorMode(workspace.documentEditorMode);
-
-      // Load canvas design (nodes and edges)
-      // Cast to any to bypass type checking as Convex returns more generic types
       loadDesign(design.nodes as any, design.edges as any);
-
-      // Load sections
-      // Note: sections are stored in the design document
-      useWorkspaceStore.setState({
-        sections: design.sections,
-      });
-
+      useWorkspaceStore.setState({ sections: design.sections });
       hasLoadedRef.current = true;
     }
   }, [workspace, design, workspaceId, setViewMode, setActiveCanvasTool, setDocumentEditorMode, loadDesign]);
 
-  // Debounced autosave for canvas changes
-  const saveCanvas = useCallback(() => {
+  // Subscribe to canvas store changes for debounced autosave
+  useEffect(() => {
     if (!workspaceId) return;
 
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
+    const unsubscribe = useCanvasStore.subscribe(() => {
+      if (!hasLoadedRef.current) return;
 
-    saveTimeoutRef.current = setTimeout(() => {
-      saveDesign({
-        workspaceId,
-        nodes: canvasState.nodes as any,
-        edges: canvasState.edges as any,
-        sections: workspaceState.sections as any,
-      }).catch((err) => {
-        console.error('Failed to save design:', err);
-      });
-    }, 2000); // 2 second debounce
-  }, [workspaceId, canvasState.nodes, canvasState.edges, workspaceState.sections, saveDesign]);
-
-  // Auto-save on canvas/section changes
-  useEffect(() => {
-    if (!hasLoadedRef.current) return; // Don't save until initial load complete
-    saveCanvas();
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        const { nodes, edges } = useCanvasStore.getState();
+        const { sections } = useWorkspaceStore.getState();
+        saveDesign({
+          workspaceId,
+          nodes: nodes as any,
+          edges: edges as any,
+          sections: sections as any,
+        }).catch((err: Error) => {
+          console.error('Failed to save design:', err);
+        });
+      }, 2000);
+    });
 
     return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
+      unsubscribe();
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [saveCanvas]);
+  }, [workspaceId, saveDesign]);
 
-  // Save workspace settings changes immediately (not debounced)
-  const prevWorkspaceSettingsRef = useRef(workspaceState);
+  // Subscribe to workspace settings changes for immediate sync
+  const prevSettingsRef = useRef<{
+    viewMode: string;
+    activeCanvasTool: string;
+    documentEditorMode: string;
+  } | null>(null);
+
   useEffect(() => {
-    if (!hasLoadedRef.current || !workspaceId) return;
+    if (!workspaceId) return;
 
-    const prev = prevWorkspaceSettingsRef.current;
-    const curr = workspaceState;
+    const unsubscribe = useWorkspaceStore.subscribe(() => {
+      if (!hasLoadedRef.current) return;
 
-    // Check if settings changed (not blocks/sections)
-    if (
-      prev.viewMode !== curr.viewMode ||
-      prev.activeCanvasTool !== curr.activeCanvasTool ||
-      prev.documentEditorMode !== curr.documentEditorMode
-    ) {
-      updateWorkspace({
-        workspaceId,
-        viewMode: curr.viewMode,
-        activeCanvasTool: curr.activeCanvasTool,
-        documentEditorMode: curr.documentEditorMode,
-      }).catch((err) => {
-        console.error('Failed to update workspace settings:', err);
-      });
-    }
+      const state = useWorkspaceStore.getState();
+      const curr = {
+        viewMode: state.viewMode,
+        activeCanvasTool: state.activeCanvasTool,
+        documentEditorMode: state.documentEditorMode,
+      };
 
-    prevWorkspaceSettingsRef.current = curr;
-  }, [workspaceState, workspaceId, updateWorkspace]);
+      const prev = prevSettingsRef.current;
+      if (
+        !prev ||
+        prev.viewMode !== curr.viewMode ||
+        prev.activeCanvasTool !== curr.activeCanvasTool ||
+        prev.documentEditorMode !== curr.documentEditorMode
+      ) {
+        prevSettingsRef.current = curr;
+        updateWorkspace({
+          workspaceId,
+          viewMode: curr.viewMode,
+          activeCanvasTool: curr.activeCanvasTool,
+          documentEditorMode: curr.documentEditorMode,
+        }).catch((err: Error) => {
+          console.error('Failed to update workspace settings:', err);
+        });
+      }
+    });
+
+    return () => { unsubscribe(); };
+  }, [workspaceId, updateWorkspace]);
+
+  // Subscribe to sections changes for debounced save (sections affect design)
+  const prevSectionsRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+
+    const unsubscribe = useWorkspaceStore.subscribe(() => {
+      if (!hasLoadedRef.current) return;
+
+      const state = useWorkspaceStore.getState();
+      const currSections = state.sections;
+
+      // Only save if sections actually changed
+      if (prevSectionsRef.current !== currSections) {
+        prevSectionsRef.current = currSections;
+
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = setTimeout(() => {
+          const { nodes, edges } = useCanvasStore.getState();
+          const { sections } = useWorkspaceStore.getState();
+          saveDesign({
+            workspaceId,
+            nodes: nodes as any,
+            edges: edges as any,
+            sections: sections as any,
+          }).catch((err: Error) => {
+            console.error('Failed to save design:', err);
+          });
+        }, 2000);
+      }
+    });
+
+    return () => { unsubscribe(); };
+  }, [workspaceId, saveDesign]);
 
   return {
     isLoading: !workspace || !design,
