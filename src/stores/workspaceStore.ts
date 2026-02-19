@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type {
   CanvasBounds,
   CanvasSection,
@@ -9,8 +8,6 @@ import type {
   WorkspaceViewMode,
 } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
-
-const WORKSPACE_STORAGE_KEY = 'archmyback_workspace';
 
 let sectionIdCounter = 0;
 let blockIdCounter = 0;
@@ -122,9 +119,7 @@ interface WorkspaceStore {
   clearPendingFocusBlock: () => void;
 }
 
-export const useWorkspaceStore = create<WorkspaceStore>()(
-  persist(
-    (set, get) => ({
+export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       viewMode: 'both',
       activeCanvasTool: 'cursor',
       documentEditorMode: 'edit',
@@ -277,40 +272,4 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       clearPendingFocusSection: () => set({ pendingFocusSectionId: null }),
       requestFocusBlock: (blockId) => set({ pendingFocusBlockId: blockId }),
       clearPendingFocusBlock: () => set({ pendingFocusBlockId: null }),
-    }),
-    {
-      name: WORKSPACE_STORAGE_KEY,
-      version: 2,
-      migrate: (persistedState, version) => {
-        const state = persistedState as Record<string, unknown>;
-        if (version < 2) {
-          const markdown =
-            typeof state.documentMarkdown === 'string'
-              ? state.documentMarkdown
-              : '';
-          return {
-            viewMode: (state.viewMode as WorkspaceViewMode) ?? 'both',
-            activeCanvasTool: (state.activeCanvasTool as CanvasTool) ?? 'cursor',
-            blocks: [
-              {
-                id: `block_${Date.now().toString(36)}`,
-                type: 'text' as const,
-                sectionId: null,
-                createdAt: Date.now(),
-                data: { markdown },
-              },
-            ],
-            sections: (state.sections as CanvasSection[]) ?? [],
-          };
-        }
-        return state as WorkspaceStore;
-      },
-      partialize: (state) => ({
-        viewMode: state.viewMode,
-        activeCanvasTool: state.activeCanvasTool,
-        blocks: state.blocks,
-        sections: state.sections,
-      }),
-    },
-  ),
-);
+    }));

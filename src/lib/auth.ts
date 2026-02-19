@@ -90,11 +90,10 @@
  * ```
  */
 
-export {
-  useAuthActions,
-  Authenticated,
-  Unauthenticated,
-} from '@convex-dev/auth/react';
+export { useAuthActions } from '@convex-dev/auth/react';
+
+// Re-export auth components from convex/react
+export { Authenticated, Unauthenticated, AuthLoading } from 'convex/react';
 
 // Re-export convex hooks for convenience
 export { useQuery, useMutation, useAction } from 'convex/react';

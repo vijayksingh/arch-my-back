@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { Id } from '../../convex/_generated/dataModel';
+import type { Id } from '../../convex/_generated/dataModel';
 
 const STORAGE_KEY = 'current_workspace_id';
 

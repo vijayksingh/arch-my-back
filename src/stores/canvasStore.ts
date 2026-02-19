@@ -18,7 +18,6 @@ import type {
   SectionBadgeNode,
 } from '@/types';
 import { componentTypeMap } from '@/registry/componentTypes';
-import { validateJSON, validateEdgeReferences } from '@/domain/validators';
 
 interface CanvasStore {
   // State
@@ -72,10 +71,6 @@ interface CanvasStore {
     label: string,
     position: { x: number; y: number },
   ) => string;
-
-  // Persistence
-  toJSON: () => string;
-  fromJSON: (json: string) => boolean;
 }
 
 let nodeIdCounter = 0;
@@ -317,30 +312,5 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     };
     set({ nodes: [...get().nodes, newNode] });
     return id;
-  },
-
-  toJSON: () => {
-    const { nodes, edges } = get();
-    return JSON.stringify({ nodes, edges }, null, 2);
-  },
-
-  fromJSON: (json) => {
-    // Validate JSON structure
-    const result = validateJSON(json);
-    if (!result.success) return false;
-
-    const { nodes, edges } = result.data;
-
-    // Validate edge references
-    const edgeValidation = validateEdgeReferences(edges, nodes);
-    if (!edgeValidation.success) return false;
-
-    set({
-      nodes,
-      edges,
-      selectedNodeId: null,
-      activeShapeEditId: null,
-    });
-    return true;
   },
 }));
