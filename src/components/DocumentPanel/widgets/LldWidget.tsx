@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { FileText } from 'lucide-react';
 import type { NotebookBlock } from '@/types';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useDocumentStore } from '@/stores/documentStore';
 import { WidgetPreviewCard } from './WidgetPreviewCard';
 import { useDoubleEnterExit } from './useDoubleEnterExit';
 import { MarkdownLines } from './MarkdownLines';
@@ -29,7 +29,7 @@ const STATUS_LABELS: Record<LldStatus, string> = {
 };
 
 export function LldWidget({ block, isPreview, autoFocus, onExitWidget }: LldWidgetProps) {
-  const updateBlockData = useWorkspaceStore((s) => s.updateBlockData);
+  const updateBlockData = useDocumentStore((s) => s.updateBlockData);
   const { title, summary, content, status = 'draft' } = block.data;
   const lastWasEnter = useRef(false);
   const contentRef = useRef<HTMLTextAreaElement>(null);

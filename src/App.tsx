@@ -9,10 +9,9 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { AuthPage } from '@/components/Auth/AuthPage';
 import { cn } from '@/lib/utils';
 import { Authenticated, Unauthenticated } from '@/lib/auth';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useEditorStore, type CanvasTool } from '@/stores/editorStore';
 import { useCurrentWorkspace } from '@/hooks/useCurrentWorkspace';
 import { useWorkspaceSync } from '@/hooks/useWorkspaceSync';
-import type { CanvasTool } from '@/types';
 
 export default function App() {
   return (
@@ -36,10 +35,10 @@ function AuthenticatedApp() {
   // Sync workspace and canvas with Convex
   const { isLoading: syncLoading } = useWorkspaceSync(workspaceId);
 
-  const viewMode = useWorkspaceStore((s) => s.viewMode);
-  const cycleViewMode = useWorkspaceStore((s) => s.cycleViewMode);
-  const setActiveCanvasTool = useWorkspaceStore((s) => s.setActiveCanvasTool);
-  const toggleDocumentEditorMode = useWorkspaceStore((s) => s.toggleDocumentEditorMode);
+  const viewMode = useEditorStore((s) => s.viewMode);
+  const cycleViewMode = useEditorStore((s) => s.cycleViewMode);
+  const setActiveCanvasTool = useEditorStore((s) => s.setActiveCanvasTool);
+  const toggleDocumentEditorMode = useEditorStore((s) => s.toggleDocumentEditorMode);
 
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const closePalette = useCallback(() => setCmdPaletteOpen(false), []);

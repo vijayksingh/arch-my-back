@@ -12,7 +12,7 @@ import {
 import type { EdgeTypes, Node, NodeTypes, XYPosition } from '@xyflow/react';
 import type { CanvasNode, CanvasShapeKind } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useEditorStore } from '@/stores/editorStore';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { categoryColors } from '@/registry/categoryThemes';
 import { cn } from '@/lib/utils';
@@ -72,12 +72,10 @@ export default function Canvas() {
   const setSelectedNode = useCanvasStore((s) => s.setSelectedNode);
   const startShapeInlineEdit = useCanvasStore((s) => s.startShapeInlineEdit);
   const stopShapeInlineEdit = useCanvasStore((s) => s.stopShapeInlineEdit);
-  const sections = useWorkspaceStore((s) => s.sections);
-  const activeCanvasTool = useWorkspaceStore((s) => s.activeCanvasTool);
-  const pendingFocusSectionId = useWorkspaceStore((s) => s.pendingFocusSectionId);
-  const clearPendingFocusSection = useWorkspaceStore(
-    (s) => s.clearPendingFocusSection,
-  );
+  const sections = useCanvasStore((s) => s.sections);
+  const activeCanvasTool = useEditorStore((s) => s.activeCanvasTool);
+  const pendingFocusSectionId = useCanvasStore((s) => s.pendingFocusSectionId);
+  const clearPendingFocusSection = useCanvasStore((s) => s.clearPendingFocusSection);
 
   // Drag-to-create state
   const dragStart = useRef<{ screen: { x: number; y: number }; flow: XYPosition } | null>(null);

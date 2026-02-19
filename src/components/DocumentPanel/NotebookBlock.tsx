@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import type { NotebookBlock, NotebookBlockType } from '@/types';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useDocumentStore } from '@/stores/documentStore';
+import { useCanvasStore } from '@/stores/canvasStore';
 import { cn } from '@/lib/utils';
 import { SectionBadge } from './widgets/SectionBadge';
 import { TextWidget } from './widgets/TextWidget';
@@ -27,8 +28,8 @@ export function NotebookBlockComponent({
   autoFocus,
   addBlock,
 }: NotebookBlockProps) {
-  const removeBlock = useWorkspaceStore((s) => s.removeBlock);
-  const sections = useWorkspaceStore((s) => s.sections);
+  const removeBlock = useDocumentStore((s) => s.removeBlock);
+  const sections = useCanvasStore((s) => s.sections);
   const [isHovered, setIsHovered] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 

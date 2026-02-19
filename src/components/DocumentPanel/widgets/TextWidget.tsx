@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { NotebookBlock, NotebookBlockType } from '@/types';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useDocumentStore } from '@/stores/documentStore';
 import { SlashCommandPicker } from '../SlashCommandPicker';
 import { MarkdownLines } from './MarkdownLines';
 
@@ -14,7 +14,7 @@ interface TextWidgetProps {
 }
 
 export function TextWidget({ block, isPreview, autoFocus, onReplaceWith, onExitWidget }: TextWidgetProps) {
-  const updateBlockData = useWorkspaceStore((s) => s.updateBlockData);
+  const updateBlockData = useDocumentStore((s) => s.updateBlockData);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);

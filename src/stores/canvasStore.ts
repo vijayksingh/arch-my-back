@@ -17,14 +17,40 @@ import type {
   NotebookBlockType,
   SectionBadgeNode,
 } from '@/types';
+import type { CanvasSection } from '@/types/design';
 import { componentTypeMap } from '@/registry/componentTypes';
+
+let sectionIdCounter = 0;
+
+function createSectionId(): string {
+  sectionIdCounter += 1;
+  return `section_${(Date.now() + sectionIdCounter).toString(36)}`;
+}
+
+function normalizeTitle(title: string): string {
+  const trimmed = title.trim();
+  return trimmed || 'Untitled Section';
+}
+
+function toSectionLink(sectionId: string, title: string): string {
+  return `[${title}](section:${sectionId})`;
+}
+
+interface CanvasBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 interface CanvasStore {
   // State
   nodes: CanvasNode[];
   edges: ArchEdge[];
+  sections: CanvasSection[];
   selectedNodeId: string | null;
   activeShapeEditId: string | null;
+  pendingFocusSectionId: string | null;
 
   // Node/edge operations (React Flow callbacks)
   onNodesChange: OnNodesChange<CanvasNode>;
@@ -61,7 +87,11 @@ interface CanvasStore {
   updateEdgeData: (edgeId: string, data: Partial<ArchEdge['data']>) => void;
 
   // Bulk operations
-  loadDesign: (nodes: CanvasNode[], edges: ArchEdge[]) => void;
+  loadDesign: (
+    nodes: CanvasNode[],
+    edges: ArchEdge[],
+    sections?: CanvasSection[]
+  ) => void;
   clearCanvas: () => void;
 
   // Notebook badge nodes
@@ -71,6 +101,23 @@ interface CanvasStore {
     label: string,
     position: { x: number; y: number },
   ) => string;
+
+  // Section operations (moved from workspaceStore)
+  addSection: (section: CanvasSection) => void;
+  removeSection: (id: string) => void;
+  updateSection: (id: string, updates: Partial<CanvasSection>) => void;
+  getSectionLink: (id: string) => string | null;
+  createSectionFromNodeSelection: (
+    title: string,
+    selectedNodeIds: string[],
+    bounds: CanvasBounds
+  ) => CanvasSection | null;
+
+  requestFocusSection: (id: string) => void;
+  clearPendingFocusSection: () => void;
+
+  // Bulk section operations for sync
+  setSections: (sections: CanvasSection[]) => void;
 }
 
 let nodeIdCounter = 0;
@@ -82,8 +129,10 @@ function generateNodeId(): string {
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
   nodes: [],
   edges: [],
+  sections: [],
   selectedNodeId: null,
   activeShapeEditId: null,
+  pendingFocusSectionId: null,
 
   onNodesChange: (changes) => {
     const nextNodes = applyNodeChanges(changes, get().nodes);
@@ -293,12 +342,26 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     });
   },
 
-  loadDesign: (nodes, edges) => {
-    set({ nodes, edges, selectedNodeId: null, activeShapeEditId: null });
+  loadDesign: (nodes, edges, sections = []) => {
+    set({
+      nodes,
+      edges,
+      sections,
+      selectedNodeId: null,
+      activeShapeEditId: null,
+      pendingFocusSectionId: null,
+    });
   },
 
   clearCanvas: () => {
-    set({ nodes: [], edges: [], selectedNodeId: null, activeShapeEditId: null });
+    set({
+      nodes: [],
+      edges: [],
+      sections: [],
+      selectedNodeId: null,
+      activeShapeEditId: null,
+      pendingFocusSectionId: null,
+    });
   },
 
   addSectionBadgeNode: (blockId, blockType, label, position) => {
@@ -313,4 +376,52 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     set({ nodes: [...get().nodes, newNode] });
     return id;
   },
+
+  // Section operations (moved from workspaceStore)
+  addSection: (section) => {
+    set((state) => ({ sections: [...state.sections, section] }));
+  },
+
+  removeSection: (id) => {
+    set((state) => ({
+      sections: state.sections.filter((s) => s.id !== id),
+      pendingFocusSectionId:
+        state.pendingFocusSectionId === id ? null : state.pendingFocusSectionId,
+    }));
+  },
+
+  updateSection: (id, updates) => {
+    set((state) => ({
+      sections: state.sections.map((s) =>
+        s.id === id ? { ...s, ...updates } : s
+      ),
+    }));
+  },
+
+  getSectionLink: (id) => {
+    const section = get().sections.find((s) => s.id === id);
+    if (!section) return null;
+    return toSectionLink(section.id, section.title);
+  },
+
+  createSectionFromNodeSelection: (title, selectedNodeIds, bounds) => {
+    if (selectedNodeIds.length === 0) return null;
+    if (bounds.width <= 0 || bounds.height <= 0) return null;
+
+    const section: CanvasSection = {
+      id: createSectionId(),
+      title: normalizeTitle(title),
+      nodeIds: Array.from(new Set(selectedNodeIds)),
+      bounds,
+      createdAt: Date.now(),
+    };
+
+    set((state) => ({ sections: [...state.sections, section] }));
+    return section;
+  },
+
+  requestFocusSection: (id) => set({ pendingFocusSectionId: id }),
+  clearPendingFocusSection: () => set({ pendingFocusSectionId: null }),
+
+  setSections: (sections) => set({ sections }),
 }));

@@ -10,7 +10,8 @@ import { componentsByCategory } from '@/registry/componentTypes';
 import type { RailSection } from '@/stores/uiStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useCanvasStore } from '@/stores/canvasStore';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useCanvasStore } from '@/stores/canvasStore';
+import { useEditorStore } from '@/stores/editorStore';
 import type { CanvasNode, CanvasTool, ComponentCategory } from '@/types';
 import { ComponentCard } from './ComponentCard';
 
@@ -91,13 +92,11 @@ export function Sidebar({ containerRef }: SidebarProps) {
   const snapSidebarToNearestCorner = useUIStore((s) => s.snapSidebarToNearestCorner);
   const rehydrateSidebarPosition = useUIStore((s) => s.rehydrateSidebarPosition);
   const nodes = useCanvasStore((s) => s.nodes);
-  const sections = useWorkspaceStore((s) => s.sections);
-  const activeCanvasTool = useWorkspaceStore((s) => s.activeCanvasTool);
-  const setActiveCanvasTool = useWorkspaceStore((s) => s.setActiveCanvasTool);
-  const createSectionFromNodeSelection = useWorkspaceStore(
-    (s) => s.createSectionFromNodeSelection,
-  );
-  const getSectionLink = useWorkspaceStore((s) => s.getSectionLink);
+  const sections = useCanvasStore((s) => s.sections);
+  const activeCanvasTool = useEditorStore((s) => s.activeCanvasTool);
+  const setActiveCanvasTool = useEditorStore((s) => s.setActiveCanvasTool);
+  const createSectionFromNodeSelection = useCanvasStore((s) => s.createSectionFromNodeSelection);
+  const getSectionLink = useCanvasStore((s) => s.getSectionLink);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [sectionTitle, setSectionTitle] = useState('');

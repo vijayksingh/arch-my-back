@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { ExternalLink } from 'lucide-react';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useCanvasStore } from '@/stores/canvasStore';
+import { useEditorStore } from '@/stores/editorStore';
 
 interface SectionBadgeProps {
   sectionId: string;
@@ -8,9 +9,9 @@ interface SectionBadgeProps {
 }
 
 export function SectionBadge({ sectionId, label }: SectionBadgeProps) {
-  const requestFocusSection = useWorkspaceStore((s) => s.requestFocusSection);
-  const viewMode = useWorkspaceStore((s) => s.viewMode);
-  const setViewMode = useWorkspaceStore((s) => s.setViewMode);
+  const requestFocusSection = useCanvasStore((s) => s.requestFocusSection);
+  const viewMode = useEditorStore((s) => s.viewMode);
+  const setViewMode = useEditorStore((s) => s.setViewMode);
 
   const handleClick = useCallback(() => {
     if (viewMode === 'document') {

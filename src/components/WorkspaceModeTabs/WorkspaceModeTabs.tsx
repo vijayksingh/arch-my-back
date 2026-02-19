@@ -1,6 +1,5 @@
 import { cn } from '@/lib/utils';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
-import type { WorkspaceViewMode } from '@/types';
+import { useEditorStore, type WorkspaceViewMode } from '@/stores/editorStore';
 
 const viewModes: { id: WorkspaceViewMode; label: string }[] = [
   { id: 'document', label: 'Document' },
@@ -9,8 +8,8 @@ const viewModes: { id: WorkspaceViewMode; label: string }[] = [
 ];
 
 export function WorkspaceModeTabs() {
-  const viewMode = useWorkspaceStore((s) => s.viewMode);
-  const setViewMode = useWorkspaceStore((s) => s.setViewMode);
+  const viewMode = useEditorStore((s) => s.viewMode);
+  const setViewMode = useEditorStore((s) => s.setViewMode);
 
   return (
     <div className="flex items-center rounded-lg border ui-border-ghost bg-background/70 p-0.5 shadow-sm">

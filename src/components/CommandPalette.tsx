@@ -1,7 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { Command } from 'cmdk';
-import type { CanvasTool } from '@/types';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useEditorStore, type CanvasTool } from '@/stores/editorStore';
 
 interface CommandPaletteProps {
   open: boolean;
@@ -9,10 +8,10 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ open, onClose }: CommandPaletteProps) {
-  const setActiveCanvasTool = useWorkspaceStore((s) => s.setActiveCanvasTool);
-  const setViewMode = useWorkspaceStore((s) => s.setViewMode);
-  const cycleViewMode = useWorkspaceStore((s) => s.cycleViewMode);
-  const toggleDocumentEditorMode = useWorkspaceStore((s) => s.toggleDocumentEditorMode);
+  const setActiveCanvasTool = useEditorStore((s) => s.setActiveCanvasTool);
+  const setViewMode = useEditorStore((s) => s.setViewMode);
+  const cycleViewMode = useEditorStore((s) => s.cycleViewMode);
+  const toggleDocumentEditorMode = useEditorStore((s) => s.toggleDocumentEditorMode);
 
   useEffect(() => {
     if (!open) return;

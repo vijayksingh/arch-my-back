@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { Globe, Minus, Plus } from 'lucide-react';
 import type { ApiEndpoint, HttpMethod, NotebookBlock } from '@/types';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useDocumentStore } from '@/stores/documentStore';
 import { WidgetPreviewCard } from './WidgetPreviewCard';
 import { useDoubleEnterExit } from './useDoubleEnterExit';
 
@@ -27,7 +27,7 @@ function genId() {
 }
 
 export function ApiWidget({ block, isPreview, autoFocus, onExitWidget }: ApiWidgetProps) {
-  const updateBlockData = useWorkspaceStore((s) => s.updateBlockData);
+  const updateBlockData = useDocumentStore((s) => s.updateBlockData);
   const endpoints = block.data.endpoints;
 
   const setEndpoints = useCallback(

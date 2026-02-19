@@ -1,18 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useDocumentStore } from '@/stores/documentStore';
+import { useEditorStore } from '@/stores/editorStore';
 import type { NotebookBlockType } from '@/types';
 import { NotebookBlockComponent } from './NotebookBlock';
 
 export function DocumentPanel() {
-  const blocks = useWorkspaceStore((s) => s.blocks);
-  const addBlockFromStore = useWorkspaceStore((s) => s.addBlock);
-  const pendingFocusBlockId = useWorkspaceStore((s) => s.pendingFocusBlockId);
-  const clearPendingFocusBlock = useWorkspaceStore(
-    (s) => s.clearPendingFocusBlock,
-  );
-  const editorMode = useWorkspaceStore((s) => s.documentEditorMode);
-  const setEditorMode = useWorkspaceStore((s) => s.setDocumentEditorMode);
+  const blocks = useDocumentStore((s) => s.blocks);
+  const addBlockFromStore = useDocumentStore((s) => s.addBlock);
+  const pendingFocusBlockId = useDocumentStore((s) => s.pendingFocusBlockId);
+  const clearPendingFocusBlock = useDocumentStore((s) => s.clearPendingFocusBlock);
+  const editorMode = useEditorStore((s) => s.documentEditorMode);
+  const setEditorMode = useEditorStore((s) => s.setDocumentEditorMode);
   const [highlightedBlockId, setHighlightedBlockId] = useState<string | null>(
     null,
   );

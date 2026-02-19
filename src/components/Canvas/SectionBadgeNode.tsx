@@ -1,7 +1,8 @@
 import { type CSSProperties, useCallback } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { NotebookBlock, SectionBadgeNode } from '@/types';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useDocumentStore } from '@/stores/documentStore';
+import { useEditorStore } from '@/stores/editorStore';
 
 // Convention: every canvas node type should include left/right handles so that
 // React Flow edges can be drawn to/from any node in the graph. Handles are
@@ -176,11 +177,11 @@ function NoData() {
 export default function SectionBadgeNodeComponent({
   data,
 }: NodeProps<SectionBadgeNode>) {
-  const requestFocusBlock = useWorkspaceStore((s) => s.requestFocusBlock);
-  const viewMode = useWorkspaceStore((s) => s.viewMode);
-  const setViewMode = useWorkspaceStore((s) => s.setViewMode);
-  const block = useWorkspaceStore((s) =>
-    s.blocks.find((b) => b.id === data.blockId),
+  const requestFocusBlock = useDocumentStore((s) => s.requestFocusBlock);
+  const viewMode = useEditorStore((s) => s.viewMode);
+  const setViewMode = useEditorStore((s) => s.setViewMode);
+  const block = useDocumentStore((s) =>
+    s.blocks.find((b) => b.id === data.blockId)
   );
 
   const handleClick = useCallback(() => {

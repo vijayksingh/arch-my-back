@@ -3,7 +3,7 @@ import { useReactFlow } from '@xyflow/react';
 import { Link2 } from 'lucide-react';
 import type { CanvasNode } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useCanvasStore } from '@/stores/canvasStore';
 
 function getNodeWidth(node: CanvasNode): number {
   const sw = node.style?.width;
@@ -22,9 +22,9 @@ function getNodeHeight(node: CanvasNode): number {
 export function SelectionActionBar() {
   const { flowToScreenPosition } = useReactFlow();
   const nodes = useCanvasStore((s) => s.nodes);
-  const sections = useWorkspaceStore((s) => s.sections);
-  const createSectionFromNodeSelection = useWorkspaceStore((s) => s.createSectionFromNodeSelection);
-  const getSectionLink = useWorkspaceStore((s) => s.getSectionLink);
+  const sections = useCanvasStore((s) => s.sections);
+  const createSectionFromNodeSelection = useCanvasStore((s) => s.createSectionFromNodeSelection);
+  const getSectionLink = useCanvasStore((s) => s.getSectionLink);
 
   const selectedNodes = useMemo(() => nodes.filter((n) => n.selected), [nodes]);
   const [title, setTitle] = useState('');

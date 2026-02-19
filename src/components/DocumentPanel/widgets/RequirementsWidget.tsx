@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ListChecks, Minus, Plus } from 'lucide-react';
 import type { NotebookBlock, RequirementItem } from '@/types';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useDocumentStore } from '@/stores/documentStore';
 import { WidgetPreviewCard } from './WidgetPreviewCard';
 import { useDoubleEnterExit } from './useDoubleEnterExit';
 
@@ -18,7 +18,7 @@ export function RequirementsWidget({
   autoFocus,
   onExitWidget,
 }: RequirementsWidgetProps) {
-  const updateBlockData = useWorkspaceStore((s) => s.updateBlockData);
+  const updateBlockData = useDocumentStore((s) => s.updateBlockData);
   const items = block.data.items;
   const [pendingFocusId, setPendingFocusId] = useState<string | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement>>({});

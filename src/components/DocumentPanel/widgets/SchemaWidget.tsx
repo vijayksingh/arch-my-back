@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Database, Minus, Plus } from 'lucide-react';
 import type { NotebookBlock, SchemaField, SchemaTable } from '@/types';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useDocumentStore } from '@/stores/documentStore';
 import { WidgetPreviewCard } from './WidgetPreviewCard';
 import { useDoubleEnterExit } from './useDoubleEnterExit';
 
@@ -100,7 +100,7 @@ function TypeInput({ value, onChange }: TypeInputProps) {
 }
 
 export function SchemaWidget({ block, isPreview, autoFocus, onExitWidget }: SchemaWidgetProps) {
-  const updateBlockData = useWorkspaceStore((s) => s.updateBlockData);
+  const updateBlockData = useDocumentStore((s) => s.updateBlockData);
   const tables = block.data.tables;
 
   const setTables = useCallback(

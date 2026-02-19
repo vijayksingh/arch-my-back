@@ -1,3 +1,17 @@
+/**
+ * @deprecated This store has been split into:
+ * - `documentStore.ts` — blocks and block CRUD operations
+ * - `editorStore.ts` — UI preferences (viewMode, tool, editorMode)
+ * - `canvasStore.ts` — sections now live here (spatial data)
+ *
+ * Import from the new stores instead:
+ * ```ts
+ * import { useDocumentStore } from '@/stores/documentStore';
+ * import { useEditorStore } from '@/stores/editorStore';
+ * import { useCanvasStore } from '@/stores/canvasStore';
+ * ```
+ */
+
 import { create } from 'zustand';
 import type {
   CanvasBounds,
