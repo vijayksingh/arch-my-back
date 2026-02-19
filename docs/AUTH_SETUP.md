@@ -16,6 +16,25 @@ The following has been set up for you:
 6. **Utility Exports**: `src/lib/auth.ts` exports useful auth hooks
 7. **Convex Client**: `src/lib/convex.ts` configures the Convex React client
 
+## ⚙️ Initial Configuration
+
+**CRITICAL FIRST STEP:** Before authentication will work, you must run the Convex Auth configuration command:
+
+```bash
+npx @convex-dev/auth --web-server-url http://localhost:5173
+```
+
+This command:
+- Sets the `SITE_URL` environment variable in your Convex deployment
+- Generates JWT keys for authentication
+- Creates the `convex/auth.config.ts` file
+- Verifies your setup is correct
+
+**You only need to run this once per deployment.** For production, run it again with your production URL:
+```bash
+npx @convex-dev/auth --web-server-url https://your-domain.com --prod
+```
+
 ## 🔌 HTTP Routes Configuration
 
 Convex Auth requires HTTP routes to be registered to handle authentication requests from your frontend. This is done in `convex/http.ts`:
