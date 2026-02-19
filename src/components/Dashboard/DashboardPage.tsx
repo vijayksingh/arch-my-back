@@ -1,20 +1,57 @@
 import { useQuery, useMutation } from 'convex/react';
 import { useNavigate } from '@tanstack/react-router';
-import { PlusIcon, FolderPlus } from 'lucide-react';
+import { PlusIcon, FolderPlus, Layers, Sun, Moon, User } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '../../../convex/_generated/api';
 import { DesignCard } from './DesignCard';
 import { FolderCard } from './FolderCard';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useThemeStore } from '@/stores/themeStore';
+import {
+  DndContext,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragOverEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import type { Doc, Id } from '../../../convex/_generated/dataModel';
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useThemeStore();
   const designs = useQuery(api.newDesigns.list);
   const folders = useQuery(api.folders.list);
   const createDesign = useMutation(api.newDesigns.create);
   const createFolder = useMutation(api.folders.create);
+  const moveToFolder = useMutation(api.newDesigns.moveToFolder);
 
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+
+  // Drag-and-drop state
+  const [activeDesign, setActiveDesign] = useState<Doc<'newDesigns'> | null>(null);
+  const [overedFolderId, setOveredFolderId] = useState<Id<'folders'> | null>(null);
+
+  // Configure drag sensors with distance threshold to prevent click interception
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 5 },
+    })
+  );
 
   const handleCreateDesign = async () => {
     const now = new Date();
@@ -43,10 +80,57 @@ export function DashboardPage() {
   const handleFolderDialogKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleCreateFolder();
-    } else if (e.key === 'Escape') {
-      setShowFolderDialog(false);
-      setNewFolderName('');
     }
+  };
+
+  // Drag handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    if (active.data.current?.type === 'design') {
+      setActiveDesign(active.data.current.design);
+    }
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    if (over?.data.current?.type === 'folder') {
+      setOveredFolderId(over.id as Id<'folders'>);
+    } else {
+      setOveredFolderId(null);
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    // Clear drag state
+    setActiveDesign(null);
+    setOveredFolderId(null);
+
+    // Check if dropped on a folder
+    if (
+      over?.data.current?.type === 'folder' &&
+      active.data.current?.type === 'design'
+    ) {
+      const design = active.data.current.design as Doc<'newDesigns'>;
+      const targetFolderId = over.id as Id<'folders'>;
+
+      // Don't move if already in that folder
+      if (design.folderId === targetFolderId) {
+        return;
+      }
+
+      try {
+        await moveToFolder({ designId: design._id, folderId: targetFolderId });
+      } catch (error) {
+        console.error('Failed to move design to folder:', error);
+      }
+    }
+  };
+
+  const handleDragCancel = () => {
+    setActiveDesign(null);
+    setOveredFolderId(null);
   };
 
   // Count designs per folder
@@ -76,111 +160,161 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
-      <div className="border-b border-border px-6 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">My Designs</h1>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowFolderDialog(true)}
-              className="flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
-            >
-              <FolderPlus className="h-4 w-4" />
-              New Folder
-            </button>
-            <button
-              onClick={handleCreateDesign}
-              className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
-            >
-              <PlusIcon className="h-4 w-4" />
-              New Design
-            </button>
-          </div>
-        </div>
-      </div>
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
+        {/* Header */}
+        <div className="border-b border-border px-6 py-3">
+          <div className="flex items-center justify-between">
+            {/* Left: Branding */}
+            <div className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" />
+              <span className="text-sm font-semibold tracking-tight">System Architect</span>
+            </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        {/* Folders section */}
-        {folders && folders.length > 0 && (
-          <div className="mb-8">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">Folders</h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {folders.map((folder) => (
-                <FolderCard
-                  key={folder._id}
-                  folder={folder}
-                  designCount={folderDesignCounts.get(folder._id) || 0}
-                />
-              ))}
+            {/* Right: Actions */}
+            <div className="flex items-center gap-2">
+              <Button onClick={handleCreateDesign} size="default">
+                <PlusIcon className="h-4 w-4 mr-2" />
+                New Design
+              </Button>
+              <Button onClick={() => setShowFolderDialog(true)} variant="ghost" size="default">
+                <FolderPlus className="h-4 w-4 mr-2" />
+                New Folder
+              </Button>
+              <Button
+                onClick={toggleTheme}
+                variant="ghost"
+                size="icon"
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
+              <Button variant="ghost" size="icon" aria-label="User menu">
+                <User className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Root designs section */}
-        {rootDesigns.length > 0 ? (
-          <div>
-            <h2 className="mb-4 text-lg font-semibold text-foreground">
-              {folders && folders.length > 0 ? 'Recent Designs' : 'All Designs'}
-            </h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {rootDesigns.map((design) => (
-                <DesignCard key={design._id} design={design} />
-              ))}
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+        {/* Empty state */}
+        {rootDesigns.length === 0 && (!folders || folders.length === 0) ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="flex flex-col items-center text-center py-24">
+              <div className="mb-6 relative">
+                <div className="absolute inset-0 rounded-full bg-primary/10 blur-2xl" />
+                <Layers className="h-16 w-16 text-muted-foreground/50 relative" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Create your first architecture</h2>
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+                Start with a blank canvas and bring your system to life
+              </p>
+              <div className="flex items-center gap-3">
+                <Button onClick={handleCreateDesign} size="lg">
+                  <PlusIcon className="h-5 w-5 mr-2" />
+                  New Design
+                </Button>
+                <Button variant="ghost" size="lg">
+                  Browse Templates
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
-          folders && folders.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="mb-4 text-lg text-muted-foreground">
-                No designs yet. Create your first design to get started!
-              </p>
-              <button
-                onClick={handleCreateDesign}
-                className="flex items-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
-              >
-                <PlusIcon className="h-5 w-5" />
-                Create Design
-              </button>
-            </div>
-          )
+          <>
+            {/* Folders section */}
+            {folders && folders.length > 0 && (
+              <div className="mb-8">
+                <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Folders
+                </h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {folders.map((folder) => (
+                    <FolderCard
+                      key={folder._id}
+                      folder={folder}
+                      designCount={folderDesignCounts.get(folder._id) || 0}
+                      isDropTarget={overedFolderId === folder._id}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Designs section */}
+            {rootDesigns.length > 0 && (
+              <div>
+                <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  {folders && folders.length > 0 ? 'Recent Designs' : 'All Designs'}
+                </h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {rootDesigns.map((design) => (
+                    <DesignCard key={design._id} design={design} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* Folder creation dialog */}
-      {showFolderDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">Create New Folder</h2>
-            <input
+      <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Folder</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
               type="text"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               onKeyDown={handleFolderDialogKeyDown}
               placeholder="Folder name"
               autoFocus
-              className="mb-4 w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent"
             />
             <div className="flex justify-end gap-2">
-              <button
+              <Button
                 onClick={() => {
                   setShowFolderDialog(false);
                   setNewFolderName('');
                 }}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
+                variant="ghost"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleCreateFolder}
                 disabled={!newFolderName.trim()}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
               >
                 Create
-              </button>
+              </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+
+    {/* Drag Overlay - shows ghost card during drag */}
+    <DragOverlay>
+      {activeDesign && (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-lg opacity-90">
+          <Layers className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">{activeDesign.title}</span>
         </div>
       )}
-    </div>
+    </DragOverlay>
+  </DndContext>
   );
 }

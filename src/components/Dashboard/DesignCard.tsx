@@ -23,6 +23,8 @@ import {
   AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 interface DesignCardProps {
   design: Doc<'newDesigns'>;
@@ -58,6 +60,12 @@ export function DesignCard({ design }: DesignCardProps) {
 
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Make card draggable
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: design._id,
+    data: { type: 'design', design },
+  });
 
   const handleClick = () => {
     navigate({ to: '/design/$designId', params: { designId: design._id } });
@@ -100,10 +108,17 @@ export function DesignCard({ design }: DesignCardProps) {
 
   return (
     <>
-      <div className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:border-border/80 hover:shadow-md cursor-pointer">
-        {/* Preview Area */}
+      <div
+        ref={setNodeRef}
+        className={`group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:border-border/80 hover:shadow-md cursor-pointer ${
+          isDragging ? 'opacity-40' : ''
+        }`}
+      >
+        {/* Preview Area - also the drag handle */}
         <div
           onClick={handleClick}
+          {...attributes}
+          {...listeners}
           className={`aspect-[16/10] w-full ${gradientClass} relative`}
         >
           {/* Grid dot pattern overlay */}

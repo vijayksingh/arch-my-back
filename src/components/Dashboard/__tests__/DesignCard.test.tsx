@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { resetMocks, mockUseQuery, mockUseMutation } from '@/test/test-utils';
 import type { Doc } from '../../../../convex/_generated/dataModel';
+import { DndContext } from '@dnd-kit/core';
 
 // Mock TanStack Router
 const mockNavigate = vi.fn();
@@ -16,6 +17,11 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 // Import after mocks are set up
 const { DesignCard } = await import('../DesignCard');
+
+// Helper to render with DndContext
+const renderWithDnd = (ui: React.ReactElement) => {
+  return render(<DndContext>{ui}</DndContext>);
+};
 
 describe('DesignCard', () => {
   const mockDesign: Doc<'newDesigns'> = {
@@ -59,7 +65,7 @@ describe('DesignCard', () => {
   });
 
   it('renders design title and updated date', () => {
-    render(<DesignCard design={mockDesign} />);
+    renderWithDnd(<DesignCard design={mockDesign} />);
 
     // Assert: Title is visible
     expect(screen.getByText('My Architecture')).toBeInTheDocument();
@@ -69,7 +75,7 @@ describe('DesignCard', () => {
   });
 
   it('shows preview area with gradient placeholder', () => {
-    const { container } = render(<DesignCard design={mockDesign} />);
+    const { container } = renderWithDnd(<DesignCard design={mockDesign} />);
 
     // Assert: Title is visible
     expect(screen.getByText('My Architecture')).toBeInTheDocument();
@@ -83,11 +89,11 @@ describe('DesignCard', () => {
 
   it('shows action menu on interaction', async () => {
     const user = userEvent.setup();
-    render(<DesignCard design={mockDesign} />);
+    renderWithDnd(<DesignCard design={mockDesign} />);
 
-    // Find and click the three-dot menu button
-    // The button has a MoreVertical icon, look for it by role
-    const menuButton = screen.getByRole('button', { hidden: true });
+    // Find and click the three-dot menu button (not the draggable card)
+    // The menu button is inside an element with aria-haspopup="menu"
+    const menuButton = screen.getByRole('button', { hidden: true, expanded: false });
     await user.click(menuButton);
 
     // Assert: Menu items appear
@@ -98,7 +104,7 @@ describe('DesignCard', () => {
 
   it('navigates to design when card is clicked', async () => {
     const user = userEvent.setup();
-    render(<DesignCard design={mockDesign} />);
+    renderWithDnd(<DesignCard design={mockDesign} />);
 
     // Click the card (not the menu button)
     const title = screen.getByText('My Architecture');
@@ -113,10 +119,10 @@ describe('DesignCard', () => {
 
   it('shows delete confirmation dialog', async () => {
     const user = userEvent.setup();
-    render(<DesignCard design={mockDesign} />);
+    renderWithDnd(<DesignCard design={mockDesign} />);
 
     // Open menu
-    const menuButton = screen.getByRole('button', { hidden: true });
+    const menuButton = screen.getByRole('button', { hidden: true, expanded: false });
     await user.click(menuButton);
 
     // Click Delete
@@ -134,10 +140,10 @@ describe('DesignCard', () => {
     const newDesignId = 'design-456';
     mockDuplicateDesign.mockResolvedValue(newDesignId);
 
-    render(<DesignCard design={mockDesign} />);
+    renderWithDnd(<DesignCard design={mockDesign} />);
 
     // Open menu
-    const menuButton = screen.getByRole('button', { hidden: true });
+    const menuButton = screen.getByRole('button', { hidden: true, expanded: false });
     await user.click(menuButton);
 
     // Click Duplicate
