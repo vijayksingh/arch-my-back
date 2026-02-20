@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
-import { Download, Trash2, BookOpen, Rocket, Moon, Sun, LogOut, User, Braces } from 'lucide-react';
+import { Download, Trash2, BookOpen, Rocket, Moon, Sun, LogOut, User, Braces, Undo2, Redo2, LayoutGrid, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { WorkspaceModeTabs } from '@/components/WorkspaceModeTabs';
+import { TemplateBrowser } from '@/components/TemplateBrowser/TemplateBrowser';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useThemeStore } from '@/stores/themeStore';
-import { urlShortenerTemplate } from '@/templates/urlShortener';
 import { exportCanvasAsPng } from '@/lib/exportImage';
 import { useAuthActions, useQuery } from '@/lib/auth';
 import { api } from '../../../convex/_generated/api';
@@ -14,9 +14,13 @@ import { api } from '../../../convex/_generated/api';
 export function Toolbar() {
   const [designName, setDesignName] = useState('Untitled Design');
   const [isEditing, setIsEditing] = useState(false);
+  const [isLayoutRunning, setIsLayoutRunning] = useState(false);
+  const [templateBrowserOpen, setTemplateBrowserOpen] = useState(false);
 
+  const nodes = useCanvasStore((s) => s.nodes);
   const loadDesign = useCanvasStore((s) => s.loadDesign);
   const clearCanvas = useCanvasStore((s) => s.clearCanvas);
+  const autoLayout = useCanvasStore((s) => s.autoLayout);
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const dslEditorVisible = useEditorStore((s) => s.dslEditorVisible);
@@ -25,10 +29,11 @@ export function Toolbar() {
   const { signOut } = useAuthActions();
   const user = useQuery(api.users.getCurrentUser);
 
-  const handleLoadTemplate = useCallback(() => {
-    loadDesign(urlShortenerTemplate.nodes, urlShortenerTemplate.edges);
-    setDesignName(urlShortenerTemplate.title);
-  }, [loadDesign]);
+  const { undo, redo, pastStates, futureStates } = useCanvasStore.temporal((state) => state);
+
+  const handleOpenTemplateBrowser = useCallback(() => {
+    setTemplateBrowserOpen(true);
+  }, []);
 
   const handleExport = useCallback(() => {
     exportCanvasAsPng('react-flow-canvas', `${designName}.png`);
@@ -40,6 +45,21 @@ export function Toolbar() {
       setDesignName('Untitled Design');
     }
   }, [clearCanvas]);
+
+  const handleAutoLayout = useCallback(async () => {
+    setIsLayoutRunning(true);
+    try {
+      await autoLayout();
+    } finally {
+      setIsLayoutRunning(false);
+    }
+  }, [autoLayout]);
+
+  const preloadLayout = useCallback(() => {
+    void import('@/services/layoutService');
+  }, []);
+
+  const hasEnoughNodes = nodes.length >= 2;
 
   return (
     <header className="flex h-14 w-full shrink-0 items-center border-b border-border/80 bg-card/90 px-4 backdrop-blur-xl">
@@ -89,6 +109,28 @@ export function Toolbar() {
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => undo()}
+            title="Undo (Cmd+Z)"
+            aria-label="Undo (Cmd+Z)"
+            disabled={pastStates.length === 0}
+            className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => redo()}
+            title="Redo (Cmd+Shift+Z)"
+            aria-label="Redo (Cmd+Shift+Z)"
+            disabled={futureStates.length === 0}
+            className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <Redo2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={toggleDslEditor}
             title={dslEditorVisible ? 'Hide DSL Editor' : 'Show DSL Editor'}
             aria-label={dslEditorVisible ? 'Hide DSL Editor' : 'Show DSL Editor'}
@@ -96,6 +138,24 @@ export function Toolbar() {
           >
             <Braces className="h-3.5 w-3.5" />
           </Button>
+          {hasEnoughNodes && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleAutoLayout}
+              onMouseEnter={preloadLayout}
+              disabled={isLayoutRunning}
+              title="Auto Layout"
+              aria-label="Auto Layout"
+              className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLayoutRunning ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <LayoutGrid className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -113,9 +173,9 @@ export function Toolbar() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleLoadTemplate}
-            title="Load Template"
-            aria-label="Load Template"
+            onClick={handleOpenTemplateBrowser}
+            title="Browse Templates"
+            aria-label="Browse Templates"
             className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
           >
             <BookOpen className="h-3.5 w-3.5" />
@@ -171,6 +231,11 @@ export function Toolbar() {
           </div>
         )}
       </div>
+
+      <TemplateBrowser
+        open={templateBrowserOpen}
+        onOpenChange={setTemplateBrowserOpen}
+      />
     </header>
   );
 }
