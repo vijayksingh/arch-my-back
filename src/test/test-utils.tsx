@@ -27,6 +27,7 @@ vi.mock('convex/react', () => ({
   useQuery: (query: any, ...args: any[]) => mockUseQuery(query, ...args),
   useMutation: (mutation: any) => mockUseMutation(mutation),
   useConvexAuth: () => mockConvexAuth,
+  useAction: () => vi.fn(),
 }));
 
 // Mock @convex-dev/auth/react
@@ -50,6 +51,25 @@ import { useDocumentStore } from '@/stores/documentStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useThemeStore } from '@/stores/themeStore';
+
+// Mock the temporal middleware on canvasStore
+// @ts-expect-error - Adding temporal mock for zundo middleware
+useCanvasStore.temporal = vi.fn((selector: any) => {
+  return selector({
+    undo: vi.fn(),
+    redo: vi.fn(),
+    pastStates: [],
+    futureStates: [],
+  });
+});
+// @ts-expect-error - Adding getState for temporal
+useCanvasStore.temporal.getState = () => ({
+  undo: vi.fn(),
+  redo: vi.fn(),
+  pastStates: [],
+  futureStates: [],
+  clear: vi.fn(),
+});
 
 const initialCanvasState = {
   nodes: [],
