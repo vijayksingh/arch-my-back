@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { useEditorStore, type CanvasTool } from '@/stores/editorStore';
 import { useCurrentDesign } from '@/hooks/useCurrentDesign';
 import { useDesignSync } from '@/hooks/useDesignSync';
+import { useCanvasStore } from '@/stores/canvasStore';
 
 // Lazy-load DSL editor
 const DSLEditor = lazy(() => import('@/components/DSLEditor').then(m => ({ default: m.DSLEditor })));
@@ -70,6 +71,20 @@ function DesignEditorPage() {
       if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
         e.preventDefault();
         cycleViewMode();
+        return;
+      }
+
+      // Cmd/Ctrl+Z — undo
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        useCanvasStore.temporal.getState().undo();
+        return;
+      }
+
+      // Cmd/Ctrl+Shift+Z — redo
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        useCanvasStore.temporal.getState().redo();
         return;
       }
 

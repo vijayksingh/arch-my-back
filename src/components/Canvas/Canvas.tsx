@@ -20,6 +20,7 @@ import ArchNodeComponent from './ArchNode';
 import ArchEdge from './ArchEdge';
 import ShapeNode from './ShapeNode';
 import SectionBadgeNode from './SectionBadgeNode';
+import CollapsibleGroupNode from './CollapsibleGroupNode';
 import { SelectionActionBar } from './SelectionActionBar';
 
 const nodeTypes: NodeTypes = {
@@ -28,6 +29,7 @@ const nodeTypes: NodeTypes = {
   shapeCircle: ShapeNode,
   shapeText: ShapeNode,
   sectionBadge: SectionBadgeNode,
+  collapsibleGroup: CollapsibleGroupNode,
 };
 
 const edgeTypes: EdgeTypes = {

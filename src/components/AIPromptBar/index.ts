@@ -1,0 +1,1 @@
+export { AIPromptBar } from './AIPromptBar';

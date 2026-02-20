@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { useNavigate } from '@tanstack/react-router';
 import { PlusIcon, FolderPlus, Layers, Sun, Moon, User } from 'lucide-react';
 import { useState } from 'react';
@@ -26,6 +26,9 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import type { Doc, Id } from '../../../convex/_generated/dataModel';
+import { AIPromptBar } from '@/components/AIPromptBar';
+import { toCanvasNodes } from '@/dsl/canvasAdapter';
+import { useCanvasStore } from '@/stores/canvasStore';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -35,6 +38,8 @@ export function DashboardPage() {
   const createDesign = useMutation(api.newDesigns.create);
   const createFolder = useMutation(api.folders.create);
   const moveToFolder = useMutation(api.newDesigns.moveToFolder);
+  const generateArchitecture = useAction(api.aiGeneration.generateArchitecture);
+  const { loadDesign } = useCanvasStore();
 
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -80,6 +85,35 @@ export function DashboardPage() {
   const handleFolderDialogKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleCreateFolder();
+    }
+  };
+
+  const handleAIGenerate = async (prompt: string) => {
+    try {
+      // Call the AI generation action
+      const result = await generateArchitecture({ prompt });
+
+      // Parse the generated JSON
+      const archspecDoc = JSON.parse(result.content);
+
+      // Convert to canvas nodes/edges format
+      const { nodes, edges } = toCanvasNodes(archspecDoc);
+
+      // Create a new design with AI-generated content
+      const now = new Date();
+      const title = archspecDoc.metadata?.title || `AI Generated ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+
+      const designId = await createDesign({ title });
+
+      // Load the generated nodes/edges into the canvas store
+      loadDesign(nodes, edges);
+
+      // Navigate to the new design
+      navigate({ to: '/design/$designId', params: { designId } });
+
+    } catch (error: any) {
+      // Re-throw to let AIPromptBar handle error display
+      throw error;
     }
   };
 
@@ -203,6 +237,16 @@ export function DashboardPage() {
                 <User className="h-4 w-4" />
               </Button>
             </div>
+          </div>
+        </div>
+
+        {/* AI Prompt Bar */}
+        <div className="border-b border-border bg-muted/30 px-6 py-4">
+          <div className="mx-auto max-w-4xl">
+            <h3 className="mb-2 text-sm font-medium text-foreground">
+              Generate with AI
+            </h3>
+            <AIPromptBar onGenerate={handleAIGenerate} />
           </div>
         </div>
 
