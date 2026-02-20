@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import { Download, Trash2, BookOpen, Rocket, Moon, Sun, LogOut, User } from 'lucide-react';
+import { Download, Trash2, BookOpen, Rocket, Moon, Sun, LogOut, User, Braces } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { WorkspaceModeTabs } from '@/components/WorkspaceModeTabs';
 import { useCanvasStore } from '@/stores/canvasStore';
+import { useEditorStore } from '@/stores/editorStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { urlShortenerTemplate } from '@/templates/urlShortener';
 import { exportCanvasAsPng } from '@/lib/exportImage';
@@ -18,6 +19,8 @@ export function Toolbar() {
   const clearCanvas = useCanvasStore((s) => s.clearCanvas);
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
+  const dslEditorVisible = useEditorStore((s) => s.dslEditorVisible);
+  const toggleDslEditor = useEditorStore((s) => s.toggleDslEditor);
 
   const { signOut } = useAuthActions();
   const user = useQuery(api.users.getCurrentUser);
@@ -83,6 +86,16 @@ export function Toolbar() {
       {/* Right: actions */}
       <div className="flex w-[310px] shrink-0 items-center justify-end gap-2">
         <div className="flex items-center gap-1 rounded-xl border border-border/75 bg-background/65 p-1 shadow-sm">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleDslEditor}
+            title={dslEditorVisible ? 'Hide DSL Editor' : 'Show DSL Editor'}
+            aria-label={dslEditorVisible ? 'Hide DSL Editor' : 'Show DSL Editor'}
+            className={`h-8 w-8 rounded-md ${dslEditorVisible ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <Braces className="h-3.5 w-3.5" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

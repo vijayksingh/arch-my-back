@@ -12,18 +12,22 @@ interface EditorStore {
   viewMode: WorkspaceViewMode;
   activeCanvasTool: CanvasTool;
   documentEditorMode: "edit" | "preview";
+  dslEditorVisible: boolean;
 
   setViewMode: (mode: WorkspaceViewMode) => void;
   cycleViewMode: () => void;
   setActiveCanvasTool: (tool: CanvasTool) => void;
   setDocumentEditorMode: (mode: "edit" | "preview") => void;
   toggleDocumentEditorMode: () => void;
+  setDslEditorVisible: (visible: boolean) => void;
+  toggleDslEditor: () => void;
 }
 
 export const useEditorStore = create<EditorStore>()((set) => ({
   viewMode: "both",
   activeCanvasTool: "cursor",
   documentEditorMode: "edit",
+  dslEditorVisible: false,
 
   setViewMode: (mode) => set({ viewMode: mode }),
 
@@ -45,4 +49,9 @@ export const useEditorStore = create<EditorStore>()((set) => ({
     set((s) => ({
       documentEditorMode: s.documentEditorMode === "edit" ? "preview" : "edit",
     })),
+
+  setDslEditorVisible: (visible) => set({ dslEditorVisible: visible }),
+
+  toggleDslEditor: () =>
+    set((s) => ({ dslEditorVisible: !s.dslEditorVisible })),
 }));
