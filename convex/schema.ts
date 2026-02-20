@@ -212,4 +212,22 @@ export default defineSchema({
     blocks: v.array(blockValidator),
     updatedAt: v.number(),
   }).index('by_designId', ['designId']),
+
+  /**
+   * AI Generations table
+   * Audit trail for AI-generated architecture diagrams
+   * Tracks prompts, outputs, token usage, and rate limiting
+   */
+  aiGenerations: defineTable({
+    userId: v.string(), // User who made the request
+    prompt: v.string(), // User's natural language prompt
+    generatedContent: v.string(), // Generated archspec JSON document
+    model: v.string(), // AI model used (e.g., "claude-3-5-sonnet-20241022")
+    tokensUsed: v.optional(v.number()), // Token count for billing/analytics
+    success: v.boolean(), // Whether generation succeeded
+    errorMessage: v.optional(v.string()), // Error details if failed
+    createdAt: v.number(), // Unix timestamp
+  })
+    .index('by_user', ['userId', 'createdAt'])
+    .index('by_creation_time', ['createdAt']),
 });

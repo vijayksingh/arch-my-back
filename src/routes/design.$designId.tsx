@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { Toolbar } from '@/components/Toolbar';
 import { Sidebar } from '@/components/Sidebar';
@@ -12,6 +12,10 @@ import { cn } from '@/lib/utils';
 import { useEditorStore, type CanvasTool } from '@/stores/editorStore';
 import { useCurrentDesign } from '@/hooks/useCurrentDesign';
 import { useDesignSync } from '@/hooks/useDesignSync';
+import { useCanvasStore } from '@/stores/canvasStore';
+
+// Lazy-load DSL editor
+const DSLEditor = lazy(() => import('@/components/DSLEditor').then(m => ({ default: m.DSLEditor })));
 
 export const Route = createFileRoute('/design/$designId')({
   component: DesignEditorPage,
@@ -36,6 +40,7 @@ function DesignEditorPage() {
   const cycleViewMode = useEditorStore((s) => s.cycleViewMode);
   const setActiveCanvasTool = useEditorStore((s) => s.setActiveCanvasTool);
   const toggleDocumentEditorMode = useEditorStore((s) => s.toggleDocumentEditorMode);
+  const dslEditorVisible = useEditorStore((s) => s.dslEditorVisible);
 
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const closePalette = useCallback(() => setCmdPaletteOpen(false), []);
@@ -66,6 +71,20 @@ function DesignEditorPage() {
       if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
         e.preventDefault();
         cycleViewMode();
+        return;
+      }
+
+      // Cmd/Ctrl+Z — undo
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        useCanvasStore.temporal.getState().undo();
+        return;
+      }
+
+      // Cmd/Ctrl+Shift+Z — redo
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        useCanvasStore.temporal.getState().redo();
         return;
       }
 
@@ -123,12 +142,33 @@ function DesignEditorPage() {
           >
             <Sidebar containerRef={canvasShellRef} />
 
-            {/* Canvas area */}
-            <div id="react-flow-canvas" className="absolute inset-0 bg-background">
+            {/* Canvas area - split when DSL editor is visible */}
+            <div
+              id="react-flow-canvas"
+              className={cn(
+                'absolute inset-0 bg-background transition-all duration-200',
+                dslEditorVisible && 'right-[40%]',
+              )}
+            >
               <ReactFlowProvider>
                 <Canvas />
               </ReactFlowProvider>
             </div>
+
+            {/* DSL Editor pane */}
+            {dslEditorVisible && (
+              <div className="absolute right-0 top-0 bottom-0 w-[40%]">
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center border-l border-border bg-background">
+                      <div className="text-sm text-muted-foreground">Loading editor...</div>
+                    </div>
+                  }
+                >
+                  <DSLEditor />
+                </Suspense>
+              </div>
+            )}
 
             {/* Config panel overlay */}
             <ConfigPanel />

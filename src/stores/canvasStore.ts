@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { temporal } from 'zundo';
 import {
   applyNodeChanges,
   applyEdgeChanges,
@@ -14,6 +15,7 @@ import type {
   CanvasNode,
   CanvasShapeKind,
   CanvasShapeNode,
+  CollapsibleGroupNode,
   NotebookBlockType,
   SectionBadgeNode,
 } from '@/types';
@@ -118,6 +120,18 @@ interface CanvasStore {
 
   // Bulk section operations for sync
   setSections: (sections: CanvasSection[]) => void;
+
+  // Group operations
+  toggleGroupCollapse: (groupId: string) => void;
+  addGroup: (
+    label: string,
+    childNodeIds: string[],
+    position?: { x: number; y: number }
+  ) => string;
+  removeGroup: (groupId: string, deleteChildren?: boolean) => void;
+
+  // Layout operations
+  autoLayout: () => Promise<void>;
 }
 
 let nodeIdCounter = 0;
@@ -126,7 +140,9 @@ function generateNodeId(): string {
   return `node_${Date.now()}_${nodeIdCounter++}`;
 }
 
-export const useCanvasStore = create<CanvasStore>((set, get) => ({
+export const useCanvasStore = create<CanvasStore>()(
+  temporal(
+    (set, get) => ({
   nodes: [],
   edges: [],
   sections: [],
@@ -360,6 +376,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       activeShapeEditId: null,
       pendingFocusSectionId: null,
     });
+    // Clear temporal history when loading a design
+    useCanvasStore.temporal.getState().clear();
   },
 
   clearCanvas: () => {
@@ -371,6 +389,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       activeShapeEditId: null,
       pendingFocusSectionId: null,
     });
+    // Clear temporal history when clearing canvas
+    useCanvasStore.temporal.getState().clear();
   },
 
   addSectionBadgeNode: (blockId, blockType, label, position) => {
@@ -433,4 +453,202 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   clearPendingFocusSection: () => set({ pendingFocusSectionId: null }),
 
   setSections: (sections) => set({ sections }),
-}));
+
+  toggleGroupCollapse: (groupId) => {
+    const nodes = get().nodes;
+    const groupNode = nodes.find((n) => n.id === groupId);
+
+    if (!groupNode || groupNode.type !== 'collapsibleGroup') return;
+
+    const isCurrentlyCollapsed = groupNode.data.isCollapsed ?? false;
+    const nextCollapsed = !isCurrentlyCollapsed;
+
+    // Find all child nodes (nodes with parentId === groupId)
+    const childNodes = nodes.filter((n) => n.parentId === groupId);
+
+    set({
+      nodes: nodes.map((node) => {
+        // Update the group node's collapsed state
+        if (node.id === groupId && node.type === 'collapsibleGroup') {
+          return {
+            ...node,
+            data: { ...node.data, isCollapsed: nextCollapsed },
+            style: {
+              ...node.style,
+              height: nextCollapsed ? 36 : (node.style?.height ?? 120),
+            },
+          } as CollapsibleGroupNode;
+        }
+
+        // Hide/show child nodes
+        if (node.parentId === groupId) {
+          return { ...node, hidden: nextCollapsed };
+        }
+
+        return node;
+      }),
+      // Also hide/show edges connected to hidden child nodes
+      edges: get().edges.map((edge) => {
+        const sourceHidden = childNodes.some(
+          (n) => n.id === edge.source && nextCollapsed
+        );
+        const targetHidden = childNodes.some(
+          (n) => n.id === edge.target && nextCollapsed
+        );
+
+        if (sourceHidden || targetHidden) {
+          return { ...edge, hidden: nextCollapsed };
+        }
+        return edge;
+      }),
+    });
+  },
+
+  addGroup: (label, childNodeIds, position = { x: 100, y: 100 }) => {
+    const nodes = get().nodes;
+    const groupId = generateNodeId();
+
+    // Calculate bounds based on child nodes
+    const childNodes = nodes.filter((n) => childNodeIds.includes(n.id));
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    childNodes.forEach((node) => {
+      const nodeWidth = (node.style?.width as number) ?? 156;
+      const nodeHeight = (node.style?.height as number) ?? 96;
+
+      minX = Math.min(minX, node.position.x);
+      minY = Math.min(minY, node.position.y);
+      maxX = Math.max(maxX, node.position.x + nodeWidth);
+      maxY = Math.max(maxY, node.position.y + nodeHeight);
+    });
+
+    const padding = 20;
+    const headerHeight = 36;
+    const groupWidth = childNodes.length > 0
+      ? maxX - minX + 2 * padding
+      : 300;
+    const groupHeight = childNodes.length > 0
+      ? maxY - minY + 2 * padding + headerHeight
+      : 200;
+
+    const groupPosition = childNodes.length > 0
+      ? { x: minX - padding, y: minY - padding - headerHeight }
+      : position;
+
+    const newGroup: CollapsibleGroupNode = {
+      id: groupId,
+      type: 'collapsibleGroup',
+      position: groupPosition,
+      data: {
+        label,
+        isCollapsed: false,
+        childNodeIds,
+      },
+      style: {
+        width: groupWidth,
+        height: groupHeight,
+      },
+    };
+
+    // Update child nodes to set parentId and adjust their positions to be relative
+    const updatedNodes = nodes.map((node) => {
+      if (childNodeIds.includes(node.id)) {
+        return {
+          ...node,
+          parentId: groupId,
+          position: {
+            x: node.position.x - groupPosition.x,
+            y: node.position.y - groupPosition.y,
+          },
+          extent: 'parent' as const,
+        };
+      }
+      return node;
+    });
+
+    set({ nodes: [...updatedNodes, newGroup] });
+    return groupId;
+  },
+
+  removeGroup: (groupId, deleteChildren = false) => {
+    const nodes = get().nodes;
+    const groupNode = nodes.find((n) => n.id === groupId);
+
+    if (!groupNode || groupNode.type !== 'collapsibleGroup') return;
+
+    const childNodes = nodes.filter((n) => n.parentId === groupId);
+
+    if (deleteChildren) {
+      // Remove group and all child nodes
+      const childIds = childNodes.map((n) => n.id);
+      set({
+        nodes: nodes.filter(
+          (n) => n.id !== groupId && !childIds.includes(n.id)
+        ),
+        edges: get().edges.filter(
+          (e) =>
+            e.source !== groupId &&
+            e.target !== groupId &&
+            !childIds.includes(e.source) &&
+            !childIds.includes(e.target)
+        ),
+      });
+    } else {
+      // Remove group but keep children, converting their positions back to absolute
+      set({
+        nodes: nodes
+          .filter((n) => n.id !== groupId)
+          .map((node) => {
+            if (node.parentId === groupId) {
+              return {
+                ...node,
+                parentId: undefined,
+                position: {
+                  x: node.position.x + groupNode.position.x,
+                  y: node.position.y + groupNode.position.y,
+                },
+                extent: undefined,
+                hidden: false,
+              };
+            }
+            return node;
+          }),
+        edges: get().edges.filter(
+          (e) => e.source !== groupId && e.target !== groupId
+        ).map((edge) => {
+          // Restore visibility of edges that were hidden due to group collapse
+          const sourceWasChild = childNodes.some((n) => n.id === edge.source);
+          const targetWasChild = childNodes.some((n) => n.id === edge.target);
+
+          if (sourceWasChild || targetWasChild) {
+            return { ...edge, hidden: false };
+          }
+          return edge;
+        }),
+      });
+    }
+  },
+
+  autoLayout: async () => {
+    const { nodes, edges } = get();
+    if (nodes.length < 2) return;
+
+    const { runElkLayout } = await import('@/services/layoutService');
+    const newNodes = await runElkLayout(nodes, edges);
+    set({ nodes: newNodes });
+  },
+    }),
+    {
+      limit: 50,
+      // Only track meaningful state changes (not UI state like selection)
+      equality: (pastState, currentState) =>
+        JSON.stringify(pastState.nodes) === JSON.stringify(currentState.nodes) &&
+        JSON.stringify(pastState.edges) === JSON.stringify(currentState.edges) &&
+        JSON.stringify(pastState.sections) === JSON.stringify(currentState.sections),
+    }
+  )
+);

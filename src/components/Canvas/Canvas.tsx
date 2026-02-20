@@ -20,6 +20,7 @@ import ArchNodeComponent from './ArchNode';
 import ArchEdge from './ArchEdge';
 import ShapeNode from './ShapeNode';
 import SectionBadgeNode from './SectionBadgeNode';
+import CollapsibleGroupNode from './CollapsibleGroupNode';
 import { SelectionActionBar } from './SelectionActionBar';
 
 const nodeTypes: NodeTypes = {
@@ -28,6 +29,7 @@ const nodeTypes: NodeTypes = {
   shapeCircle: ShapeNode,
   shapeText: ShapeNode,
   sectionBadge: SectionBadgeNode,
+  collapsibleGroup: CollapsibleGroupNode,
 };
 
 const edgeTypes: EdgeTypes = {
@@ -269,11 +271,18 @@ export default function Canvas() {
         />
         <Controls position="bottom-right" />
         <MiniMap
-          position="top-right"
+          position="bottom-left"
           nodeColor={miniMapNodeColor}
           maskColor="var(--canvas-mask)"
           pannable
           zoomable
+          style={{
+            width: 120,
+            height: 80,
+            opacity: 0.5,
+            transition: 'opacity 0.2s ease-in-out',
+          }}
+          className="hover:opacity-100"
         />
       </ReactFlow>
 

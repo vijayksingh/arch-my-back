@@ -11,7 +11,7 @@ import type { RailSection } from '@/stores/uiStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
-import type { CanvasNode, CanvasTool, ComponentCategory } from '@/types';
+import type { CanvasTool, ComponentCategory } from '@/types';
 import { ComponentCard } from './ComponentCard';
 
 const categoryOrder: ComponentCategory[] = [
@@ -58,26 +58,6 @@ interface SidebarProps {
   containerRef: RefObject<HTMLDivElement | null>;
 }
 
-function getNodeWidth(node: CanvasNode): number {
-  const styleWidth = node.style?.width;
-  if (typeof styleWidth === 'number') return styleWidth;
-  if (typeof styleWidth === 'string') {
-    const parsed = Number.parseFloat(styleWidth);
-    if (!Number.isNaN(parsed)) return parsed;
-  }
-  return node.measured?.width ?? node.width ?? 156;
-}
-
-function getNodeHeight(node: CanvasNode): number {
-  const styleHeight = node.style?.height;
-  if (typeof styleHeight === 'number') return styleHeight;
-  if (typeof styleHeight === 'string') {
-    const parsed = Number.parseFloat(styleHeight);
-    if (!Number.isNaN(parsed)) return parsed;
-  }
-  return node.measured?.height ?? node.height ?? 96;
-}
-
 export function Sidebar({ containerRef }: SidebarProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const isTrayOpen = useUIStore((s) => s.isTrayOpen);
@@ -90,24 +70,14 @@ export function Sidebar({ containerRef }: SidebarProps) {
   const setSidebarDragging = useUIStore((s) => s.setSidebarDragging);
   const snapSidebarToNearestCorner = useUIStore((s) => s.snapSidebarToNearestCorner);
   const rehydrateSidebarPosition = useUIStore((s) => s.rehydrateSidebarPosition);
-  const nodes = useCanvasStore((s) => s.nodes);
-  const sections = useCanvasStore((s) => s.sections);
   const activeCanvasTool = useEditorStore((s) => s.activeCanvasTool);
   const setActiveCanvasTool = useEditorStore((s) => s.setActiveCanvasTool);
-  const createSectionFromNodeSelection = useCanvasStore((s) => s.createSectionFromNodeSelection);
-  const getSectionLink = useCanvasStore((s) => s.getSectionLink);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [sectionTitle, setSectionTitle] = useState('');
-  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const normalizedQuery = searchQuery.toLowerCase().trim();
-  const selectedNodes = useMemo(
-    () => nodes.filter((node): node is CanvasNode => Boolean(node.selected)),
-    [nodes],
-  );
   const trayTitle = 'Components';
 
   const getViewportMetrics = useCallback(() => {
@@ -259,85 +229,6 @@ export function Sidebar({ containerRef }: SidebarProps) {
           !c.description.toLowerCase().includes(normalizedQuery),
       );
     });
-
-  useEffect(() => {
-    if (!actionFeedback) return;
-    const timeoutId = window.setTimeout(() => setActionFeedback(null), 2200);
-    return () => window.clearTimeout(timeoutId);
-  }, [actionFeedback]);
-
-  const handleCreateSection = useCallback(async () => {
-    if (selectedNodes.length === 0) {
-      setActionFeedback('Select one or more nodes first.');
-      return;
-    }
-
-    const nextSectionTitle = sectionTitle.trim() || `Section ${sections.length + 1}`;
-
-    const bounds = selectedNodes.reduce(
-      (acc, node, index) => {
-        const nodeX = node.position.x;
-        const nodeY = node.position.y;
-        const nodeRight = nodeX + getNodeWidth(node);
-        const nodeBottom = nodeY + getNodeHeight(node);
-
-        if (index === 0) {
-          return {
-            minX: nodeX,
-            minY: nodeY,
-            maxX: nodeRight,
-            maxY: nodeBottom,
-          };
-        }
-
-        return {
-          minX: Math.min(acc.minX, nodeX),
-          minY: Math.min(acc.minY, nodeY),
-          maxX: Math.max(acc.maxX, nodeRight),
-          maxY: Math.max(acc.maxY, nodeBottom),
-        };
-      },
-      { minX: 0, minY: 0, maxX: 0, maxY: 0 },
-    );
-
-    const createdSection = createSectionFromNodeSelection(
-      nextSectionTitle,
-      selectedNodes.map((node) => node.id),
-      {
-        x: bounds.minX,
-        y: bounds.minY,
-        width: Math.max(40, bounds.maxX - bounds.minX),
-        height: Math.max(40, bounds.maxY - bounds.minY),
-      },
-    );
-
-    if (!createdSection) {
-      setActionFeedback('Unable to create section from selection.');
-      return;
-    }
-
-    setSectionTitle('');
-
-    const linkToken = getSectionLink(createdSection.id);
-    if (!linkToken) {
-      setActionFeedback('Section created.');
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(linkToken);
-      setActionFeedback('Section link copied.');
-    } catch (error) {
-      console.error('Failed to copy section link:', error);
-      setActionFeedback('Section created. Copy link from Document.');
-    }
-  }, [
-    createSectionFromNodeSelection,
-    getSectionLink,
-    sectionTitle,
-    sections.length,
-    selectedNodes,
-  ]);
 
   return (
     <div
@@ -524,50 +415,6 @@ export function Sidebar({ containerRef }: SidebarProps) {
                   No components found
                 </p>
               </div>
-            )}
-          </div>
-
-          <div className="border-t border-border/55 px-2 py-1.5">
-            <div className="mb-1 flex items-center justify-between px-0.5">
-              <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Sections
-              </span>
-              <span className="text-[9px] text-muted-foreground">
-                {selectedNodes.length} selected
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <Input
-                variant="ghost"
-                value={sectionTitle}
-                onChange={(e) => setSectionTitle(e.target.value)}
-                name="sectionTitle"
-                autoComplete="off"
-                className="h-7 flex-1 bg-background/50 px-2 text-[11px]"
-                placeholder={`Section ${sections.length + 1}`}
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2.5 text-[11px]"
-                onClick={handleCreateSection}
-                disabled={selectedNodes.length === 0}
-                title={
-                  selectedNodes.length === 0 ? 'Select nodes first' : 'Create section'
-                }
-              >
-                Create
-              </Button>
-            </div>
-
-            {actionFeedback && (
-              <span
-                className="mt-1 block truncate px-1 text-[10px] text-muted-foreground"
-                aria-live="polite"
-              >
-                {actionFeedback}
-              </span>
             )}
           </div>
         </aside>

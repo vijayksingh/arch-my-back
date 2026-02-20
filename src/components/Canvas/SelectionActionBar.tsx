@@ -3,6 +3,7 @@ import { useReactFlow } from '@xyflow/react';
 import { Link2 } from 'lucide-react';
 import type { CanvasNode } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
+import { useEditorStore } from '@/stores/editorStore';
 
 function getNodeWidth(node: CanvasNode): number {
   const sw = node.style?.width;
@@ -24,6 +25,8 @@ export function SelectionActionBar() {
   const sections = useCanvasStore((s) => s.sections);
   const createSectionFromNodeSelection = useCanvasStore((s) => s.createSectionFromNodeSelection);
   const getSectionLink = useCanvasStore((s) => s.getSectionLink);
+  const activeCanvasTool = useEditorStore((s) => s.activeCanvasTool);
+  const setActiveCanvasTool = useEditorStore((s) => s.setActiveCanvasTool);
 
   const selectedNodes = useMemo(() => nodes.filter((n) => n.selected), [nodes]);
   const [title, setTitle] = useState('');
@@ -85,9 +88,10 @@ export function SelectionActionBar() {
       setFeedback('Group created.');
     }
     setTimeout(() => setFeedback(null), 2200);
-  }, [selectedNodes, bounds, title, sections.length, createSectionFromNodeSelection, getSectionLink]);
+    setActiveCanvasTool('cursor');
+  }, [selectedNodes, bounds, title, sections.length, createSectionFromNodeSelection, getSectionLink, setActiveCanvasTool]);
 
-  if (selectedNodes.length === 0) return null;
+  if (activeCanvasTool !== 'select' || selectedNodes.length < 2) return null;
 
   return (
     <div

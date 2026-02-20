@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://archapp.dev/schemas/archspec/v1.0",
+  "title": "Archspec Document",
+  "description": "JSON Schema for archspec architectural specification interchange format",
+  "type": "object",
+  "required": ["archspec_version", "name", "components", "connections"],
+  "properties": {
+    "archspec_version": {
+      "type": "string",
+      "description": "Version of the archspec format (currently \"1.0\")",
+      "const": "1.0"
+    },
+    "name": {
+      "type": "string",
+      "description": "Name of the architecture (e.g., \"E-Commerce Platform\")"
+    },
+    "components": {
+      "type": "array",
+      "description": "List of architectural components",
+      "items": {
+        "$ref": "#/$defs/Component"
+      }
+    },
+    "groups": {
+      "type": "array",
+      "description": "Optional list of component groups for organization",
+      "items": {
+        "$ref": "#/$defs/Group"
+      }
+    },
+    "connections": {
+      "type": "array",
+      "description": "List of connections between components",
+      "items": {
+        "$ref": "#/$defs/Connection"
+      }
+    }
+  },
+  "$defs": {
+    "ComponentType": {
+      "type": "string",
+      "description": "Type of architectural component from the registry",
+      "enum": [
+        "load_balancer",
+        "api_gateway",
+        "cdn",
+        "app_server",
+        "worker",
+        "serverless",
+        "postgres",
+        "object_storage",
+        "redis",
+        "kafka",
+        "websocket",
+        "external_api"
+      ]
+    },
+    "Component": {
+      "type": "object",
+      "description": "A single architectural component (server, database, service, etc.)",
+      "required": ["id", "type", "label"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the component (e.g., \"api\", \"db\")"
+        },
+        "type": {
+          "$ref": "#/$defs/ComponentType"
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable display name for the component"
+        },
+        "group": {
+          "type": "string",
+          "description": "Optional group ID this component belongs to"
+        },
+        "config": {
+          "type": "object",
+          "description": "Optional component-specific configuration (runtime, replicas, etc.)",
+          "additionalProperties": true
+        }
+      }
+    },
+    "Group": {
+      "type": "object",
+      "description": "A logical grouping of components for organization",
+      "required": ["id", "label", "parent"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the group"
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable name for the group (e.g., \"Edge Layer\", \"Storage\")"
+        },
+        "parent": {
+          "type": ["string", "null"],
+          "description": "Parent group ID for nested groups, or null for top-level groups"
+        }
+      }
+    },
+    "ConnectionConfig": {
+      "type": "object",
+      "description": "Optional configuration for a connection between components",
+      "properties": {
+        "protocol": {
+          "type": "string",
+          "description": "Communication protocol (e.g., \"HTTPS\", \"TCP\", \"AMQP\")"
+        },
+        "port": {
+          "type": "number",
+          "description": "Port number for the connection"
+        },
+        "mode": {
+          "type": "string",
+          "description": "Synchronous or asynchronous communication pattern",
+          "enum": ["sync", "async"]
+        },
+        "fanOut": {
+          "type": "number",
+          "description": "Fan-out ratio for load distribution (0.0-1.0+, default 1.0)",
+          "minimum": 0
+        },
+        "label": {
+          "type": "string",
+          "description": "Optional label for the connection edge"
+        }
+      }
+    },
+    "Connection": {
+      "type": "object",
+      "description": "A directed connection from one component to another",
+      "required": ["from", "to"],
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Source component ID"
+        },
+        "to": {
+          "type": "string",
+          "description": "Target component ID"
+        },
+        "config": {
+          "$ref": "#/$defs/ConnectionConfig"
+        }
+      }
+    }
+  }
+}

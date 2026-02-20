@@ -18,6 +18,8 @@ export interface ComponentTypeConfig {
   description: string;
   defaultConfig: Record<string, unknown>;
   configFields: ConfigField[];
+  configSchema?: Record<string, unknown>; // JSONSchema object for DSL serialization
+  primaryFields?: string[]; // 2-3 key fields for progressive disclosure UI
 }
 
 export interface ConfigField {
@@ -62,7 +64,17 @@ export interface SectionBadgeNodeData {
 
 export type SectionBadgeNode = Node<SectionBadgeNodeData, 'sectionBadge'>;
 
-export type CanvasNode = ArchNode | CanvasShapeNode | SectionBadgeNode;
+export interface CollapsibleGroupNodeData {
+  label: string;
+  isCollapsed: boolean;
+  childNodeIds: string[];
+  parentGroupId?: string;
+  [key: string]: unknown;
+}
+
+export type CollapsibleGroupNode = Node<CollapsibleGroupNodeData, 'collapsibleGroup'>;
+
+export type CanvasNode = ArchNode | CanvasShapeNode | SectionBadgeNode | CollapsibleGroupNode;
 
 export interface ArchEdgeData {
   protocol?: string;
