@@ -29,6 +29,7 @@ import type { Doc, Id } from '../../../convex/_generated/dataModel';
 import { AIPromptBar } from '@/components/AIPromptBar';
 import { toCanvasNodes } from '@/dsl/canvasAdapter';
 import { useCanvasStore } from '@/stores/canvasStore';
+import { TemplateGallery } from './TemplateGallery';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -253,6 +254,9 @@ export function DashboardPage() {
 
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
+        {/* Template Gallery */}
+        <TemplateGallery />
+
         {/* Empty state */}
         {rootDesigns.length === 0 && (!folders || folders.length === 0) ? (
           <div className="flex h-full items-center justify-center">
@@ -263,17 +267,12 @@ export function DashboardPage() {
               </div>
               <h2 className="text-xl font-semibold mb-2">Create your first architecture</h2>
               <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-                Start with a blank canvas and bring your system to life
+                Start with a blank canvas or choose a template above
               </p>
-              <div className="flex items-center gap-3">
-                <Button onClick={handleCreateDesign} size="lg">
-                  <PlusIcon className="h-5 w-5 mr-2" />
-                  New Design
-                </Button>
-                <Button variant="ghost" size="lg">
-                  Browse Templates
-                </Button>
-              </div>
+              <Button onClick={handleCreateDesign} size="lg">
+                <PlusIcon className="h-5 w-5 mr-2" />
+                New Design
+              </Button>
             </div>
           </div>
         ) : (
