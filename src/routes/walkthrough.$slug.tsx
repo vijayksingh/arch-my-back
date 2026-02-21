@@ -1,98 +1,53 @@
 /**
  * Walkthrough route - Interactive learning experiences
- * URL: /walkthrough/netflix-recommendations
+ * URL: /walkthrough/{slug}
+ * Example: /walkthrough/netflix-recommendation
  */
 
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-// import { useQuery } from 'convex/react';
-// import { api } from '../../convex/_generated/api';
 import { WalkthroughViewer } from '@/components/Walkthrough/WalkthroughViewer';
+import { getWalkthroughBySlug } from '@/walkthroughs';
 
 export const Route = createFileRoute('/walkthrough/$slug')({
   component: WalkthroughPage,
 });
 
 function WalkthroughPage() {
-  // const { slug } = Route.useParams();
+  const { slug } = Route.useParams();
   const navigate = useNavigate();
 
-  // TODO: Load walkthrough from database
-  // const walkthrough = useQuery(api.walkthroughs.getBySlug, { slug });
-
-  // For now, show a placeholder
-  const placeholderSteps = [
-    {
-      id: 'step-1',
-      title: 'Welcome to the Walkthrough',
-      content: `# Getting Started
-
-This is an interactive walkthrough that will teach you system architecture step by step.
-
-## What you'll learn:
-- How to design scalable systems
-- Best practices for architecture
-- Real-world examples
-
-Let's begin!`,
-      canvasOperations: [],
-      nextCondition: 'click' as const,
-    },
-    {
-      id: 'step-2',
-      title: 'Your First Component',
-      content: `# Adding Components
-
-Now let's add our first component to the canvas.
-
-We'll start with a simple **User** node.`,
-      canvasOperations: [
-        {
-          type: 'add-node' as const,
-          node: {
-            id: 'user-1',
-            type: 'archComponent',
-            position: { x: 100, y: 100 },
-            data: {
-              componentType: 'client',
-              label: 'User',
-              config: {},
-            },
-          },
-        },
-      ],
-      nextCondition: 'click' as const,
-    },
-    {
-      id: 'step-3',
-      title: 'Test Your Knowledge',
-      content: `# Quick Quiz
-
-Let's test what you've learned so far.`,
-      canvasOperations: [],
-      quiz: {
-        question: 'What type of component did we just add?',
-        options: [
-          'Database',
-          'Client',
-          'Server',
-          'Cache',
-        ],
-        correctIndex: 1,
-        explanation: 'We added a Client component representing the User.',
-      },
-      nextCondition: 'quiz-correct' as const,
-    },
-  ];
+  // Load walkthrough data from the index
+  const walkthrough = getWalkthroughBySlug(slug);
 
   const handleComplete = () => {
-    // Navigate back to dashboard or show completion screen
+    // Navigate back to dashboard
     navigate({ to: '/' });
   };
+
+  // Show fallback for unknown slugs
+  if (!walkthrough) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background text-foreground">
+        <div className="text-center max-w-md px-6">
+          <h1 className="text-2xl font-bold mb-4">Walkthrough Not Found</h1>
+          <p className="text-muted-foreground mb-6">
+            The walkthrough "{slug}" does not exist.
+          </p>
+          <button
+            onClick={() => navigate({ to: '/' })}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen">
       <WalkthroughViewer
-        steps={placeholderSteps}
+        steps={walkthrough.steps}
         onComplete={handleComplete}
       />
     </div>
