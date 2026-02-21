@@ -229,5 +229,5 @@ export default defineSchema({
     createdAt: v.number(), // Unix timestamp
   })
     .index('by_user', ['userId', 'createdAt'])
-    .index('by_creation_time', ['createdAt']),
+    .index('by_createdAt', ['createdAt']),
 });

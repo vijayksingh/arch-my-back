@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import type { WidgetProps } from '../types';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
@@ -74,23 +74,29 @@ export function ComparisonTable({
     );
   }
 
-  const handleColumnClick = (columnId: string) => {
-    const newSelectedColumn = selectedColumn === columnId ? undefined : columnId;
-    setSelectedColumn(newSelectedColumn);
-    onOutput?.({
-      selectedColumn: newSelectedColumn,
-      selectedRow,
-    });
-  };
+  const handleColumnClick = useCallback(
+    (columnId: string) => {
+      const newSelectedColumn = selectedColumn === columnId ? undefined : columnId;
+      setSelectedColumn(newSelectedColumn);
+      onOutput?.({
+        selectedColumn: newSelectedColumn,
+        selectedRow,
+      });
+    },
+    [selectedColumn, selectedRow, onOutput]
+  );
 
-  const handleRowClick = (rowId: string) => {
-    const newSelectedRow = selectedRow === rowId ? undefined : rowId;
-    setSelectedRow(newSelectedRow);
-    onOutput?.({
-      selectedColumn,
-      selectedRow: newSelectedRow,
-    });
-  };
+  const handleRowClick = useCallback(
+    (rowId: string) => {
+      const newSelectedRow = selectedRow === rowId ? undefined : rowId;
+      setSelectedRow(newSelectedRow);
+      onOutput?.({
+        selectedColumn,
+        selectedRow: newSelectedRow,
+      });
+    },
+    [selectedColumn, selectedRow, onOutput]
+  );
 
   const exportToMarkdown = () => {
     let md = '# ' + (config.name || 'Comparison Table') + '\n\n';
@@ -167,7 +173,7 @@ export function ComparisonTable({
     });
   };
 
-  const formatCellContent = (cell: any): string => {
+  const formatCellContent = useCallback((cell: CellContent): string => {
     if (typeof cell === 'string') return cell;
 
     if (cell.type === 'pros-cons') {
@@ -179,7 +185,7 @@ export function ComparisonTable({
     }
 
     return cell.content || '';
-  };
+  }, []);
 
   const renderCellContent = (cell: CellContent) => {
     if (typeof cell === 'string') {

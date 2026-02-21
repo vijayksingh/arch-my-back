@@ -113,7 +113,11 @@ export function generateEmbedURL(
   params.set('instance', widgetInstanceId);
 
   if (config?.mode) {
-    params.set('mode', config.mode);
+    // Validate mode before setting
+    const validModes: WidgetEmbedMode[] = ['inline', 'panel', 'iframe'];
+    if (validModes.includes(config.mode)) {
+      params.set('mode', config.mode);
+    }
   }
 
   if (config?.interactive !== undefined) {
@@ -121,10 +125,53 @@ export function generateEmbedURL(
   }
 
   if (config?.theme) {
-    params.set('theme', config.theme);
+    // Validate theme before setting
+    if (config.theme === 'light' || config.theme === 'dark') {
+      params.set('theme', config.theme);
+    }
   }
 
   return `${baseURL}/embed/widget?${params.toString()}`;
+}
+
+/**
+ * Generate embed URL for a widget flow
+ * Can be used to embed entire flows in external sites via iframe
+ */
+export function generateFlowEmbedURL(
+  flowId: string,
+  config?: {
+    baseURL?: string;
+    mode?: WidgetEmbedMode;
+    interactive?: boolean;
+    theme?: 'light' | 'dark';
+  },
+): string {
+  const baseURL = config?.baseURL || window.location.origin;
+  const params = new URLSearchParams();
+
+  params.set('flow', flowId);
+
+  if (config?.mode) {
+    // Validate mode before setting
+    const validModes: WidgetEmbedMode[] = ['inline', 'panel', 'iframe'];
+    if (validModes.includes(config.mode)) {
+      params.set('mode', config.mode);
+    }
+  }
+
+  if (config?.interactive !== undefined) {
+    params.set('interactive', config.interactive.toString());
+  }
+
+  if (config?.theme) {
+    // Validate theme before setting
+    if (config.theme === 'light' || config.theme === 'dark') {
+      params.set('theme', config.theme);
+    }
+  }
+
+  return `${baseURL}/embed/flow?${params.toString()}`;
 }
 
 /**
@@ -138,21 +185,37 @@ export function parseEmbedURL(
   mode: WidgetEmbedMode;
   interactive: boolean;
   theme?: 'light' | 'dark';
+  flowId?: string;
 } | null {
   const instanceId = searchParams.get('instance');
+  const flowId = searchParams.get('flow');
 
-  if (!instanceId) {
+  if (!instanceId && !flowId) {
     return null;
   }
 
-  const mode = (searchParams.get('mode') as WidgetEmbedMode) || 'iframe';
+  // Validate mode parameter
+  const modeParam = searchParams.get('mode');
+  const validModes: WidgetEmbedMode[] = ['inline', 'panel', 'iframe'];
+  const mode: WidgetEmbedMode =
+    modeParam && validModes.includes(modeParam as WidgetEmbedMode)
+      ? (modeParam as WidgetEmbedMode)
+      : 'iframe';
+
   const interactive = searchParams.get('interactive') !== 'false';
-  const theme = searchParams.get('theme') as 'light' | 'dark' | null;
+
+  // Validate theme parameter
+  const themeParam = searchParams.get('theme');
+  const theme: 'light' | 'dark' | undefined =
+    themeParam === 'light' || themeParam === 'dark'
+      ? themeParam
+      : undefined;
 
   return {
-    instanceId,
+    instanceId: instanceId || '',
     mode,
     interactive,
-    theme: theme || undefined,
+    theme,
+    flowId: flowId || undefined,
   };
 }

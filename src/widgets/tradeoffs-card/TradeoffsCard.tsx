@@ -1,0 +1,380 @@
+import { useState } from 'react';
+import type { WidgetProps } from '../types';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronRight, Download, ThumbsUp, ThumbsDown } from 'lucide-react';
+
+/**
+ * Alternative option with pros/cons
+ */
+export interface Alternative {
+  id: string;
+  name: string;
+  description?: string;
+  pros: string[];
+  cons: string[];
+}
+
+/**
+ * Trade-offs Card Input Schema
+ */
+export interface TradeoffsCardInput {
+  title: string;
+  context?: string;
+  pros: string[];
+  cons: string[];
+  decision?: string;
+  alternatives?: Alternative[];
+}
+
+/**
+ * Trade-offs Card Output Schema
+ */
+export interface TradeoffsCardOutput {
+  selectedAlternative?: string;
+  exportedADR?: string;
+}
+
+/**
+ * Trade-offs Card Config Schema
+ */
+export interface TradeoffsCardConfig {
+  name?: string;
+  showAlternatives?: boolean;
+  exportAsADR?: boolean;
+  expandedByDefault?: boolean;
+}
+
+/**
+ * Trade-offs Card Widget Component
+ */
+export function TradeoffsCard({
+  instanceId,
+  input,
+  config,
+  onOutput,
+}: WidgetProps<TradeoffsCardInput, TradeoffsCardOutput, TradeoffsCardConfig>) {
+  const [expandedAlternatives, setExpandedAlternatives] = useState<Set<string>>(
+    new Set(config.expandedByDefault ? input?.alternatives?.map((a) => a.id) : [])
+  );
+  const [selectedAlternative, setSelectedAlternative] = useState<string | undefined>();
+
+  if (!input) {
+    return (
+      <div className="flex h-full w-full items-center justify-center rounded border border-border bg-muted/30 p-4">
+        <div className="text-center text-sm text-muted-foreground">
+          No data provided. Please provide title, pros, and cons.
+        </div>
+      </div>
+    );
+  }
+
+  const toggleAlternative = (id: string) => {
+    setExpandedAlternatives((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAlternative = (id: string) => {
+    const newSelected = selectedAlternative === id ? undefined : id;
+    setSelectedAlternative(newSelected);
+    onOutput?.({
+      selectedAlternative: newSelected,
+    });
+  };
+
+  const exportToADR = () => {
+    let adr = `# Architecture Decision Record: ${input.title}\n\n`;
+
+    if (input.context) {
+      adr += `## Context\n\n${input.context}\n\n`;
+    }
+
+    adr += `## Decision\n\n`;
+    if (input.decision) {
+      adr += `${input.decision}\n\n`;
+    } else {
+      adr += `(Decision pending)\n\n`;
+    }
+
+    adr += `## Consequences\n\n`;
+
+    if (input.pros.length > 0) {
+      adr += `### Pros\n\n`;
+      input.pros.forEach((pro) => {
+        adr += `- ✅ ${pro}\n`;
+      });
+      adr += `\n`;
+    }
+
+    if (input.cons.length > 0) {
+      adr += `### Cons\n\n`;
+      input.cons.forEach((con) => {
+        adr += `- ❌ ${con}\n`;
+      });
+      adr += `\n`;
+    }
+
+    if (input.alternatives && input.alternatives.length > 0) {
+      adr += `## Alternatives Considered\n\n`;
+      input.alternatives.forEach((alt) => {
+        adr += `### ${alt.name}\n\n`;
+        if (alt.description) {
+          adr += `${alt.description}\n\n`;
+        }
+        if (alt.pros.length > 0) {
+          adr += `**Pros:**\n`;
+          alt.pros.forEach((pro) => {
+            adr += `- ✅ ${pro}\n`;
+          });
+          adr += `\n`;
+        }
+        if (alt.cons.length > 0) {
+          adr += `**Cons:**\n`;
+          alt.cons.forEach((con) => {
+            adr += `- ❌ ${con}\n`;
+          });
+          adr += `\n`;
+        }
+      });
+    }
+
+    adr += `## Status\n\n`;
+    adr += input.decision ? `Accepted\n` : `Proposed\n`;
+    adr += `\n---\n\n`;
+    adr += `Date: ${new Date().toISOString().split('T')[0]}\n`;
+
+    const blob = new Blob([adr], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ADR-${input.title.toLowerCase().replace(/\s+/g, '-')}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    onOutput?.({
+      selectedAlternative,
+      exportedADR: adr,
+    });
+  };
+
+  const prosCount = input.pros.length;
+  const consCount = input.cons.length;
+  const balance = prosCount - consCount;
+
+  return (
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-background">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-2">
+        <div className="text-sm font-medium">{config.name || 'Trade-offs Card'}</div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={exportToADR}
+          title="Export as Architecture Decision Record"
+        >
+          <Download className="mr-1 h-3 w-3" />
+          ADR
+        </Button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-auto p-4">
+        {/* Title */}
+        <h2 className="mb-3 text-xl font-bold">{input.title}</h2>
+
+        {/* Context */}
+        {input.context && (
+          <div className="mb-4 rounded-lg bg-muted/30 p-3">
+            <div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
+              Context
+            </div>
+            <div className="text-sm">{input.context}</div>
+          </div>
+        )}
+
+        {/* Pros & Cons */}
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          {/* Pros */}
+          <div className="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/30">
+            <div className="mb-2 flex items-center gap-2">
+              <ThumbsUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <div className="text-sm font-semibold text-green-900 dark:text-green-100">
+                Pros ({prosCount})
+              </div>
+            </div>
+            <ul className="space-y-1.5">
+              {input.pros.map((pro, index) => (
+                <li key={index} className="flex items-start gap-2 text-sm">
+                  <span className="mt-1 text-green-600 dark:text-green-400">✓</span>
+                  <span className="flex-1 text-green-800 dark:text-green-200">{pro}</span>
+                </li>
+              ))}
+            </ul>
+            {input.pros.length === 0 && (
+              <div className="text-sm italic text-green-700/50 dark:text-green-300/50">
+                No pros listed
+              </div>
+            )}
+          </div>
+
+          {/* Cons */}
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/30">
+            <div className="mb-2 flex items-center gap-2">
+              <ThumbsDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+              <div className="text-sm font-semibold text-red-900 dark:text-red-100">
+                Cons ({consCount})
+              </div>
+            </div>
+            <ul className="space-y-1.5">
+              {input.cons.map((con, index) => (
+                <li key={index} className="flex items-start gap-2 text-sm">
+                  <span className="mt-1 text-red-600 dark:text-red-400">✗</span>
+                  <span className="flex-1 text-red-800 dark:text-red-200">{con}</span>
+                </li>
+              ))}
+            </ul>
+            {input.cons.length === 0 && (
+              <div className="text-sm italic text-red-700/50 dark:text-red-300/50">
+                No cons listed
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Balance indicator */}
+        <div className="mb-4 flex items-center justify-center">
+          <div
+            className={`rounded-full px-3 py-1 text-sm font-medium ${
+              balance > 0
+                ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200'
+                : balance < 0
+                  ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200'
+                  : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+            }`}
+          >
+            {balance > 0
+              ? `+${balance} in favor`
+              : balance < 0
+                ? `${balance} against`
+                : 'Balanced'}
+          </div>
+        </div>
+
+        {/* Decision */}
+        {input.decision && (
+          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/30">
+            <div className="mb-1 text-xs font-semibold uppercase text-blue-700 dark:text-blue-300">
+              Decision
+            </div>
+            <div className="text-sm text-blue-900 dark:text-blue-100">{input.decision}</div>
+          </div>
+        )}
+
+        {/* Alternatives */}
+        {config.showAlternatives && input.alternatives && input.alternatives.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold text-muted-foreground">
+              Alternatives Considered ({input.alternatives.length})
+            </div>
+            {input.alternatives.map((alt) => {
+              const isExpanded = expandedAlternatives.has(alt.id);
+              const isSelected = selectedAlternative === alt.id;
+
+              return (
+                <div
+                  key={alt.id}
+                  className={`rounded-lg border transition-colors ${
+                    isSelected
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-muted/20'
+                  }`}
+                >
+                  <div className="flex w-full items-center justify-between p-3">
+                    <button
+                      className="flex flex-1 items-start text-left"
+                      onClick={() => toggleAlternative(alt.id)}
+                    >
+                      <div className="flex-1">
+                        <div className="font-medium">{alt.name}</div>
+                        {alt.description && !isExpanded && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {alt.description.substring(0, 80)}
+                            {alt.description.length > 80 ? '...' : ''}
+                          </div>
+                        )}
+                      </div>
+                      <div className="ml-2 flex-shrink-0">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </div>
+                    </button>
+                    <button
+                      className={`ml-2 flex-shrink-0 rounded-full px-2 py-0.5 text-xs transition-colors ${
+                        isSelected
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectAlternative(alt.id);
+                      }}
+                    >
+                      {isSelected ? 'Selected' : 'Select'}
+                    </button>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="border-t border-border px-3 pb-3">
+                      {alt.description && (
+                        <div className="mb-2 mt-2 text-sm text-muted-foreground">
+                          {alt.description}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <div className="mb-1 text-xs font-semibold text-green-600 dark:text-green-400">
+                            Pros
+                          </div>
+                          <ul className="space-y-1">
+                            {alt.pros.map((pro, i) => (
+                              <li key={i} className="flex items-start gap-1 text-xs">
+                                <span className="text-green-600 dark:text-green-400">✓</span>
+                                <span>{pro}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <div className="mb-1 text-xs font-semibold text-red-600 dark:text-red-400">
+                            Cons
+                          </div>
+                          <ul className="space-y-1">
+                            {alt.cons.map((con, i) => (
+                              <li key={i} className="flex items-start gap-1 text-xs">
+                                <span className="text-red-600 dark:text-red-400">✗</span>
+                                <span>{con}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

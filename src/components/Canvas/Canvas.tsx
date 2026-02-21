@@ -13,6 +13,7 @@ import type { EdgeTypes, Node, NodeTypes, XYPosition } from '@xyflow/react';
 import type { CanvasNode, CanvasShapeKind } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { useWidgetStore } from '@/widgets/store/widgetStore';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { categoryColors } from '@/registry/categoryThemes';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,7 @@ import ShapeNode from './ShapeNode';
 import SectionBadgeNode from './SectionBadgeNode';
 import CollapsibleGroupNode from './CollapsibleGroupNode';
 import { SelectionActionBar } from './SelectionActionBar';
+import WidgetNode from '@/widgets/canvas/WidgetNode';
 
 const nodeTypes: NodeTypes = {
   archComponent: ArchNodeComponent,
@@ -30,6 +32,7 @@ const nodeTypes: NodeTypes = {
   shapeText: ShapeNode,
   sectionBadge: SectionBadgeNode,
   collapsibleGroup: CollapsibleGroupNode,
+  widgetNode: WidgetNode,
 };
 
 const edgeTypes: EdgeTypes = {
@@ -37,6 +40,7 @@ const edgeTypes: EdgeTypes = {
 };
 
 const DRAG_DATA_TYPE = 'application/archcomponent';
+const WIDGET_DRAG_DATA_TYPE = 'application/widget';
 const MIN_DRAG = 20; // minimum drag distance in screen pixels to create a shape
 
 const defaultEdgeOptions = {
@@ -78,6 +82,7 @@ export default function Canvas() {
   const activeCanvasTool = useEditorStore((s) => s.activeCanvasTool);
   const pendingFocusSectionId = useCanvasStore((s) => s.pendingFocusSectionId);
   const clearPendingFocusSection = useCanvasStore((s) => s.clearPendingFocusSection);
+  const addWidgetInstance = useWidgetStore((s) => s.addWidget);
 
   // Drag-to-create state
   const dragStart = useRef<{ screen: { x: number; y: number }; flow: XYPosition } | null>(null);
@@ -190,17 +195,40 @@ export default function Canvas() {
     (event: React.DragEvent) => {
       event.preventDefault();
 
-      const componentType = event.dataTransfer.getData(DRAG_DATA_TYPE);
-      if (!componentType) return;
-
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
 
-      addNode(componentType, position);
+      // Check for widget drop
+      const widgetId = event.dataTransfer.getData(WIDGET_DRAG_DATA_TYPE);
+      if (widgetId) {
+        // Create widget instance in store
+        const widgetInstanceId = addWidgetInstance(widgetId, undefined, position);
+        if (widgetInstanceId) {
+          // Add React Flow node for the widget
+          const newNode: Node = {
+            id: `widget-node-${widgetInstanceId}`,
+            type: 'widgetNode',
+            position,
+            data: {
+              widgetInstanceId,
+            },
+          };
+          useCanvasStore.setState((state) => ({
+            nodes: [...state.nodes, newNode],
+          }));
+        }
+        return;
+      }
+
+      // Check for component drop (existing behavior)
+      const componentType = event.dataTransfer.getData(DRAG_DATA_TYPE);
+      if (componentType) {
+        addNode(componentType, position);
+      }
     },
-    [screenToFlowPosition, addNode],
+    [screenToFlowPosition, addNode, addWidgetInstance],
   );
 
   const miniMapNodeColor = useCallback((node: CanvasNode) => {

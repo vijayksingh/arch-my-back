@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as aiGeneration from "../aiGeneration.js";
 import type * as auth from "../auth.js";
 import type * as blocks from "../blocks.js";
 import type * as designBlocks from "../designBlocks.js";
@@ -29,6 +30,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  aiGeneration: typeof aiGeneration;
   auth: typeof auth;
   blocks: typeof blocks;
   designBlocks: typeof designBlocks;

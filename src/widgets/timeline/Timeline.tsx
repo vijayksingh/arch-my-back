@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import type { WidgetProps } from '../types';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, Play, Pause } from 'lucide-react';
@@ -84,39 +84,59 @@ export function Timeline({
     );
   }
 
-  // Convert timestamps to numbers
-  const normalizedEvents = input.events.map((event) => ({
-    ...event,
-    timestamp: typeof event.timestamp === 'string'
-      ? new Date(event.timestamp).getTime()
-      : event.timestamp,
-  }));
+  // Convert timestamps to numbers (memoized for performance)
+  const normalizedEvents = useMemo(
+    () =>
+      input.events.map((event) => ({
+        ...event,
+        timestamp:
+          typeof event.timestamp === 'string'
+            ? new Date(event.timestamp).getTime()
+            : event.timestamp,
+      })),
+    [input.events]
+  );
 
-  // Sort events by timestamp
-  const sortedEvents = [...normalizedEvents].sort((a, b) => a.timestamp - b.timestamp);
+  // Sort events by timestamp (memoized for performance)
+  const sortedEvents = useMemo(
+    () => [...normalizedEvents].sort((a, b) => a.timestamp - b.timestamp),
+    [normalizedEvents]
+  );
 
-  // Calculate time range
-  const minTime = sortedEvents[0].timestamp;
-  const maxTime = sortedEvents[sortedEvents.length - 1].timestamp;
-  const timeRange = maxTime - minTime || 1000; // Avoid division by zero
+  // Calculate time range (memoized for performance)
+  const { minTime, maxTime, timeRange } = useMemo(() => {
+    const min = sortedEvents[0].timestamp;
+    const max = sortedEvents[sortedEvents.length - 1].timestamp;
+    return {
+      minTime: min,
+      maxTime: max,
+      timeRange: max - min || 1000, // Avoid division by zero
+    };
+  }, [sortedEvents]);
 
-  // Get unique swimlanes
-  const swimlanes = input.swimlanes || [{ id: 'default', label: 'Events' }];
+  // Get unique swimlanes (memoized for performance)
+  const swimlanes = useMemo(
+    () => input.swimlanes || [{ id: 'default', label: 'Events' }],
+    [input.swimlanes]
+  );
 
-  const handleEventClick = (eventId: string) => {
-    const newSelectedEvent = selectedEvent === eventId ? undefined : eventId;
-    setSelectedEvent(newSelectedEvent);
-    onOutput?.({
-      selectedEvent: newSelectedEvent,
-      zoomLevel,
-      visibleRange: {
-        start: minTime,
-        end: maxTime,
-      },
-    });
-  };
+  const handleEventClick = useCallback(
+    (eventId: string) => {
+      const newSelectedEvent = selectedEvent === eventId ? undefined : eventId;
+      setSelectedEvent(newSelectedEvent);
+      onOutput?.({
+        selectedEvent: newSelectedEvent,
+        zoomLevel,
+        visibleRange: {
+          start: minTime,
+          end: maxTime,
+        },
+      });
+    },
+    [selectedEvent, onOutput, zoomLevel, minTime, maxTime]
+  );
 
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     const newZoom = Math.min(zoomLevel * 1.5, 5);
     setZoomLevel(newZoom);
     onOutput?.({
@@ -127,9 +147,9 @@ export function Timeline({
         end: maxTime,
       },
     });
-  };
+  }, [zoomLevel, onOutput, selectedEvent, minTime, maxTime]);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     const newZoom = Math.max(zoomLevel / 1.5, 0.5);
     setZoomLevel(newZoom);
     onOutput?.({
@@ -140,16 +160,16 @@ export function Timeline({
         end: maxTime,
       },
     });
-  };
+  }, [zoomLevel, onOutput, selectedEvent, minTime, maxTime]);
 
-  const toggleAnimation = () => {
+  const toggleAnimation = useCallback(() => {
     if (isAnimating) {
       setIsAnimating(false);
     } else {
       setCurrentAnimationIndex(0);
       setIsAnimating(true);
     }
-  };
+  }, [isAnimating]);
 
   // Animation effect
   useEffect(() => {
@@ -177,15 +197,24 @@ export function Timeline({
     return () => clearTimeout(timer);
   }, [isAnimating, currentAnimationIndex, sortedEvents, config.animate]);
 
-  const calculatePosition = (timestamp: number) => {
-    return ((timestamp - minTime) / timeRange) * 100 * zoomLevel;
-  };
+  const calculatePosition = useCallback(
+    (timestamp: number) => {
+      return ((timestamp - minTime) / timeRange) * 100 * zoomLevel;
+    },
+    [minTime, timeRange, zoomLevel]
+  );
 
-  const getEventColor = (type?: string) => {
-    return EVENT_TYPE_COLORS[type as keyof typeof EVENT_TYPE_COLORS] || EVENT_TYPE_COLORS.event;
-  };
+  const getEventColor = useCallback((type?: string) => {
+    return (
+      EVENT_TYPE_COLORS[type as keyof typeof EVENT_TYPE_COLORS] ||
+      EVENT_TYPE_COLORS.event
+    );
+  }, []);
 
-  const selectedEventData = sortedEvents.find((e) => e.id === selectedEvent);
+  const selectedEventData = useMemo(
+    () => sortedEvents.find((e) => e.id === selectedEvent),
+    [sortedEvents, selectedEvent]
+  );
 
   const SWIMLANE_HEIGHT = 80;
   const TIMELINE_PADDING = 40;

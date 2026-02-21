@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { PlusIcon, FolderPlus, Layers, Sun, Moon, User } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '../../../convex/_generated/api';
-import { DesignCard } from './DesignCard';
+import { DesignCard, DesignListItem } from './DesignCard';
 import { FolderCard } from './FolderCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -217,7 +217,7 @@ export function DashboardPage() {
                 <PlusIcon className="h-4 w-4 mr-2" />
                 New Design
               </Button>
-              <Button onClick={() => setShowFolderDialog(true)} variant="ghost" size="default">
+              <Button onClick={() => setShowFolderDialog(true)} variant="outline" size="default">
                 <FolderPlus className="h-4 w-4 mr-2" />
                 New Folder
               </Button>
@@ -302,9 +302,9 @@ export function DashboardPage() {
                 <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   {folders && folders.length > 0 ? 'Recent Designs' : 'All Designs'}
                 </h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="flex flex-col gap-2">
                   {rootDesigns.map((design) => (
-                    <DesignCard key={design._id} design={design} />
+                    <DesignListItem key={design._id} design={design} />
                   ))}
                 </div>
               </div>

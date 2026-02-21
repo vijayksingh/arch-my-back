@@ -51,6 +51,187 @@ const gradients = [
   'bg-gradient-to-br from-slate-500/10 via-gray-500/10 to-zinc-500/10',
 ];
 
+// List item variant for horizontal row layout
+export function DesignListItem({ design }: DesignCardProps) {
+  const navigate = useNavigate();
+  const folders = useQuery(api.folders.list);
+  const moveToFolder = useMutation(api.newDesigns.moveToFolder);
+  const duplicateDesign = useMutation(api.newDesigns.duplicate);
+  const deleteDesign = useMutation(api.newDesigns.remove);
+
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Make item draggable
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: design._id,
+    data: { type: 'design', design },
+  });
+
+  const handleClick = () => {
+    navigate({ to: '/design/$designId', params: { designId: design._id } });
+  };
+
+  const handleMove = async (folderId: Id<'folders'> | null) => {
+    try {
+      await moveToFolder({ designId: design._id, folderId });
+      setShowMoveDialog(false);
+    } catch (error) {
+      console.error('Failed to move design:', error);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    try {
+      const newDesignId = await duplicateDesign({ designId: design._id });
+      navigate({ to: '/design/$designId', params: { designId: newDesignId } });
+    } catch (error) {
+      console.error('Failed to duplicate design:', error);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteDesign({ designId: design._id });
+    } catch (error) {
+      console.error('Failed to delete design:', error);
+    }
+  };
+
+  const lastUpdated = new Date(design.updatedAt).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  // Select gradient based on title hash for color dot
+  const gradientClass = gradients[hashString(design.title) % gradients.length];
+
+  return (
+    <>
+      <div
+        ref={setNodeRef}
+        {...attributes}
+        {...listeners}
+        onClick={handleClick}
+        className={`group flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-sm transition-all duration-150 ease-out hover:border-border/80 hover:shadow-md cursor-pointer ${
+          isDragging ? 'opacity-40' : ''
+        }`}
+      >
+        {/* Color dot indicator */}
+        <div className={`h-3 w-3 rounded-full flex-shrink-0 ${gradientClass}`} />
+
+        {/* Title */}
+        <h3 className="text-sm font-medium text-foreground truncate min-w-0 flex-shrink">
+          {design.title}
+        </h3>
+
+        {/* Description (truncated) */}
+        {design.description && (
+          <p className="text-xs text-muted-foreground truncate min-w-0 flex-1">
+            {design.description}
+          </p>
+        )}
+
+        {/* Date */}
+        <div className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+          {lastUpdated}
+        </div>
+
+        {/* Three-dot Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100 flex-shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreVertical className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuItem onClick={() => setShowMoveDialog(true)}>
+              <FolderInput className="mr-2 h-4 w-4" />
+              Move to folder
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDuplicate}>
+              <Copy className="mr-2 h-4 w-4" />
+              Duplicate
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Move to folder dialog */}
+      {showMoveDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowMoveDialog(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="mb-4 text-lg font-semibold text-foreground">Move to Folder</h2>
+            <div className="mb-4 max-h-64 space-y-2 overflow-y-auto">
+              <button
+                onClick={() => handleMove(null)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent/70"
+              >
+                📁 Root (No folder)
+              </button>
+              {folders?.map((folder) => (
+                <button
+                  key={folder._id}
+                  onClick={() => handleMove(folder._id)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent/70"
+                >
+                  📁 {folder.title}
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowMoveDialog(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Design</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{design.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleDelete}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 export function DesignCard({ design }: DesignCardProps) {
   const navigate = useNavigate();
   const folders = useQuery(api.folders.list);

@@ -110,9 +110,6 @@ export function FolderCard({ folder, designCount = 0, isDropTarget = false }: Fo
             : 'border-border hover:border-accent/50'
         }`}
       >
-        {/* Stacked card shadow effect for depth */}
-        <div className="absolute inset-0 -z-10 translate-y-1 rounded-lg border-2 border-dashed border-border/40 bg-muted/20" />
-
         <div className="mb-3 flex w-full items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
             {/* Large folder icon with warm accent background */}
