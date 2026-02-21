@@ -7,6 +7,7 @@ import {
   canvasSectionValidator,
   viewportValidator,
   blockValidator,
+  walkthroughStepValidator,
 } from './validators';
 
 /**
@@ -188,6 +189,7 @@ export default defineSchema({
     .index('by_ownerId_updatedAt', ['ownerId', 'updatedAt'])
     .index('by_folderId', ['folderId'])
     .index('by_shareSlug', ['shareSlug'])
+    .index('by_template_slug', ['templateSlug'])
     .searchIndex('search_title', { searchField: 'title' }),
 
   /**
@@ -234,4 +236,36 @@ export default defineSchema({
   })
     .index('by_user', ['userId', 'createdAt'])
     .index('by_createdAt', ['createdAt']),
+
+  /**
+   * Walkthroughs table
+   * Interactive step-by-step learning experiences
+   */
+  walkthroughs: defineTable({
+    slug: v.string(), // URL-friendly identifier (e.g., "netflix-recommendations")
+    title: v.string(),
+    description: v.string(),
+    estimatedMinutes: v.number(),
+    steps: v.array(walkthroughStepValidator),
+    tags: v.optional(v.array(v.string())),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_slug', ['slug']),
+
+  /**
+   * Walkthrough Progress table
+   * Tracks user progress through walkthroughs
+   */
+  walkthroughProgress: defineTable({
+    userId: v.string(),
+    walkthroughId: v.id('walkthroughs'),
+    currentStepId: v.string(),
+    completedStepIds: v.array(v.string()),
+    quizAnswers: v.optional(v.record(v.string(), v.number())), // stepId -> selectedIndex
+    lastAccessedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index('by_user', ['userId', 'walkthroughId'])
+    .index('by_user_lastAccessed', ['userId', 'lastAccessedAt']),
 });

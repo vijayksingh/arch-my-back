@@ -3,7 +3,8 @@ import { mutation } from './_generated/server';
 /**
  * Seed Example Designs
  * Creates 5 real-world example templates as viewable designs in the database.
- * This mutation is idempotent - it deletes existing examples before creating new ones.
+ * This mutation is idempotent - it checks for existing examples by templateSlug before creating.
+ * Safe to run multiple times without creating duplicates.
  */
 export const seedExampleDesigns = mutation({
   args: {},
@@ -14,52 +15,34 @@ export const seedExampleDesigns = mutation({
       throw new Error('Must be authenticated to seed examples');
     }
 
-    // Check if examples already exist
-    const existing = await ctx.db
-      .query('newDesigns')
-      .filter((q) => q.eq(q.field('isExample'), true))
-      .collect();
-
-    // Delete old examples for re-seeding
-    for (const design of existing) {
-      // Delete canvas data
-      const canvas = await ctx.db
-        .query('designCanvases')
-        .withIndex('by_designId', (q) => q.eq('designId', design._id))
-        .first();
-      if (canvas) {
-        await ctx.db.delete(canvas._id);
-      }
-
-      // Delete blocks if any
-      const blocks = await ctx.db
-        .query('designBlocks')
-        .withIndex('by_designId', (q) => q.eq('designId', design._id))
-        .first();
-      if (blocks) {
-        await ctx.db.delete(blocks._id);
-      }
-
-      // Delete design
-      await ctx.db.delete(design._id);
-    }
-
     const now = Date.now();
     const createdIds = [];
+    const skippedSlugs = [];
 
     // Example 1: Netflix Recommendation System
-    const netflixId = await ctx.db.insert('newDesigns', {
-      ownerId: identity.subject,
-      title: 'Netflix Recommendation System',
-      description: "Real-world architecture of Netflix's recommendation system with microservices, real-time data processing, and ML models",
-      isPublic: false,
-      isExample: true,
-      templateSlug: 'netflix-recommendation',
-      createdAt: now,
-      updatedAt: now,
-    });
+    const netflixSlug = 'netflix-recommendation';
+    const existingNetflix = await ctx.db
+      .query('newDesigns')
+      .withIndex('by_template_slug', (q) => q.eq('templateSlug', netflixSlug))
+      .first();
 
-    await ctx.db.insert('designCanvases', {
+    let netflixId;
+    if (existingNetflix) {
+      skippedSlugs.push(netflixSlug);
+      netflixId = existingNetflix._id;
+    } else {
+      netflixId = await ctx.db.insert('newDesigns', {
+        ownerId: identity.subject,
+        title: 'Netflix Recommendation System',
+        description: "Real-world architecture of Netflix's recommendation system with microservices, real-time data processing, and ML models",
+        isPublic: false,
+        isExample: true,
+        templateSlug: netflixSlug,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await ctx.db.insert('designCanvases', {
       designId: netflixId,
       nodes: [
         // Client Layer
@@ -128,25 +111,37 @@ export const seedExampleDesigns = mutation({
         { id: 'e30', source: 'spark-analytics', target: 'ml-content-based', type: 'archEdge', data: { label: 'Retrain models' } },
       ],
       sections: [],
-      version: 1,
-      updatedAt: now,
-    });
+        version: 1,
+        updatedAt: now,
+      });
 
-    createdIds.push(netflixId);
+      createdIds.push(netflixId);
+    }
 
     // Example 2: Stripe Payment Processing
-    const stripeId = await ctx.db.insert('newDesigns', {
-      ownerId: identity.subject,
-      title: 'Stripe Payment Processing',
-      description: 'Real-world payment architecture with state machine, fraud detection, and ledger system. Demonstrates authorization → capture → settlement flow with idempotency patterns.',
-      isPublic: false,
-      isExample: true,
-      templateSlug: 'stripe-payments',
-      createdAt: now,
-      updatedAt: now,
-    });
+    const stripeSlug = 'stripe-payments';
+    const existingStripe = await ctx.db
+      .query('newDesigns')
+      .withIndex('by_template_slug', (q) => q.eq('templateSlug', stripeSlug))
+      .first();
 
-    await ctx.db.insert('designCanvases', {
+    let stripeId;
+    if (existingStripe) {
+      skippedSlugs.push(stripeSlug);
+      stripeId = existingStripe._id;
+    } else {
+      stripeId = await ctx.db.insert('newDesigns', {
+        ownerId: identity.subject,
+        title: 'Stripe Payment Processing',
+        description: 'Real-world payment architecture with state machine, fraud detection, and ledger system. Demonstrates authorization → capture → settlement flow with idempotency patterns.',
+        isPublic: false,
+        isExample: true,
+        templateSlug: stripeSlug,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await ctx.db.insert('designCanvases', {
       designId: stripeId,
       nodes: [
         // Entry point
@@ -198,26 +193,38 @@ export const seedExampleDesigns = mutation({
         { id: 'e22', source: 'ledger-service', target: 'kafka-events', type: 'archEdge', data: { label: 'Reconciliation events' } },
         { id: 'e23', source: 'kafka-events', target: 'monitoring', type: 'archEdge', data: { label: 'Metrics & alerts' } },
       ],
-      sections: [],
-      version: 1,
-      updatedAt: now,
-    });
+        sections: [],
+        version: 1,
+        updatedAt: now,
+      });
 
-    createdIds.push(stripeId);
+      createdIds.push(stripeId);
+    }
 
     // Example 3: Instagram System Design
-    const instagramId = await ctx.db.insert('newDesigns', {
-      ownerId: identity.subject,
-      title: 'Instagram System Design',
-      description: 'Photo-sharing platform with feed generation, image storage, social graph, and scalability patterns for handling billions of photos and users',
-      isPublic: false,
-      isExample: true,
-      templateSlug: 'instagram',
-      createdAt: now,
-      updatedAt: now,
-    });
+    const instagramSlug = 'instagram';
+    const existingInstagram = await ctx.db
+      .query('newDesigns')
+      .withIndex('by_template_slug', (q) => q.eq('templateSlug', instagramSlug))
+      .first();
 
-    await ctx.db.insert('designCanvases', {
+    let instagramId;
+    if (existingInstagram) {
+      skippedSlugs.push(instagramSlug);
+      instagramId = existingInstagram._id;
+    } else {
+      instagramId = await ctx.db.insert('newDesigns', {
+        ownerId: identity.subject,
+        title: 'Instagram System Design',
+        description: 'Photo-sharing platform with feed generation, image storage, social graph, and scalability patterns for handling billions of photos and users',
+        isPublic: false,
+        isExample: true,
+        templateSlug: instagramSlug,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await ctx.db.insert('designCanvases', {
       designId: instagramId,
       nodes: [
         // Client Layer
@@ -273,26 +280,38 @@ export const seedExampleDesigns = mutation({
         { id: 'e23', source: 'feed-worker', target: 'feed-db-1', type: 'archEdge', data: { label: 'Write Timeline' } },
         { id: 'e24', source: 'feed-worker', target: 'feed-db-2', type: 'archEdge', data: { label: 'Write Timeline' } },
       ],
-      sections: [],
-      version: 1,
-      updatedAt: now,
-    });
+        sections: [],
+        version: 1,
+        updatedAt: now,
+      });
 
-    createdIds.push(instagramId);
+      createdIds.push(instagramId);
+    }
 
     // Example 4: Uber Real-Time Dispatch
-    const uberId = await ctx.db.insert('newDesigns', {
-      ownerId: identity.subject,
-      title: 'Uber Real-Time Dispatch System',
-      description: 'Real-world dispatch architecture featuring H3 geospatial indexing, bipartite graph matching, DeepETA routing engine, and surge pricing. Handles 1M+ requests/second with <3s matching latency.',
-      isPublic: false,
-      isExample: true,
-      templateSlug: 'uber-dispatch',
-      createdAt: now,
-      updatedAt: now,
-    });
+    const uberSlug = 'uber-dispatch';
+    const existingUber = await ctx.db
+      .query('newDesigns')
+      .withIndex('by_template_slug', (q) => q.eq('templateSlug', uberSlug))
+      .first();
 
-    await ctx.db.insert('designCanvases', {
+    let uberId;
+    if (existingUber) {
+      skippedSlugs.push(uberSlug);
+      uberId = existingUber._id;
+    } else {
+      uberId = await ctx.db.insert('newDesigns', {
+        ownerId: identity.subject,
+        title: 'Uber Real-Time Dispatch System',
+        description: 'Real-world dispatch architecture featuring H3 geospatial indexing, bipartite graph matching, DeepETA routing engine, and surge pricing. Handles 1M+ requests/second with <3s matching latency.',
+        isPublic: false,
+        isExample: true,
+        templateSlug: uberSlug,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await ctx.db.insert('designCanvases', {
       designId: uberId,
       nodes: [
         // Client Layer
@@ -341,26 +360,38 @@ export const seedExampleDesigns = mutation({
         { id: 'e18', source: 'surge-pricing', target: 'redis-locations', type: 'archEdge', data: { label: 'Supply Count' } },
         { id: 'e19', source: 'ml-model-service', target: 'cassandra-trips', type: 'archEdge', data: { label: 'Training Data' } },
       ],
-      sections: [],
-      version: 1,
-      updatedAt: now,
-    });
+        sections: [],
+        version: 1,
+        updatedAt: now,
+      });
 
-    createdIds.push(uberId);
+      createdIds.push(uberId);
+    }
 
     // Example 5: Twitter/X Feed Ranking
-    const twitterId = await ctx.db.insert('newDesigns', {
-      ownerId: identity.subject,
-      title: 'Twitter/X Feed Ranking Algorithm',
-      description: "Real-world example: ML-powered recommendation system with candidate sourcing, neural network ranking, and personalization. Demonstrates Twitter's 5B req/day feed algorithm.",
-      isPublic: false,
-      isExample: true,
-      templateSlug: 'twitter-feed-ranking',
-      createdAt: now,
-      updatedAt: now,
-    });
+    const twitterSlug = 'twitter-feed-ranking';
+    const existingTwitter = await ctx.db
+      .query('newDesigns')
+      .withIndex('by_template_slug', (q) => q.eq('templateSlug', twitterSlug))
+      .first();
 
-    await ctx.db.insert('designCanvases', {
+    let twitterId;
+    if (existingTwitter) {
+      skippedSlugs.push(twitterSlug);
+      twitterId = existingTwitter._id;
+    } else {
+      twitterId = await ctx.db.insert('newDesigns', {
+        ownerId: identity.subject,
+        title: 'Twitter/X Feed Ranking Algorithm',
+        description: "Real-world example: ML-powered recommendation system with candidate sourcing, neural network ranking, and personalization. Demonstrates Twitter's 5B req/day feed algorithm.",
+        isPublic: false,
+        isExample: true,
+        templateSlug: twitterSlug,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await ctx.db.insert('designCanvases', {
       designId: twitterId,
       nodes: [
         { id: 'user-request', type: 'archComponent', position: { x: 50, y: 50 }, data: { componentType: 'external_api', label: 'User Device', config: {} } },
@@ -407,17 +438,20 @@ export const seedExampleDesigns = mutation({
         { id: 'e19', source: 'kafka-stream', target: 'tweet-store', type: 'archEdge', data: {} },
         { id: 'e20', source: 'kafka-stream', target: 'ranking-service', type: 'archEdge', data: {} },
       ],
-      sections: [],
-      version: 1,
-      updatedAt: now,
-    });
+        sections: [],
+        version: 1,
+        updatedAt: now,
+      });
 
-    createdIds.push(twitterId);
+      createdIds.push(twitterId);
+    }
 
     return {
       success: true,
-      message: `Successfully created ${createdIds.length} example designs`,
-      count: createdIds.length,
+      message: `Successfully seeded examples: ${createdIds.length} created, ${skippedSlugs.length} already existed`,
+      created: createdIds.length,
+      skipped: skippedSlugs.length,
+      skippedSlugs,
       designs: createdIds,
     };
   },
