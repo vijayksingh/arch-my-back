@@ -177,6 +177,7 @@ export default defineSchema({
     title: v.string(),
     description: v.optional(v.string()),
     isPublic: v.boolean(),
+    shareSlug: v.optional(v.string()),
     thumbnailStorageId: v.optional(v.id('_storage')),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -184,6 +185,7 @@ export default defineSchema({
     .index('by_ownerId', ['ownerId'])
     .index('by_ownerId_updatedAt', ['ownerId', 'updatedAt'])
     .index('by_folderId', ['folderId'])
+    .index('by_shareSlug', ['shareSlug'])
     .searchIndex('search_title', { searchField: 'title' }),
 
   /**
