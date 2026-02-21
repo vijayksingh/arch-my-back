@@ -7,11 +7,16 @@
  * - Service: ExportService class orchestrates the export process
  */
 
-import { toPng } from 'html-to-image';
+import { toPng, toSvg } from 'html-to-image';
 
 // ============================================================================
 // TYPES AND CONFIGURATION
 // ============================================================================
+
+/**
+ * Export format type
+ */
+export type ExportFormat = 'png' | 'svg';
 
 /**
  * Configuration for canvas export
@@ -19,6 +24,7 @@ import { toPng } from 'html-to-image';
 export interface ExportConfig {
   elementId: string;
   filename: string;
+  format?: ExportFormat;
   quality: number;
   pixelRatio: number;
   backgroundColor: string;
@@ -77,6 +83,17 @@ export interface ExportEffect {
   ): Promise<string>;
 
   /**
+   * Convert element to SVG data URL
+   */
+  elementToSvg(
+    element: HTMLElement,
+    options: {
+      backgroundColor: string;
+      filter: (node: HTMLElement) => boolean;
+    }
+  ): Promise<string>;
+
+  /**
    * Trigger download of data URL
    */
   downloadImage(dataUrl: string, filename: string): void;
@@ -124,6 +141,16 @@ export class DOMExportEffect implements ExportEffect {
     }
   ): Promise<string> {
     return await toPng(element, options);
+  }
+
+  async elementToSvg(
+    element: HTMLElement,
+    options: {
+      backgroundColor: string;
+      filter: (node: HTMLElement) => boolean;
+    }
+  ): Promise<string> {
+    return await toSvg(element, options);
   }
 
   downloadImage(dataUrl: string, filename: string): void {
@@ -177,6 +204,19 @@ export class MockExportEffect implements ExportEffect {
     return this.mockDataUrl;
   }
 
+  async elementToSvg(
+    _element: HTMLElement,
+    _options: {
+      backgroundColor: string;
+      filter: (node: HTMLElement) => boolean;
+    }
+  ): Promise<string> {
+    if (this.shouldThrowError) {
+      throw new Error('Mock export error');
+    }
+    return this.mockDataUrl.replace('data:image/png', 'data:image/svg+xml');
+  }
+
   downloadImage(dataUrl: string, filename: string): void {
     this.downloadedFiles.push({ dataUrl, filename });
   }
@@ -221,9 +261,9 @@ export class ExportService {
   }
 
   /**
-   * Export canvas as PNG
+   * Export canvas in specified format (PNG or SVG)
    */
-  async exportCanvasAsPng(config: ExportConfig): Promise<ExportResult> {
+  async exportCanvas(config: ExportConfig): Promise<ExportResult> {
     // Find element
     const element = this.effect.findElement(config.elementId);
     if (!element) {
@@ -247,13 +287,23 @@ export class ExportService {
         );
       };
 
-      // Convert to PNG
-      const dataUrl = await this.effect.elementToPng(element, {
-        backgroundColor,
-        quality: config.quality,
-        pixelRatio: config.pixelRatio,
-        filter,
-      });
+      // Convert to specified format
+      const format = config.format ?? 'png';
+      let dataUrl: string;
+
+      if (format === 'svg') {
+        dataUrl = await this.effect.elementToSvg(element, {
+          backgroundColor,
+          filter,
+        });
+      } else {
+        dataUrl = await this.effect.elementToPng(element, {
+          backgroundColor,
+          quality: config.quality,
+          pixelRatio: config.pixelRatio,
+          filter,
+        });
+      }
 
       // Trigger download
       this.effect.downloadImage(dataUrl, config.filename);
@@ -268,6 +318,20 @@ export class ExportService {
         error: `Failed to export canvas: ${error instanceof Error ? error.message : 'Unknown error'}`,
       };
     }
+  }
+
+  /**
+   * Export canvas as PNG (backward compatibility)
+   */
+  async exportCanvasAsPng(config: ExportConfig): Promise<ExportResult> {
+    return this.exportCanvas({ ...config, format: 'png' });
+  }
+
+  /**
+   * Export canvas as SVG
+   */
+  async exportCanvasAsSvg(config: ExportConfig): Promise<ExportResult> {
+    return this.exportCanvas({ ...config, format: 'svg' });
   }
 }
 

@@ -3,12 +3,18 @@ import { Download, Trash2, BookOpen, Rocket, Moon, Sun, LogOut, User, Braces, Un
 import { useStore } from 'zustand';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { WorkspaceModeTabs } from '@/components/WorkspaceModeTabs';
 import { TemplateBrowser } from '@/components/TemplateBrowser/TemplateBrowser';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useThemeStore } from '@/stores/themeStore';
-import { exportCanvasAsPng } from '@/lib/exportImage';
+import { exportCanvasAsPng, exportCanvasAsSvg } from '@/lib/exportImage';
 import { useAuthActions, useQuery } from '@/lib/auth';
 import { api } from '../../../convex/_generated/api';
 
@@ -38,8 +44,12 @@ export function Toolbar() {
     setTemplateBrowserOpen(true);
   }, []);
 
-  const handleExport = useCallback(() => {
+  const handleExportPng = useCallback(() => {
     exportCanvasAsPng('react-flow-canvas', `${designName}.png`);
+  }, [designName]);
+
+  const handleExportSvg = useCallback(() => {
+    exportCanvasAsSvg('react-flow-canvas', `${designName}.svg`);
   }, [designName]);
 
   const handleClear = useCallback(() => {
@@ -183,16 +193,27 @@ export function Toolbar() {
           >
             <BookOpen className="h-3.5 w-3.5" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleExport}
-            title="Export PNG"
-            aria-label="Export PNG"
-            className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
-          >
-            <Download className="h-3.5 w-3.5" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Export"
+                aria-label="Export"
+                className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportPng}>
+                Export as PNG
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportSvg}>
+                Export as SVG
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             variant="ghost"
             size="icon"

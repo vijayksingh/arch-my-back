@@ -75,6 +75,33 @@ describe('exportService - MockExportEffect', () => {
     });
   });
 
+  describe('elementToSvg', () => {
+    it('should return mock SVG data URL', async () => {
+      const element = document.createElement('div');
+      const options = {
+        backgroundColor: '#0a0a0a',
+        filter: () => true,
+      };
+
+      const dataUrl = await mockEffect.elementToSvg(element, options);
+      expect(dataUrl).toBe('data:image/svg+xml;base64,mock');
+    });
+
+    it('should throw error when configured', async () => {
+      mockEffect.setShouldThrowError(true);
+
+      const element = document.createElement('div');
+      const options = {
+        backgroundColor: '#0a0a0a',
+        filter: () => true,
+      };
+
+      await expect(mockEffect.elementToSvg(element, options)).rejects.toThrow(
+        'Mock export error'
+      );
+    });
+  });
+
   describe('downloadImage', () => {
     it('should record downloaded files', () => {
       mockEffect.downloadImage('data:image/png;base64,test', 'test.png');
@@ -204,6 +231,85 @@ describe('exportService - ExportService', () => {
 
       expect(result.success).toBe(true);
       // Quality and pixelRatio are passed to elementToPng
+    });
+  });
+
+  describe('exportCanvasAsSvg', () => {
+    it('should fail when element not found', async () => {
+      mockEffect.setMockElement(null);
+
+      const result = await exportService.exportCanvasAsSvg(createConfig());
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not found');
+    });
+
+    it('should successfully export canvas as SVG', async () => {
+      const mockElement = document.createElement('div');
+      mockEffect.setMockElement(mockElement);
+      mockEffect.setMockDataUrl('data:image/png;base64,success');
+
+      const result = await exportService.exportCanvasAsSvg(
+        createConfig({ filename: 'architecture.svg' })
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.dataUrl).toBe('data:image/svg+xml;base64,success');
+
+      const downloads = mockEffect.getDownloadedFiles();
+      expect(downloads).toHaveLength(1);
+      expect(downloads[0].filename).toBe('architecture.svg');
+    });
+
+    it('should handle export errors', async () => {
+      const mockElement = document.createElement('div');
+      mockEffect.setMockElement(mockElement);
+      mockEffect.setShouldThrowError(true);
+
+      const result = await exportService.exportCanvasAsSvg(createConfig());
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Failed to export canvas');
+      expect(result.error).toContain('Mock export error');
+    });
+  });
+
+  describe('exportCanvas', () => {
+    it('should export as PNG by default', async () => {
+      const mockElement = document.createElement('div');
+      mockEffect.setMockElement(mockElement);
+      mockEffect.setMockDataUrl('data:image/png;base64,success');
+
+      const result = await exportService.exportCanvas(createConfig());
+
+      expect(result.success).toBe(true);
+      expect(result.dataUrl).toBe('data:image/png;base64,success');
+    });
+
+    it('should export as SVG when format specified', async () => {
+      const mockElement = document.createElement('div');
+      mockEffect.setMockElement(mockElement);
+      mockEffect.setMockDataUrl('data:image/png;base64,success');
+
+      const result = await exportService.exportCanvas(
+        createConfig({ format: 'svg' })
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.dataUrl).toBe('data:image/svg+xml;base64,success');
+    });
+
+    it('should export as PNG when format specified', async () => {
+      const mockElement = document.createElement('div');
+      mockEffect.setMockElement(mockElement);
+      mockEffect.setMockDataUrl('data:image/png;base64,success');
+
+      const result = await exportService.exportCanvas(
+        createConfig({ format: 'png' })
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.dataUrl).toBe('data:image/png;base64,success');
     });
   });
 });
