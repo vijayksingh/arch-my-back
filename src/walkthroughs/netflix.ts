@@ -144,18 +144,14 @@ Before we dive into solutions, put yourself in the architect's seat. How would Y
           },
           highlight: true,
         },
-        {
-          type: 'add-edge',
-          edge: {
-            id: 'e-user-server',
-            source: 'user-simple',
-            target: 'server-simple',
-            type: 'archEdge',
-            data: { label: 'Request recommendations' },
-          },
-        },
       ],
-      nextCondition: 'click-next',
+      requiredAction: {
+        type: 'connect-edge',
+        description: 'Connect User to Server',
+        sourceId: 'user-simple',
+        targetNodeId: 'server-simple',
+      },
+      nextCondition: 'action-complete',
     },
 
     {
@@ -479,6 +475,36 @@ We need to **pre-compute** and **cache** results. But this creates new trade-off
           duration: 5000,
           color: '#ef4444',
         },
+        {
+          type: 'add-edge',
+          edge: {
+            id: 'e1',
+            source: 'user-simple',
+            target: 'simple-recommender',
+            type: 'archEdge',
+            data: { label: 'Request', simulating: true, status: 'bottleneck' },
+          },
+        },
+        {
+          type: 'add-edge',
+          edge: {
+            id: 'e2',
+            source: 'simple-recommender',
+            target: 'users-db',
+            type: 'archEdge',
+            data: { label: 'Fetch viewing history', simulating: true, status: 'bottleneck' },
+          },
+        },
+        {
+          type: 'add-edge',
+          edge: {
+            id: 'e3',
+            source: 'simple-recommender',
+            target: 'shows-db',
+            type: 'archEdge',
+            data: { label: 'Fetch show metadata', simulating: true, status: 'bottleneck' },
+          },
+        },
       ],
       widgets: [
         {
@@ -619,23 +645,14 @@ Each strategy runs independently as a **candidate generator**, producing ~500 ca
             },
           },
         },
-        {
-          type: 'add-edge',
-          edge: {
-            id: 'e4',
-            source: 'simple-recommender',
-            target: 'redis-cache',
-            type: 'archEdge',
-            data: { label: 'Check cache' },
-          },
-        },
-        {
-          type: 'animate-flow',
-          path: ['user-simple', 'simple-recommender', 'redis-cache'],
-          duration: 800,
-          label: 'Cache hit',
-        },
       ],
+      requiredAction: {
+        type: 'connect-edge',
+        description: 'Connect the Recommender Engine to the Redis Cache to serve pre-computed results',
+        sourceId: 'simple-recommender',
+        targetNodeId: 'redis-cache',
+      },
+      nextCondition: 'action-complete',
       widgets: [
         {
           type: 'quiz',
@@ -732,6 +749,38 @@ Netflix uses **both**:
 Let's add a content-based model to our architecture...
       `,
       canvasOperations: [
+        {
+          type: 'add-edge',
+          edge: {
+            id: 'e4',
+            source: 'simple-recommender',
+            target: 'redis-cache',
+            type: 'archEdge',
+            data: { label: 'Check cache', simulating: true, status: 'normal' },
+          },
+        },
+        {
+          type: 'add-edge',
+          edge: {
+            id: 'e1',
+            source: 'user-simple',
+            target: 'simple-recommender',
+            type: 'archEdge',
+            data: { label: 'Request', simulating: true, status: 'normal' },
+          },
+        },
+        {
+          type: 'highlight',
+          nodeIds: ['redis-cache', 'simple-recommender'],
+          duration: 3000,
+          color: '#10b981',
+        },
+        {
+          type: 'animate-flow',
+          path: ['user-simple', 'simple-recommender', 'redis-cache'],
+          duration: 800,
+          label: 'Cache hit',
+        },
         {
           type: 'add-node',
           node: {

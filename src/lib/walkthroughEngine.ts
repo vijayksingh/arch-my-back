@@ -30,6 +30,8 @@ export interface RequiredAction {
   type: string;
   description: string;
   targetId?: string;
+  sourceId?: string;
+  targetNodeId?: string;
 }
 
 export interface WalkthroughStep {
@@ -46,6 +48,7 @@ export interface WalkthroughStep {
 export interface WalkthroughState {
   currentStepIndex: number;
   completedStepIds: string[];
+  completedActionStepIds: string[];
   canvasNodes: Node[];
   canvasEdges: Edge[];
   highlightedNodeIds: string[];
@@ -62,6 +65,7 @@ export class WalkthroughEngine {
     this.state = {
       currentStepIndex: 0,
       completedStepIds: [],
+      completedActionStepIds: [],
       canvasNodes: [],
       canvasEdges: [],
       highlightedNodeIds: [],
@@ -105,6 +109,26 @@ export class WalkthroughEngine {
 
   canGoPrevious(): boolean {
     return this.state.currentStepIndex > 0;
+  }
+
+  /**
+   * Go to a specific step directly (useful for scrollytelling)
+   */
+  goToStep(index: number): WalkthroughState {
+    if (index < 0 || index >= this.steps.length) {
+      return this.state;
+    }
+
+    // Mark current step as completed before moving
+    const currentStep = this.getCurrentStep();
+    if (currentStep && !this.state.completedStepIds.includes(currentStep.id)) {
+      this.state.completedStepIds.push(currentStep.id);
+    }
+
+    this.state.currentStepIndex = index;
+    this.rebuildCanvasState();
+
+    return { ...this.state };
   }
 
   /**
@@ -168,9 +192,10 @@ export class WalkthroughEngine {
   /**
    * Mark user action as complete
    */
-  completeAction(_stepId: string): void {
-    // This would be called when user performs required action
-    // Implementation depends on action type
+  completeAction(stepId: string): void {
+    if (!this.state.completedActionStepIds.includes(stepId)) {
+      this.state.completedActionStepIds.push(stepId);
+    }
   }
 
   /**
@@ -230,9 +255,7 @@ export class WalkthroughEngine {
     return answer !== undefined && answer === step.quiz.correctIndex;
   }
 
-  private isActionComplete(_step: WalkthroughStep): boolean {
-    // Check if required action has been completed
-    // This would need to be tracked separately based on action type
-    return false;
+  private isActionComplete(step: WalkthroughStep): boolean {
+    return this.state.completedActionStepIds.includes(step.id);
   }
 }

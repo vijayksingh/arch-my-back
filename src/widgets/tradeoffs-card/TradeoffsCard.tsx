@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { WidgetProps } from '../types';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, Download, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 /**
  * Alternative option with pros/cons
@@ -346,7 +346,7 @@ export function TradeoffsCard({
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+                        transition={{ type: 'spring', bounce: 0.2, visualDuration: 0.3 }}
                         className="border-t border-border px-3 pb-3"
                       >
                         <div className="pt-2">

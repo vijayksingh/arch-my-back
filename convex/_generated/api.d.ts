@@ -19,8 +19,11 @@ import type * as http from "../http.js";
 import type * as migrate from "../migrate.js";
 import type * as newDesigns from "../newDesigns.js";
 import type * as seedData from "../seedData.js";
+import type * as seedExamples from "../seedExamples.js";
+import type * as sharing from "../sharing.js";
 import type * as users from "../users.js";
 import type * as validators from "../validators.js";
+import type * as walkthroughs from "../walkthroughs.js";
 import type * as workspaces from "../workspaces.js";
 
 import type {
@@ -41,8 +44,11 @@ declare const fullApi: ApiFromModules<{
   migrate: typeof migrate;
   newDesigns: typeof newDesigns;
   seedData: typeof seedData;
+  seedExamples: typeof seedExamples;
+  sharing: typeof sharing;
   users: typeof users;
   validators: typeof validators;
+  walkthroughs: typeof walkthroughs;
   workspaces: typeof workspaces;
 }>;
 

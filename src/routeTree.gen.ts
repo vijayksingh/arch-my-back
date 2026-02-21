@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WalkthroughSlugRouteImport } from './routes/walkthrough.$slug'
+import { Route as ShareSlugRouteImport } from './routes/share.$slug'
 import { Route as FolderFolderIdRouteImport } from './routes/folder.$folderId'
 import { Route as DesignDesignIdRouteImport } from './routes/design.$designId'
 
@@ -28,6 +30,16 @@ const LoginRoute = LoginRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WalkthroughSlugRoute = WalkthroughSlugRouteImport.update({
+  id: '/walkthrough/$slug',
+  path: '/walkthrough/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShareSlugRoute = ShareSlugRouteImport.update({
+  id: '/share/$slug',
+  path: '/share/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FolderFolderIdRoute = FolderFolderIdRouteImport.update({
@@ -47,6 +59,8 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/design/$designId': typeof DesignDesignIdRoute
   '/folder/$folderId': typeof FolderFolderIdRoute
+  '/share/$slug': typeof ShareSlugRoute
+  '/walkthrough/$slug': typeof WalkthroughSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +68,8 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/design/$designId': typeof DesignDesignIdRoute
   '/folder/$folderId': typeof FolderFolderIdRoute
+  '/share/$slug': typeof ShareSlugRoute
+  '/walkthrough/$slug': typeof WalkthroughSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,6 +78,8 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/design/$designId': typeof DesignDesignIdRoute
   '/folder/$folderId': typeof FolderFolderIdRoute
+  '/share/$slug': typeof ShareSlugRoute
+  '/walkthrough/$slug': typeof WalkthroughSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -71,8 +89,17 @@ export interface FileRouteTypes {
     | '/signup'
     | '/design/$designId'
     | '/folder/$folderId'
+    | '/share/$slug'
+    | '/walkthrough/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/signup' | '/design/$designId' | '/folder/$folderId'
+  to:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/design/$designId'
+    | '/folder/$folderId'
+    | '/share/$slug'
+    | '/walkthrough/$slug'
   id:
     | '__root__'
     | '/'
@@ -80,6 +107,8 @@ export interface FileRouteTypes {
     | '/signup'
     | '/design/$designId'
     | '/folder/$folderId'
+    | '/share/$slug'
+    | '/walkthrough/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -88,6 +117,8 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   DesignDesignIdRoute: typeof DesignDesignIdRoute
   FolderFolderIdRoute: typeof FolderFolderIdRoute
+  ShareSlugRoute: typeof ShareSlugRoute
+  WalkthroughSlugRoute: typeof WalkthroughSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -113,6 +144,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/walkthrough/$slug': {
+      id: '/walkthrough/$slug'
+      path: '/walkthrough/$slug'
+      fullPath: '/walkthrough/$slug'
+      preLoaderRoute: typeof WalkthroughSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/share/$slug': {
+      id: '/share/$slug'
+      path: '/share/$slug'
+      fullPath: '/share/$slug'
+      preLoaderRoute: typeof ShareSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/folder/$folderId': {
       id: '/folder/$folderId'
       path: '/folder/$folderId'
@@ -136,6 +181,8 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   DesignDesignIdRoute: DesignDesignIdRoute,
   FolderFolderIdRoute: FolderFolderIdRoute,
+  ShareSlugRoute: ShareSlugRoute,
+  WalkthroughSlugRoute: WalkthroughSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

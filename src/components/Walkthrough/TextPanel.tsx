@@ -4,6 +4,7 @@
 
 import { MarkdownLines } from '@/components/DocumentPanel/widgets/MarkdownLines';
 import type { QuizQuestion } from '@/lib/walkthroughEngine';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface TextPanelProps {
   title: string;
@@ -23,7 +24,7 @@ export function TextPanel({
   quizResult
 }: TextPanelProps) {
   return (
-    <div className="flex h-full flex-col gap-6 overflow-y-auto p-8">
+    <div className="flex flex-col gap-6 p-8 pb-12">
       {/* Title */}
       <h1 className="text-2xl font-bold text-foreground">
         {title}
@@ -48,8 +49,11 @@ export function TextPanel({
               const isWrong = quizResult && isSelected && !isCorrect;
 
               return (
-                <button
+                <motion.button
                   key={index}
+                  whileHover={!quizResult ? { scale: 1.01 } : {}}
+                  whileTap={!quizResult ? { scale: 0.97 } : {}}
+                  animate={isWrong ? { x: [-5, 5, -5, 5, 0], transition: { duration: 0.3 } } : {}}
                   onClick={() => onQuizAnswer?.(index)}
                   disabled={quizResult !== undefined}
                   className={`
@@ -67,28 +71,37 @@ export function TextPanel({
                     </span>
                     <span>{option}</span>
                   </div>
-                </button>
+                </motion.button>
               );
             })}
           </div>
 
           {/* Quiz result */}
-          {quizResult && (
-            <div className={`mt-4 rounded-lg p-4 ${
-              quizResult.correct
-                ? 'bg-green-500/10 text-green-700 dark:text-green-400'
-                : 'bg-red-500/10 text-red-700 dark:text-red-400'
-            }`}>
-              <p className="font-semibold">
-                {quizResult.correct ? '✓ Correct!' : '✗ Incorrect'}
-              </p>
-              {quizResult.explanation && (
-                <p className="mt-2 text-sm">
-                  {quizResult.explanation}
-                </p>
-              )}
-            </div>
-          )}
+          <AnimatePresence>
+            {quizResult && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                transition={{ type: "spring", bounce: 0.3, visualDuration: 0.4 }}
+                className={`overflow-hidden rounded-lg px-4 ${
+                quizResult.correct
+                  ? 'bg-green-500/10 text-green-700 dark:text-green-400'
+                  : 'bg-red-500/10 text-red-700 dark:text-red-400'
+              }`}>
+                <div className="py-4">
+                  <p className="font-semibold">
+                    {quizResult.correct ? '✓ Correct!' : '✗ Incorrect'}
+                  </p>
+                  {quizResult.explanation && (
+                    <p className="mt-2 text-sm">
+                      {quizResult.explanation}
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
     </div>
