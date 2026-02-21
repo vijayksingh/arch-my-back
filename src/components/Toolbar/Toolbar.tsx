@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Download, Trash2, BookOpen, Rocket, Moon, Sun, LogOut, User, Braces, Undo2, Redo2, LayoutGrid, Loader2 } from 'lucide-react';
+import { useStore } from 'zustand';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { WorkspaceModeTabs } from '@/components/WorkspaceModeTabs';
@@ -18,7 +19,6 @@ export function Toolbar() {
   const [templateBrowserOpen, setTemplateBrowserOpen] = useState(false);
 
   const nodes = useCanvasStore((s) => s.nodes);
-  const loadDesign = useCanvasStore((s) => s.loadDesign);
   const clearCanvas = useCanvasStore((s) => s.clearCanvas);
   const autoLayout = useCanvasStore((s) => s.autoLayout);
   const theme = useThemeStore((s) => s.theme);
@@ -29,7 +29,10 @@ export function Toolbar() {
   const { signOut } = useAuthActions();
   const user = useQuery(api.users.getCurrentUser);
 
-  const { undo, redo, pastStates, futureStates } = useCanvasStore.temporal((state) => state);
+  const { undo, redo, pastStates, futureStates } = useStore(
+    useCanvasStore.temporal,
+    (state) => state,
+  );
 
   const handleOpenTemplateBrowser = useCallback(() => {
     setTemplateBrowserOpen(true);

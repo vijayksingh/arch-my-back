@@ -251,7 +251,7 @@ export const generateArchitecture = action({
         system: SYSTEM_PROMPT,
         prompt: args.prompt.trim(),
         temperature: 0.7,
-        maxTokens: 2000,
+        maxOutputTokens: 2000,
       });
 
       generatedContent = result.text;
