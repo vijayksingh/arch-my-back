@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { Search, Boxes, X, GripVertical, MousePointer2, BoxSelect, Square, Circle, Type } from 'lucide-react';
@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 import { componentsByCategory } from '@/registry/componentTypes';
 import type { RailSection } from '@/stores/uiStore';
 import { useUIStore } from '@/stores/uiStore';
-import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
 import type { CanvasTool, ComponentCategory } from '@/types';
 import { ComponentCard } from './ComponentCard';
@@ -240,7 +239,7 @@ export function Sidebar({ containerRef }: SidebarProps) {
       }}
     >
       <div className="flex items-start gap-2">
-        <aside className="pointer-events-auto flex w-10 shrink-0 flex-col items-center gap-1 rounded-xl border ui-border-ghost bg-card/88 p-1 shadow-(--surface-shadow) backdrop-blur-xl">
+        <aside className="pointer-events-auto flex w-10 shrink-0 flex-col items-center gap-1 rounded-xl border ui-border-ghost bg-card p-1 shadow-(--surface-shadow) backdrop-blur-xl">
           <button
             type="button"
             aria-label="Drag sidebar"
@@ -333,7 +332,7 @@ export function Sidebar({ containerRef }: SidebarProps) {
 
         <aside
           className={cn(
-            'pointer-events-auto flex w-[184px] max-h-[min(68vh,28rem)] max-w-[calc(100%-3.75rem)] flex-col overflow-hidden rounded-xl border ui-border-ghost bg-card/92 shadow-(--surface-shadow) backdrop-blur-xl ease-out',
+            'pointer-events-auto flex w-[184px] max-h-[min(68vh,28rem)] max-w-[calc(100%-3.75rem)] flex-col overflow-hidden rounded-xl border ui-border-ghost bg-card shadow-(--surface-shadow) backdrop-blur-xl ease-out',
             !prefersReducedMotion && 'transition-all duration-180',
             isTrayOpen
               ? 'translate-x-0 opacity-100'

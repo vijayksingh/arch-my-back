@@ -48,7 +48,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-[70]">
       <div className="fixed inset-0 bg-background/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative mx-auto mt-[18vh] w-[480px] rounded-xl border border-border/60 bg-card shadow-2xl overflow-hidden">
         <Command

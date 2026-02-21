@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
-  AlertDialogTrigger,
   AlertDialogContent,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -24,7 +23,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 
 interface DesignCardProps {
   design: Doc<'newDesigns'>;
@@ -174,7 +172,7 @@ export function DesignListItem({ design }: DesignCardProps) {
       {/* Move to folder dialog */}
       {showMoveDialog && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
           onClick={() => setShowMoveDialog(false)}
         >
           <div
@@ -366,7 +364,7 @@ export function DesignCard({ design }: DesignCardProps) {
       {/* Move to folder dialog (custom, not AlertDialog since it's a selection) */}
       {showMoveDialog && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
           onClick={() => setShowMoveDialog(false)}
         >
           <div

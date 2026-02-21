@@ -66,7 +66,7 @@ export function WidgetSidebar({ isOpen, onClose }: WidgetSidebarProps) {
   return (
     <aside
       className={cn(
-        'pointer-events-auto flex w-[240px] max-h-[min(68vh,32rem)] flex-col overflow-hidden rounded-xl border ui-border-ghost bg-card/92 shadow-(--surface-shadow) backdrop-blur-xl transition-all duration-180 ease-out',
+        'pointer-events-auto flex w-[240px] max-h-[min(68vh,32rem)] flex-col overflow-hidden rounded-xl border ui-border-ghost bg-card shadow-(--surface-shadow) backdrop-blur-xl transition-all duration-180 ease-out',
         isOpen
           ? 'translate-x-0 opacity-100'
           : 'pointer-events-none -translate-x-3 opacity-0',

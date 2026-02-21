@@ -103,7 +103,7 @@ export function SlashCommandPicker({
   if (filtered.length === 0) return null;
 
   return (
-    <div className="w-full overflow-hidden rounded-lg border ui-border-ghost bg-popover shadow-lg origin-top-left animate-picker-enter motion-reduce:animate-none">
+    <div className="z-50 w-full overflow-hidden rounded-lg border ui-border-ghost bg-popover shadow-lg origin-top-left animate-picker-enter motion-reduce:animate-none">
       {filtered.map((cmd, index) => (
         <button
           key={cmd.type}

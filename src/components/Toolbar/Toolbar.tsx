@@ -65,7 +65,7 @@ export function Toolbar() {
   const hasEnoughNodes = nodes.length >= 2;
 
   return (
-    <header className="flex h-14 w-full shrink-0 items-center border-b border-border/80 bg-card/90 px-4 backdrop-blur-xl">
+    <header className="flex h-14 w-full shrink-0 items-center border-b border-border/80 bg-card px-4 backdrop-blur-xl">
       {/* Left: branding */}
       <div className="flex w-[250px] shrink-0 items-center gap-3">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/80 bg-secondary shadow-sm">

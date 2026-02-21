@@ -265,7 +265,7 @@ export function ConfigPanel() {
     <div className="pointer-events-none absolute inset-x-0 bottom-2 z-50 flex justify-center px-3">
       <aside
         className={cn(
-          'pointer-events-auto flex w-fit max-w-[calc(100%-1.5rem)] gap-2 overflow-hidden rounded-xl border ui-border-ghost bg-card/95 shadow-(--panel-shadow) backdrop-blur-xl transition-all duration-180 ease-out',
+          'pointer-events-auto flex w-fit max-w-[calc(100%-1.5rem)] gap-2 overflow-hidden rounded-xl border ui-border-ghost bg-card shadow-(--panel-shadow) backdrop-blur-xl transition-all duration-180 ease-out',
           level === 3 || (level === 2 && componentNode) ? 'h-auto min-h-12 flex-col items-stretch p-2' : 'h-12 items-center px-2',
           isOpen
             ? 'translate-y-0 opacity-100'

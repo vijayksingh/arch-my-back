@@ -126,7 +126,7 @@ function DesignEditorPage() {
         {viewMode !== 'canvas' && (
           <div
             className={cn(
-              'h-full min-w-0 bg-background/75',
+              'h-full min-w-0 bg-background',
               viewMode === 'both' && 'w-[min(42rem,42vw)] max-w-2xl border-r ui-border-ghost',
               viewMode === 'document' && 'w-full',
             )}

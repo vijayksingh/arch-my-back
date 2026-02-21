@@ -88,7 +88,7 @@ export function DocumentPanel() {
   }, [blocks, isPreview, addBlock]);
 
   return (
-    <section className="flex h-full min-h-0 w-full flex-col bg-background/70">
+    <section className="flex h-full min-h-0 w-full flex-col bg-background">
       {/* Header */}
       <div className="flex items-center justify-between border-b ui-border-ghost px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
@@ -148,12 +148,12 @@ export function DocumentPanel() {
               style={newBlockId === block.id ? { willChange: 'opacity, transform' } : undefined}
             >
               <NotebookBlockComponent
-                block={block}
+                block={block as any}
                 index={index}
                 isPreview={isPreview}
                 isHighlighted={highlightedBlockId === block.id}
                 autoFocus={newBlockId === block.id}
-                addBlock={addBlock}
+                addBlock={addBlock as any}
               />
             </div>
           ))}
