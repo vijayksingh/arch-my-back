@@ -33,6 +33,107 @@ import { toCanvasNodes } from '@/dsl/canvasAdapter';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { TemplateGallery } from './TemplateGallery';
 
+// Interactive walkthrough metadata
+const WALKTHROUGHS = [
+  {
+    slug: 'netflix-recommendation',
+    title: 'Netflix Recommendation System',
+    description: '105-minute deep dive into ML-powered recommendations at scale',
+    duration: '105 min',
+    steps: 15,
+    difficulty: 'Intermediate',
+    topics: ['Machine Learning', 'Microservices', 'A/B Testing'],
+  },
+  {
+    slug: 'stripe-payments',
+    title: 'Stripe Payment Processing',
+    description: '105-minute walkthrough of idempotent payment systems',
+    duration: '105 min',
+    steps: 14,
+    difficulty: 'Advanced',
+    topics: ['Idempotency', 'State Machines', 'PCI Compliance'],
+  },
+  {
+    slug: 'instagram-feed',
+    title: 'Instagram System Design',
+    description: '90-minute exploration of feed generation at billion-user scale',
+    duration: '90 min',
+    steps: 15,
+    difficulty: 'Advanced',
+    topics: ['Feed Generation', 'CDN', 'Graph Database'],
+  },
+  {
+    slug: 'uber-dispatch',
+    title: 'Uber Real-Time Dispatch',
+    description: '100-minute hands-on with geospatial algorithms and surge pricing',
+    duration: '100 min',
+    steps: 14,
+    difficulty: 'Advanced',
+    topics: ['Geospatial', 'Real-time', 'ETA Prediction'],
+  },
+  {
+    slug: 'twitter-feed',
+    title: 'Twitter/X Feed Ranking',
+    description: '105-minute journey through fan-out strategies and ML ranking',
+    duration: '105 min',
+    steps: 15,
+    difficulty: 'Advanced',
+    topics: ['Fan-out', 'ML Ranking', 'Trending Topics'],
+  },
+] as const;
+
+// WalkthroughCard component
+interface WalkthroughCardProps {
+  walkthrough: typeof WALKTHROUGHS[number];
+}
+
+function WalkthroughCard({ walkthrough }: WalkthroughCardProps) {
+  const navigate = useNavigate();
+
+  return (
+    <button
+      onClick={() => navigate({ to: '/walkthrough/$slug', params: { slug: walkthrough.slug } })}
+      className="group relative overflow-hidden rounded-lg border border-border bg-card p-6 text-left transition-all hover:border-primary hover:shadow-lg"
+    >
+      {/* Gradient background on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+
+      <div className="relative">
+        {/* Header */}
+        <div className="mb-3 flex items-start justify-between">
+          <div className="flex-1">
+            <h3 className="font-semibold text-foreground mb-1">
+              {walkthrough.title}
+            </h3>
+            <div className="flex gap-2 items-center text-xs text-muted-foreground">
+              <span>⏱️ {walkthrough.duration}</span>
+              <span>•</span>
+              <span>{walkthrough.steps} steps</span>
+            </div>
+          </div>
+          <Badge variant="secondary" className="ml-2 shrink-0">
+            {walkthrough.difficulty}
+          </Badge>
+        </div>
+
+        {/* Description */}
+        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+          {walkthrough.description}
+        </p>
+
+        {/* Topics */}
+        <div className="flex flex-wrap gap-1">
+          {walkthrough.topics.map((topic) => (
+            <Badge key={topic} variant="outline" className="text-xs">
+              {topic}
+            </Badge>
+          ))}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export function DashboardPage() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useThemeStore();
@@ -343,24 +444,42 @@ export function DashboardPage() {
 
           {/* Examples Tab */}
           <TabsContent value="examples">
+            {/* Interactive Walkthroughs Section */}
+            <section className="mb-12">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Interactive Walkthroughs</h2>
+                <Badge variant="outline" className="gap-1">
+                  🎓 Learn by doing
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mb-6">
+                90-120 minute progressive learning experiences with quizzes, hands-on exercises, and real-world depth.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {WALKTHROUGHS.map((walkthrough) => (
+                  <WalkthroughCard key={walkthrough.slug} walkthrough={walkthrough} />
+                ))}
+              </div>
+            </section>
+
+            {/* Example Designs Section */}
             {exampleDesigns.length === 0 ? (
-              <div className="flex h-full items-center justify-center">
-                <div className="flex flex-col items-center text-center py-24">
-                  <div className="mb-6 relative">
-                    <div className="absolute inset-0 rounded-full bg-primary/10 blur-2xl" />
-                    <Layers className="h-16 w-16 text-muted-foreground/50 relative" />
-                  </div>
-                  <h2 className="text-xl font-semibold mb-2">No examples yet</h2>
-                  <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-                    Run the seed mutation to create example designs
+              <section>
+                <h2 className="mb-4 text-lg font-semibold">Example Architectures</h2>
+                <div className="flex flex-col items-center text-center py-12 bg-muted/30 rounded-lg border border-dashed border-border">
+                  <Layers className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    Run the seed mutation to create example architecture diagrams
                   </p>
                 </div>
-              </div>
+              </section>
             ) : (
               <section>
-                <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Example Architectures
-                </h2>
+                <h2 className="mb-4 text-lg font-semibold">Example Architectures</h2>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Pre-built architecture diagrams you can view and fork.
+                </p>
                 <div className="flex flex-col gap-2">
                   {exampleDesigns.map((design) => (
                     <div key={design._id} className="relative">
