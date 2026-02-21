@@ -32,7 +32,7 @@ const nodeTypes: NodeTypes = {
   shapeText: ShapeNode,
   sectionBadge: SectionBadgeNode,
   collapsibleGroup: CollapsibleGroupNode,
-  widgetNode: WidgetNode,
+  widgetNode: WidgetNode as any,
 };
 
 const edgeTypes: EdgeTypes = {
@@ -215,9 +215,10 @@ export default function Canvas() {
               widgetInstanceId,
             },
           };
-          useCanvasStore.setState((state) => ({
-            nodes: [...state.nodes, newNode],
-          }));
+          const currentNodes = useCanvasStore.getState().nodes;
+          useCanvasStore.setState({
+            nodes: [...currentNodes, newNode as any],
+          });
         }
         return;
       }

@@ -264,7 +264,7 @@ describe('ConfigPanel', () => {
     // Check config updated
     const nodes = useCanvasStore.getState().nodes;
     const node = nodes.find((n) => n.id === nodeId);
-    expect(node?.data.config.algorithm).toBe('least-connections');
+    expect((node?.data.config as any)?.algorithm).toBe('least-connections');
   });
 
   test('renders shape node config', () => {

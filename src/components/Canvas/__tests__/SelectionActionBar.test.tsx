@@ -29,9 +29,9 @@ describe('SelectionActionBar', () => {
         nodes: [
           {
             id: 'node-1',
-            type: 'archNode',
+            type: 'archComponent',
             position: { x: 0, y: 0 },
-            data: { label: 'Node 1', componentType: 'ec2' },
+            data: { label: 'Node 1', componentType: 'ec2', config: {} },
             selected: true,
           } as CanvasNode,
         ],
@@ -52,9 +52,9 @@ describe('SelectionActionBar', () => {
         nodes: [
           {
             id: 'node-1',
-            type: 'archNode',
+            type: 'archComponent',
             position: { x: 0, y: 0 },
-            data: { label: 'Node 1', componentType: 'ec2' },
+            data: { label: 'Node 1', componentType: 'ec2', config: {} },
             selected: true,
           } as CanvasNode,
         ],
@@ -75,16 +75,16 @@ describe('SelectionActionBar', () => {
         nodes: [
           {
             id: 'node-1',
-            type: 'archNode',
+            type: 'archComponent',
             position: { x: 0, y: 0 },
-            data: { label: 'Node 1', componentType: 'ec2' },
+            data: { label: 'Node 1', componentType: 'ec2', config: {} },
             selected: true,
           } as CanvasNode,
           {
             id: 'node-2',
-            type: 'archNode',
+            type: 'archComponent',
             position: { x: 100, y: 100 },
-            data: { label: 'Node 2', componentType: 's3' },
+            data: { label: 'Node 2', componentType: 's3', config: {} },
             selected: true,
           } as CanvasNode,
         ],
@@ -106,16 +106,16 @@ describe('SelectionActionBar', () => {
         nodes: [
           {
             id: 'node-1',
-            type: 'archNode',
+            type: 'archComponent',
             position: { x: 0, y: 0 },
-            data: { label: 'Node 1', componentType: 'ec2' },
+            data: { label: 'Node 1', componentType: 'ec2', config: {} },
             selected: true,
           } as CanvasNode,
           {
             id: 'node-2',
-            type: 'archNode',
+            type: 'archComponent',
             position: { x: 100, y: 100 },
-            data: { label: 'Node 2', componentType: 's3' },
+            data: { label: 'Node 2', componentType: 's3', config: {} },
             selected: true,
           } as CanvasNode,
         ],

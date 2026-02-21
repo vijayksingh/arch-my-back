@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { resetMocks, mockUseMutation } from '@/test/test-utils';
 import type { Doc } from '../../../../convex/_generated/dataModel';
@@ -22,7 +22,9 @@ describe('FolderCard', () => {
     _id: 'folder-123' as any,
     _creationTime: Date.now(),
     title: 'Backend Systems',
-    userId: 'user-1' as any,
+    ownerId: 'user-1' as any,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
   };
 
   const mockRenameFolder = vi.fn();

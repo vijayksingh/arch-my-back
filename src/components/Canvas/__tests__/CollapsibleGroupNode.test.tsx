@@ -29,14 +29,17 @@ function renderNode(props: Partial<CollapsibleGroupNodeType> = {}) {
     <ReactFlowProvider>
       <CollapsibleGroupNode
         id={defaultProps.id}
-        type={defaultProps.type}
+        type="collapsibleGroup"
         data={defaultProps.data}
         selected={false}
-        isConnectable={true}
-        zIndex={1}
-        xPos={defaultProps.position.x}
-        yPos={defaultProps.position.y}
+        draggable={true}
         dragging={false}
+        selectable={true}
+        deletable={true}
+        zIndex={1}
+        isConnectable={true}
+        positionAbsoluteX={defaultProps.position.x}
+        positionAbsoluteY={defaultProps.position.y}
       />
     </ReactFlowProvider>
   );

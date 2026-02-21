@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { PlusIcon, FolderPlus, Layers, Sun, Moon, User } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '../../../convex/_generated/api';
-import { DesignCard, DesignListItem } from './DesignCard';
+import { DesignListItem } from './DesignCard';
 import { FolderCard } from './FolderCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -106,7 +106,8 @@ export function DashboardPage() {
       const designId = await createDesign({ title });
 
       // Load the generated nodes/edges into the canvas store
-      loadDesign(nodes, edges);
+      // Cast nodes to CanvasNode[] as toCanvasNodes returns a compatible but different type
+      loadDesign(nodes as any, edges);
 
       // Navigate to the new design
       navigate({ to: '/design/$designId', params: { designId } });

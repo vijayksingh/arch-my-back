@@ -30,14 +30,16 @@ describe('DesignCard', () => {
     title: 'My Architecture',
     description: 'A cool system design',
     updatedAt: new Date('2024-01-15').getTime(),
-    userId: 'user-1' as any,
-    folderId: null,
-    thumbnailStorageId: null,
+    createdAt: new Date('2024-01-15').getTime(),
+    ownerId: 'user-1' as any,
+    isPublic: false,
+    folderId: undefined,
+    thumbnailStorageId: undefined,
   };
 
   const mockFolders = [
-    { _id: 'folder-1', title: 'Backend Systems', _creationTime: Date.now(), userId: 'user-1' },
-    { _id: 'folder-2', title: 'Frontend Apps', _creationTime: Date.now(), userId: 'user-1' },
+    { _id: 'folder-1', title: 'Backend Systems', _creationTime: Date.now(), ownerId: 'user-1', createdAt: Date.now(), updatedAt: Date.now() },
+    { _id: 'folder-2', title: 'Frontend Apps', _creationTime: Date.now(), ownerId: 'user-1', createdAt: Date.now(), updatedAt: Date.now() },
   ];
 
   const mockMoveToFolder = vi.fn();
@@ -53,9 +55,8 @@ describe('DesignCard', () => {
 
     // Setup default mocks
     mockUseQuery.mockReturnValue(mockFolders);
-    mockUseMutation.mockImplementation((mutation: any) => {
-      // Discriminate by mutation function name/structure if needed
-      // For simplicity, return different mocks based on call order
+    mockUseMutation.mockImplementation(() => {
+      // Return different mocks based on call order
       const callCount = mockUseMutation.mock.calls.length;
       if (callCount === 1) return mockMoveToFolder;
       if (callCount === 2) return mockDuplicateDesign;

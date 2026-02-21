@@ -1,10 +1,9 @@
-import { ReactElement, ReactNode } from 'react';
-import { render, RenderOptions } from '@testing-library/react';
+import type { ReactElement, ReactNode } from 'react';
+import { render } from '@testing-library/react';
+import type { RenderOptions } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router';
 import { ReactFlowProvider } from '@xyflow/react';
 import { vi } from 'vitest';
-import { routeTree } from '@/routeTree.gen';
 
 // Re-export everything from testing-library
 export { screen, within, waitFor } from '@testing-library/react';
@@ -127,39 +126,24 @@ export function resetAllStores() {
  * Custom render function that wraps components with all necessary providers
  */
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
-  // Initial route to navigate to
-  initialRoute?: string;
   // Whether to include ReactFlowProvider (needed for canvas components)
   withReactFlow?: boolean;
 }
 
 function AllProviders({
   children,
-  initialRoute = '/',
   withReactFlow = false
 }: {
   children: ReactNode;
-  initialRoute?: string;
   withReactFlow?: boolean;
 }) {
-  // Create a memory history for testing
-  const memoryHistory = createMemoryHistory({
-    initialEntries: [initialRoute],
-  });
+  // For testing, we just wrap the children with ReactFlowProvider if needed
+  // The router is set up separately for actual routing tests
+  if (withReactFlow) {
+    return <ReactFlowProvider>{children}</ReactFlowProvider>;
+  }
 
-  // Create router with memory history
-  const router = createRouter({
-    routeTree,
-    history: memoryHistory,
-  });
-
-  const content = withReactFlow ? (
-    <ReactFlowProvider>{children}</ReactFlowProvider>
-  ) : (
-    children
-  );
-
-  return <RouterProvider router={router}>{content}</RouterProvider>;
+  return <>{children}</>;
 }
 
 function customRender(
@@ -167,14 +151,13 @@ function customRender(
   options?: CustomRenderOptions
 ) {
   const {
-    initialRoute = '/',
     withReactFlow = false,
     ...renderOptions
   } = options || {};
 
   return render(ui, {
-    wrapper: ({ children }) => (
-      <AllProviders initialRoute={initialRoute} withReactFlow={withReactFlow}>
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <AllProviders withReactFlow={withReactFlow}>
         {children}
       </AllProviders>
     ),

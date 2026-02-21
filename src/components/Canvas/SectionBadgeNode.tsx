@@ -237,7 +237,7 @@ export default function SectionBadgeNodeComponent({
           <>
             <div className="mx-3 border-t border-border/30" />
             <div className="px-3 py-2">
-              <BlockPreview block={block} />
+              <BlockPreview block={block as any} />
             </div>
           </>
         )}

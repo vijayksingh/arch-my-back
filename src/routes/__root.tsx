@@ -1,7 +1,6 @@
 import { createRootRoute, Outlet, Navigate } from '@tanstack/react-router';
 import { ConvexAuthProvider } from '@convex-dev/auth/react';
 import { convex } from '@/lib/convex';
-import { Authenticated, Unauthenticated } from '@/lib/auth';
 import { useConvexAuth } from 'convex/react';
 
 function RootComponent() {
