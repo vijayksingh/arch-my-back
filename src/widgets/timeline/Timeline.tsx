@@ -63,7 +63,6 @@ const EVENT_TYPE_LABELS = {
  * Timeline Widget Component
  */
 export function Timeline({
-  instanceId,
   input,
   config,
   onOutput,

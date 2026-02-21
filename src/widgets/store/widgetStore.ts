@@ -4,7 +4,6 @@ import type {
   WidgetInstance,
   WidgetFlow,
   WidgetConnection,
-  WidgetDefinition,
 } from '../types';
 import { widgetRegistry } from '../registry/widgetRegistry';
 
@@ -130,7 +129,7 @@ export const useWidgetStore = create<WidgetStore>()(
               ...state.widgets,
               [instanceId]: {
                 ...widget,
-                config: { ...widget.config, ...config },
+                config: { ...(widget.config as Record<string, unknown>), ...(config as Record<string, unknown>) },
               },
             },
           };

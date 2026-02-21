@@ -16,8 +16,8 @@ export class CompositionEngine {
   canConnect(
     fromWidgetId: string,
     toWidgetId: string,
-    outputKey?: string,
-    inputKey?: string,
+    _outputKey?: string,
+    _inputKey?: string,
   ): { valid: boolean; error?: string } {
     const fromDef = widgetRegistry.get(fromWidgetId);
     const toDef = widgetRegistry.get(toWidgetId);
@@ -166,11 +166,11 @@ export class CompositionEngine {
     });
 
     const sources = Array.from(inDegree.entries())
-      .filter(([_, degree]) => degree === 0)
+      .filter(([, degree]) => degree === 0)
       .map(([id]) => id);
 
     const sinks = Array.from(graph.entries())
-      .filter(([_, neighbors]) => neighbors.length === 0)
+      .filter(([, neighbors]) => neighbors.length === 0)
       .map(([id]) => id);
 
     return { graph, sources, sinks };

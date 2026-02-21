@@ -1,9 +1,9 @@
 import { memo } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { widgetRegistry } from '../registry/widgetRegistry';
 import type { WidgetInstance } from '../types';
 
-interface WidgetNodeData {
+interface WidgetNodeData extends Record<string, unknown> {
   widget: WidgetInstance;
   onOutput?: (output: unknown) => void;
 }
@@ -12,8 +12,8 @@ interface WidgetNodeData {
  * Custom React Flow node for widgets
  * Displays widget info and handles for connections
  */
-export const WidgetNode = memo(({ data }: NodeProps<WidgetNodeData>) => {
-  const { widget, onOutput } = data;
+export const WidgetNode = memo(({ data }: NodeProps) => {
+  const { widget, onOutput } = data as WidgetNodeData;
   const definition = widgetRegistry.get(widget.widgetId);
 
   if (!definition) {
@@ -69,12 +69,12 @@ export const WidgetNode = memo(({ data }: NodeProps<WidgetNodeData>) => {
         {/* Footer with status */}
         <div className="border-t border-border bg-muted/30 px-3 py-1">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {widget.input && (
+            {widget.input !== undefined && (
               <span className="rounded bg-green-500/20 px-1.5 py-0.5 text-green-700 dark:text-green-300">
                 Has Input
               </span>
             )}
-            {widget.output && (
+            {widget.output !== undefined && (
               <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-blue-700 dark:text-blue-300">
                 Has Output
               </span>

@@ -61,7 +61,6 @@ export interface AnnotationLayerConfig {
  * Annotation Layer Widget Component
  */
 export function AnnotationLayer({
-  instanceId,
   input,
   config,
   onOutput,

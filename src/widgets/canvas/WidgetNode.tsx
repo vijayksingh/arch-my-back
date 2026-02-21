@@ -5,7 +5,7 @@ import { useWidgetStore } from '../store/widgetStore';
 import { widgetRegistry } from '../registry/widgetRegistry';
 import { cn } from '@/lib/utils';
 
-interface WidgetNodeData {
+interface WidgetNodeData extends Record<string, unknown> {
   widgetInstanceId: string;
 }
 
@@ -13,14 +13,14 @@ interface WidgetNodeData {
  * WidgetNode - React Flow node component for rendering widget instances on canvas
  * Receives widgetInstanceId via node data, looks up instance from store, and renders the widget component
  */
-function WidgetNode({ data, selected }: NodeProps<WidgetNodeData>) {
-  const widgetInstance = useWidgetStore((s) => s.getWidget(data.widgetInstanceId));
+function WidgetNode({ data, selected }: NodeProps) {
+  const widgetInstance = useWidgetStore((s) => s.getWidget((data as WidgetNodeData).widgetInstanceId));
 
   if (!widgetInstance) {
     return (
       <div className="rounded-lg border-2 border-destructive bg-destructive/10 px-4 py-3">
         <p className="text-xs text-destructive">
-          Widget instance not found: {data.widgetInstanceId}
+          Widget instance not found: {(data as WidgetNodeData).widgetInstanceId}
         </p>
       </div>
     );
@@ -63,13 +63,13 @@ function WidgetNode({ data, selected }: NodeProps<WidgetNodeData>) {
           </span>
         </div>
         <WidgetComponent
+          instanceId={widgetInstance.id}
           config={widgetInstance.config}
           input={widgetInstance.input}
-          output={widgetInstance.output}
           onConfigChange={(newConfig) => {
             useWidgetStore.getState().updateWidgetConfig(widgetInstance.id, newConfig);
           }}
-          onOutputChange={(newOutput) => {
+          onOutput={(newOutput) => {
             useWidgetStore.getState().updateWidgetOutput(widgetInstance.id, newOutput);
           }}
         />

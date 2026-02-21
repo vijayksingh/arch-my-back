@@ -119,7 +119,7 @@ export interface WidgetProps<
  */
 export interface WidgetEmbedProps<
   TInput = unknown,
-  TOutput = unknown,
+  _TOutput = unknown,
   TConfig = unknown,
 > {
   input?: TInput;

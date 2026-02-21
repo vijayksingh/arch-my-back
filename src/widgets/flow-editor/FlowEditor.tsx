@@ -7,10 +7,10 @@ import {
   addEdge,
   useNodesState,
   useEdgesState,
-  Connection,
-  Edge,
-  Node,
-  NodeTypes,
+  type Connection,
+  type Edge,
+  type Node,
+  type NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useWidgetStore } from '../store/widgetStore';
@@ -19,7 +19,7 @@ import { compositionEngine } from '../composition/compositionEngine';
 import type { WidgetConnection } from '../types';
 
 const nodeTypes: NodeTypes = {
-  widget: WidgetNode,
+  widget: WidgetNode as any,
 };
 
 interface FlowEditorProps {
@@ -94,7 +94,7 @@ export function FlowEditor({ flowId, onSave }: FlowEditorProps) {
     }));
   }, [connections, flows, flowId]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [nodes, , onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   // Handle connection creation
@@ -143,7 +143,7 @@ export function FlowEditor({ flowId, onSave }: FlowEditorProps) {
       const widget = store.widgets[node.id];
       if (widget) {
         store.updateWidgetConfig(node.id, {
-          ...widget.config,
+          ...(widget.config as Record<string, unknown>),
         });
         // Update position in widget instance
         widget.position = node.position;

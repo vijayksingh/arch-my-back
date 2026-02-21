@@ -16,8 +16,6 @@ const testWidgetDefinition: WidgetDefinition = {
   name: 'Test Widget',
   description: 'A test widget for rendering',
   category: 'visualization',
-  version: '1.0.0',
-  author: 'Test',
   tags: ['test'],
   icon: 'Box',
   component: TestWidgetComponent,
@@ -33,7 +31,12 @@ const testWidgetDefinition: WidgetDefinition = {
       result: { type: 'string' },
     },
   },
+  configSchema: {
+    type: 'object',
+    properties: {},
+  },
   defaultConfig: {},
+  examples: [],
 };
 
 describe('WidgetNode', () => {
@@ -52,19 +55,22 @@ describe('WidgetNode', () => {
     expect(instanceId).toBeTruthy();
 
     // Render WidgetNode
+    const nodeProps: any = {
+      id: "test-node-1",
+      type: "widgetNode",
+      data: { widgetInstanceId: instanceId! },
+      selected: false,
+      isConnectable: true,
+      zIndex: 0,
+      dragging: false,
+      positionAbsoluteX: 0,
+      positionAbsoluteY: 0,
+      width: 200,
+      height: 100,
+    };
     render(
       <ReactFlowProvider>
-        <WidgetNode
-          id="test-node-1"
-          type="widgetNode"
-          data={{ widgetInstanceId: instanceId! }}
-          selected={false}
-          isConnectable={true}
-          zIndex={0}
-          dragging={false}
-          positionAbsoluteX={0}
-          positionAbsoluteY={0}
-        />
+        <WidgetNode {...nodeProps} />
       </ReactFlowProvider>,
     );
 
@@ -76,19 +82,22 @@ describe('WidgetNode', () => {
   });
 
   it('should show error for non-existent widget instance', () => {
+    const nodeProps: any = {
+      id: "test-node-2",
+      type: "widgetNode",
+      data: { widgetInstanceId: 'non-existent-instance' },
+      selected: false,
+      isConnectable: true,
+      zIndex: 0,
+      dragging: false,
+      positionAbsoluteX: 0,
+      positionAbsoluteY: 0,
+      width: 200,
+      height: 100,
+    };
     render(
       <ReactFlowProvider>
-        <WidgetNode
-          id="test-node-2"
-          type="widgetNode"
-          data={{ widgetInstanceId: 'non-existent-instance' }}
-          selected={false}
-          isConnectable={true}
-          zIndex={0}
-          dragging={false}
-          positionAbsoluteX={0}
-          positionAbsoluteY={0}
-        />
+        <WidgetNode {...nodeProps} />
       </ReactFlowProvider>,
     );
 
@@ -111,19 +120,22 @@ describe('WidgetNode', () => {
       },
     };
 
+    const nodeProps: any = {
+      id: "test-node-3",
+      type: "widgetNode",
+      data: { widgetInstanceId: instanceId },
+      selected: false,
+      isConnectable: true,
+      zIndex: 0,
+      dragging: false,
+      positionAbsoluteX: 0,
+      positionAbsoluteY: 0,
+      width: 200,
+      height: 100,
+    };
     render(
       <ReactFlowProvider>
-        <WidgetNode
-          id="test-node-3"
-          type="widgetNode"
-          data={{ widgetInstanceId: instanceId }}
-          selected={false}
-          isConnectable={true}
-          zIndex={0}
-          dragging={false}
-          positionAbsoluteX={0}
-          positionAbsoluteY={0}
-        />
+        <WidgetNode {...nodeProps} />
       </ReactFlowProvider>,
     );
 
@@ -138,19 +150,22 @@ describe('WidgetNode', () => {
     // Create widget instance
     const instanceId = useWidgetStore.getState().addWidget('test-widget-render');
 
+    const nodeProps: any = {
+      id: "test-node-4",
+      type: "widgetNode",
+      data: { widgetInstanceId: instanceId! },
+      selected: true,
+      isConnectable: true,
+      zIndex: 0,
+      dragging: false,
+      positionAbsoluteX: 0,
+      positionAbsoluteY: 0,
+      width: 200,
+      height: 100,
+    };
     const { container } = render(
       <ReactFlowProvider>
-        <WidgetNode
-          id="test-node-4"
-          type="widgetNode"
-          data={{ widgetInstanceId: instanceId! }}
-          selected={true}
-          isConnectable={true}
-          zIndex={0}
-          dragging={false}
-          positionAbsoluteX={0}
-          positionAbsoluteY={0}
-        />
+        <WidgetNode {...nodeProps} />
       </ReactFlowProvider>,
     );
 

@@ -63,7 +63,7 @@ export function WidgetEmbed({
     theme,
   };
 
-  const componentProps = definition.embedComponent
+  const componentProps: any = definition.embedComponent
     ? {
         input: widget.input,
         config: widget.config,

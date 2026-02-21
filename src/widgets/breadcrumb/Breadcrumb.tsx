@@ -6,7 +6,7 @@ import {
   Copy,
   File,
   Folder,
-  Function as FunctionIcon,
+  Code as FunctionIcon,
   Box,
 } from 'lucide-react';
 
@@ -55,7 +55,6 @@ export interface BreadcrumbConfig {
  * Breadcrumb Navigator Widget Component
  */
 export function Breadcrumb({
-  instanceId,
   input,
   config,
   onOutput,
