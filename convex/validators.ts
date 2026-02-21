@@ -197,3 +197,58 @@ export const blockValidator = v.object({
   ),
   createdAt: v.number(),
 });
+
+// --- Walkthrough validators ---
+
+// Canvas operations for step-by-step reveals
+export const canvasOperationValidator = v.union(
+  v.object({
+    type: v.literal("add-node"),
+    node: canvasNodeValidator,
+  }),
+  v.object({
+    type: v.literal("add-edge"),
+    edge: canvasEdgeValidator,
+  }),
+  v.object({
+    type: v.literal("highlight"),
+    nodeIds: v.array(v.string()),
+    duration: v.optional(v.number()),
+  }),
+  v.object({
+    type: v.literal("animate-flow"),
+    edgeIds: v.array(v.string()),
+    duration: v.optional(v.number()),
+  })
+);
+
+// Quiz question for interactive steps
+export const quizQuestionValidator = v.object({
+  question: v.string(),
+  options: v.array(v.string()),
+  correctIndex: v.number(),
+  explanation: v.optional(v.string()),
+});
+
+// Required user action for interactive steps
+export const requiredActionValidator = v.object({
+  type: v.string(), // "click-node", "add-edge", etc.
+  description: v.string(),
+  targetId: v.optional(v.string()),
+});
+
+// Walkthrough step definition
+export const walkthroughStepValidator = v.object({
+  id: v.string(),
+  title: v.string(),
+  content: v.string(), // Markdown text explanation
+  canvasOperations: v.array(canvasOperationValidator),
+  widgetIds: v.optional(v.array(v.string())), // Widget IDs to show
+  quiz: v.optional(quizQuestionValidator),
+  requiredAction: v.optional(requiredActionValidator),
+  nextCondition: v.union(
+    v.literal("click"),
+    v.literal("quiz-correct"),
+    v.literal("action-complete")
+  ),
+});
