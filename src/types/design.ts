@@ -9,8 +9,6 @@ import type {
   httpMethodValidator,
   lldStatusValidator,
   requirementKindValidator,
-  canvasNodeValidator,
-  canvasEdgeValidator,
   canvasSectionValidator,
   viewportValidator,
   blockValidator,
