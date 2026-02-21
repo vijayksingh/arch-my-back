@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { WidgetProps } from '../types';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, Download, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * Alternative option with pros/cons
@@ -286,17 +287,23 @@ export function TradeoffsCard({
               const isSelected = selectedAlternative === alt.id;
 
               return (
-                <div
+                <motion.div
+                  layout
                   key={alt.id}
-                  className={`rounded-lg border transition-colors ${
+                  className={`overflow-hidden rounded-lg border transition-colors ${
                     isSelected
                       ? 'border-primary bg-primary/5'
                       : 'border-border bg-muted/20'
                   }`}
                 >
-                  <div className="flex w-full items-center justify-between p-3">
-                    <button
-                      className="flex flex-1 items-start text-left"
+                  <motion.div 
+                    layout="position"
+                    className="flex w-full items-center justify-between p-3"
+                  >
+                    <motion.button
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="flex flex-1 items-start text-left outline-none"
                       onClick={() => toggleAlternative(alt.id)}
                     >
                       <div className="flex-1">
@@ -315,9 +322,11 @@ export function TradeoffsCard({
                           <ChevronRight className="h-4 w-4" />
                         )}
                       </div>
-                    </button>
-                    <button
-                      className={`ml-2 flex-shrink-0 rounded-full px-2 py-0.5 text-xs transition-colors ${
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className={`ml-2 flex-shrink-0 rounded-full px-2 py-0.5 text-xs transition-colors outline-none ${
                         isSelected
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -328,47 +337,57 @@ export function TradeoffsCard({
                       }}
                     >
                       {isSelected ? 'Selected' : 'Select'}
-                    </button>
-                  </div>
+                    </motion.button>
+                  </motion.div>
 
-                  {isExpanded && (
-                    <div className="border-t border-border px-3 pb-3">
-                      {alt.description && (
-                        <div className="mb-2 mt-2 text-sm text-muted-foreground">
-                          {alt.description}
-                        </div>
-                      )}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <div className="mb-1 text-xs font-semibold text-success">
-                            Pros
+                  <AnimatePresence initial={false}>
+                    {isExpanded && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+                        className="border-t border-border px-3 pb-3"
+                      >
+                        <div className="pt-2">
+                          {alt.description && (
+                            <div className="mb-2 text-sm text-muted-foreground">
+                              {alt.description}
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <div className="mb-1 text-xs font-semibold text-success">
+                                Pros
+                              </div>
+                              <ul className="space-y-1">
+                                {alt.pros.map((pro, i) => (
+                                  <li key={i} className="flex items-start gap-1 text-xs">
+                                    <span className="text-success">✓</span>
+                                    <span>{pro}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div>
+                              <div className="mb-1 text-xs font-semibold text-error">
+                                Cons
+                              </div>
+                              <ul className="space-y-1">
+                                {alt.cons.map((con, i) => (
+                                  <li key={i} className="flex items-start gap-1 text-xs">
+                                    <span className="text-error">✗</span>
+                                    <span>{con}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           </div>
-                          <ul className="space-y-1">
-                            {alt.pros.map((pro, i) => (
-                              <li key={i} className="flex items-start gap-1 text-xs">
-                                <span className="text-success">✓</span>
-                                <span>{pro}</span>
-                              </li>
-                            ))}
-                          </ul>
                         </div>
-                        <div>
-                          <div className="mb-1 text-xs font-semibold text-error">
-                            Cons
-                          </div>
-                          <ul className="space-y-1">
-                            {alt.cons.map((con, i) => (
-                              <li key={i} className="flex items-start gap-1 text-xs">
-                                <span className="text-error">✗</span>
-                                <span>{con}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
               );
             })}
           </div>
