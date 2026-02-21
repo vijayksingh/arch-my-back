@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import type { ComponentTypeConfig } from '@/types';
 import { getIconByName } from '@/registry/iconRegistry';
 import { categoryAccentTokens } from '@/registry/categoryThemes';
+import { Card } from '@/components/ui/card';
 
 interface ComponentCardProps {
   componentType: ComponentTypeConfig;
@@ -24,13 +25,13 @@ export function ComponentCard({ componentType }: ComponentCardProps) {
   }
 
   return (
-    <div
+    <Card
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       className={cn(
-        'group relative flex h-9 cursor-grab select-none items-center gap-2 overflow-hidden rounded-lg px-2.5 transition-[background-color,transform,opacity] duration-150',
-        'bg-popover/82 hover:-translate-y-px hover:bg-popover/96',
+        'group relative flex h-9 cursor-grab select-none items-center gap-2 overflow-hidden px-2.5 transition-[background-color,transform,opacity] duration-150',
+        'bg-popover hover:-translate-y-px hover:bg-popover/96',
         isDragging ? 'cursor-grabbing opacity-40' : 'cursor-grab',
       )}
       style={{
@@ -59,6 +60,6 @@ export function ComponentCard({ componentType }: ComponentCardProps) {
       <span className="truncate text-[11px] font-medium leading-none text-card-foreground">
         {componentType.label}
       </span>
-    </div>
+    </Card>
   );
 }

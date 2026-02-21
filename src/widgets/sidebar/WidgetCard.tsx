@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { WidgetDefinition } from '../types';
 import { getIconByName } from '@/registry/iconRegistry';
+import { Card } from '@/components/ui/card';
 
 interface WidgetCardProps {
   widget: WidgetDefinition;
@@ -31,13 +32,13 @@ export function WidgetCard({ widget }: WidgetCardProps) {
   }
 
   return (
-    <div
+    <Card
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       className={cn(
-        'group relative flex h-10 cursor-grab select-none items-center gap-2.5 overflow-hidden rounded-lg px-2.5 transition-[background-color,transform,opacity] duration-150',
-        'bg-popover/82 hover:-translate-y-px hover:bg-popover/96',
+        'group relative flex h-10 cursor-grab select-none items-center gap-2.5 overflow-hidden px-2.5 transition-[background-color,transform,opacity] duration-150',
+        'bg-popover hover:-translate-y-px hover:bg-popover/96',
         isDragging ? 'cursor-grabbing opacity-40' : 'cursor-grab',
       )}
       style={{
@@ -71,6 +72,6 @@ export function WidgetCard({ widget }: WidgetCardProps) {
           {widget.tags.slice(0, 2).join(', ')}
         </span>
       </div>
-    </div>
+    </Card>
   );
 }

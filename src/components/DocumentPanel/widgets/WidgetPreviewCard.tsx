@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Card } from '@/components/ui/card';
 
 interface WidgetPreviewCardProps {
   icon: LucideIcon;
@@ -17,9 +18,9 @@ export function WidgetPreviewCard({
   className,
 }: WidgetPreviewCardProps) {
   return (
-    <div
+    <Card
       className={cn(
-        'rounded-lg border ui-border-ghost bg-card/70 p-3',
+        'ui-border-ghost bg-card p-3',
         accentBorder && 'border-l-2 border-l-primary',
         className,
       )}
@@ -31,6 +32,6 @@ export function WidgetPreviewCard({
         </span>
       </div>
       {children}
-    </div>
+    </Card>
   );
 }

@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Card } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +30,7 @@ interface FolderCardProps {
   isDropTarget?: boolean;
 }
 
-export function FolderCard({ folder, designCount = 0, isDropTarget = false }: FolderCardProps) {
+export function FolderCard({ folder, designCount = 0 }: FolderCardProps) {
   const navigate = useNavigate();
   const renameFolder = useMutation(api.folders.rename);
   const deleteFolder = useMutation(api.folders.remove);
@@ -99,12 +100,12 @@ export function FolderCard({ folder, designCount = 0, isDropTarget = false }: Fo
 
   return (
     <>
-      <div
+      <Card
         ref={setNodeRef}
         onClick={handleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`group relative flex flex-col items-start rounded-lg border-2 border-dashed bg-muted/30 p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${
+        className={`group relative flex flex-col items-start border-2 border-dashed p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${
           isOver
             ? 'border-primary bg-primary/5 scale-[1.02]'
             : 'border-border hover:border-accent/50'
@@ -113,8 +114,8 @@ export function FolderCard({ folder, designCount = 0, isDropTarget = false }: Fo
         <div className="mb-3 flex w-full items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
             {/* Large folder icon with warm accent background */}
-            <div className="flex-shrink-0 rounded-lg bg-amber-500/20 p-2">
-              <FolderIcon className="h-8 w-8 text-amber-600 dark:text-amber-500" />
+            <div className="flex-shrink-0 rounded-lg bg-warning-muted p-2">
+              <FolderIcon className="h-8 w-8 text-warning" />
             </div>
 
             <div className="flex-1 min-w-0 pt-1">
@@ -170,7 +171,7 @@ export function FolderCard({ folder, designCount = 0, isDropTarget = false }: Fo
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
+      </Card>
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
