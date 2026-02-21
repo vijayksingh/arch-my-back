@@ -7,6 +7,8 @@ import { DesignListItem } from './DesignCard';
 import { FolderCard } from './FolderCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -169,9 +171,13 @@ export function DashboardPage() {
     setOveredFolderId(null);
   };
 
-  // Count designs per folder
+  // Filter designs by type
+  const myDesigns = designs?.filter(d => !d.isExample) || [];
+  const exampleDesigns = designs?.filter(d => d.isExample === true) || [];
+
+  // Count designs per folder (only for user designs)
   const folderDesignCounts = new Map<string, number>();
-  designs?.forEach((design) => {
+  myDesigns.forEach((design) => {
     if (design.folderId) {
       folderDesignCounts.set(
         design.folderId,
@@ -180,8 +186,8 @@ export function DashboardPage() {
     }
   });
 
-  // Separate designs in folders vs at root
-  const rootDesigns = designs?.filter((d) => !d.folderId) || [];
+  // Separate user designs in folders vs at root
+  const rootMyDesigns = myDesigns.filter((d) => !d.folderId);
 
   const isLoading = designs === undefined || folders === undefined;
 
@@ -257,60 +263,121 @@ export function DashboardPage() {
         {/* Template Gallery */}
         <TemplateGallery />
 
-        {/* Empty state */}
-        {rootDesigns.length === 0 && (!folders || folders.length === 0) ? (
-          <div className="flex h-full items-center justify-center">
-            <div className="flex flex-col items-center text-center py-24">
-              <div className="mb-6 relative">
-                <div className="absolute inset-0 rounded-full bg-primary/10 blur-2xl" />
-                <Layers className="h-16 w-16 text-muted-foreground/50 relative" />
-              </div>
-              <h2 className="text-xl font-semibold mb-2">Create your first architecture</h2>
-              <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-                Start with a blank canvas or choose a template above
-              </p>
-              <Button onClick={handleCreateDesign} size="lg">
-                <PlusIcon className="h-5 w-5 mr-2" />
-                New Design
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Folders section */}
-            {folders && folders.length > 0 && (
-              <div className="mb-8">
-                <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Folders
-                </h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {folders.map((folder) => (
-                    <FolderCard
-                      key={folder._id}
-                      folder={folder}
-                      designCount={folderDesignCounts.get(folder._id) || 0}
-                      isDropTarget={overedFolderId === folder._id}
-                    />
-                  ))}
+        {/* Tabs Navigation */}
+        <Tabs defaultValue="my-designs" className="w-full mt-8">
+          <TabsList className="mb-6">
+            <TabsTrigger value="my-designs" className="gap-2">
+              My Designs
+              {myDesigns.length > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {myDesigns.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="examples" className="gap-2">
+              Examples
+              {exampleDesigns.length > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {exampleDesigns.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* My Designs Tab */}
+          <TabsContent value="my-designs">
+            {rootMyDesigns.length === 0 && (!folders || folders.length === 0) ? (
+              <div className="flex h-full items-center justify-center">
+                <div className="flex flex-col items-center text-center py-24">
+                  <div className="mb-6 relative">
+                    <div className="absolute inset-0 rounded-full bg-primary/10 blur-2xl" />
+                    <Layers className="h-16 w-16 text-muted-foreground/50 relative" />
+                  </div>
+                  <h2 className="text-xl font-semibold mb-2">Create your first architecture</h2>
+                  <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+                    Start with a blank canvas or choose a template above
+                  </p>
+                  <Button onClick={handleCreateDesign} size="lg">
+                    <PlusIcon className="h-5 w-5 mr-2" />
+                    New Design
+                  </Button>
                 </div>
               </div>
-            )}
+            ) : (
+              <>
+                {/* Folders */}
+                {folders && folders.length > 0 && (
+                  <section className="mb-8">
+                    <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Folders
+                    </h2>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {folders.map((folder) => (
+                        <FolderCard
+                          key={folder._id}
+                          folder={folder}
+                          designCount={folderDesignCounts.get(folder._id) || 0}
+                          isDropTarget={overedFolderId === folder._id}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                )}
 
-            {/* Designs section */}
-            {rootDesigns.length > 0 && (
-              <div>
+                {/* Designs */}
+                {rootMyDesigns.length > 0 && (
+                  <section>
+                    <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Recent Designs
+                    </h2>
+                    <div className="flex flex-col gap-2">
+                      {rootMyDesigns.map((design) => (
+                        <DesignListItem key={design._id} design={design} />
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+          </TabsContent>
+
+          {/* Examples Tab */}
+          <TabsContent value="examples">
+            {exampleDesigns.length === 0 ? (
+              <div className="flex h-full items-center justify-center">
+                <div className="flex flex-col items-center text-center py-24">
+                  <div className="mb-6 relative">
+                    <div className="absolute inset-0 rounded-full bg-primary/10 blur-2xl" />
+                    <Layers className="h-16 w-16 text-muted-foreground/50 relative" />
+                  </div>
+                  <h2 className="text-xl font-semibold mb-2">No examples yet</h2>
+                  <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+                    Run the seed mutation to create example designs
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <section>
                 <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  {folders && folders.length > 0 ? 'Recent Designs' : 'All Designs'}
+                  Example Architectures
                 </h2>
                 <div className="flex flex-col gap-2">
-                  {rootDesigns.map((design) => (
-                    <DesignListItem key={design._id} design={design} />
+                  {exampleDesigns.map((design) => (
+                    <div key={design._id} className="relative">
+                      <DesignListItem design={design} />
+                      <Badge
+                        variant="secondary"
+                        className="absolute top-3 right-3 bg-primary/10 text-primary pointer-events-none"
+                      >
+                        Example
+                      </Badge>
+                    </div>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
-          </>
-        )}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Folder creation dialog */}
