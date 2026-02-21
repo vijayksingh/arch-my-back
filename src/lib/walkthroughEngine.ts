@@ -9,41 +9,14 @@
  */
 
 import type { Node, Edge } from '@xyflow/react';
+import type {
+  WalkthroughStep,
+  CanvasOperation,
+  QuizWidgetConfig,
+} from '@/types/walkthrough';
 
-export interface CanvasOperation {
-  type: 'add-node' | 'add-edge' | 'highlight' | 'animate-flow';
-  node?: Node;
-  edge?: Edge;
-  nodeIds?: string[];
-  edgeIds?: string[];
-  duration?: number;
-}
-
-export interface QuizQuestion {
-  question: string;
-  options: string[];
-  correctIndex: number;
-  explanation?: string;
-}
-
-export interface RequiredAction {
-  type: string;
-  description: string;
-  targetId?: string;
-  sourceId?: string;
-  targetNodeId?: string;
-}
-
-export interface WalkthroughStep {
-  id: string;
-  title: string;
-  content: string; // Markdown
-  canvasOperations: CanvasOperation[];
-  widgetIds?: string[];
-  quiz?: QuizQuestion;
-  requiredAction?: RequiredAction;
-  nextCondition: 'click' | 'quiz-correct' | 'action-complete';
-}
+// Re-export types that consumers need
+export type { WalkthroughStep, QuizWidgetConfig } from '@/types/walkthrough';
 
 export interface WalkthroughState {
   currentStepIndex: number;
@@ -53,7 +26,7 @@ export interface WalkthroughState {
   canvasEdges: Edge[];
   highlightedNodeIds: string[];
   animatedEdgeIds: string[];
-  quizAnswers: Record<string, number>; // stepId -> selectedIndex
+  quizAnswers: Record<string, string[]>; // stepId -> selected option IDs
 }
 
 export class WalkthroughEngine {
@@ -96,7 +69,7 @@ export class WalkthroughEngine {
     if (!currentStep) return false;
 
     switch (currentStep.nextCondition) {
-      case 'click':
+      case 'click-next':
         return true;
       case 'quiz-correct':
         return this.isQuizCorrect(currentStep);
@@ -174,18 +147,31 @@ export class WalkthroughEngine {
   /**
    * Submit quiz answer
    */
-  submitQuizAnswer(stepId: string, selectedIndex: number): { correct: boolean; explanation?: string } {
+  submitQuizAnswer(stepId: string, selectedOptionIds: string[]): { correct: boolean; explanation?: string } {
     const step = this.steps.find(s => s.id === stepId);
-    if (!step?.quiz) {
+    if (!step?.widgets) {
       return { correct: false };
     }
 
-    this.state.quizAnswers[stepId] = selectedIndex;
+    // Find quiz widget in widgets array
+    const quizWidget = step.widgets.find(w => w.type === 'quiz') as QuizWidgetConfig | undefined;
+    if (!quizWidget) {
+      return { correct: false };
+    }
 
-    const correct = selectedIndex === step.quiz.correctIndex;
+    this.state.quizAnswers[stepId] = selectedOptionIds;
+
+    // Check if all selected options are correct
+    const correctOptionIds = quizWidget.options.filter(opt => opt.correct).map(opt => opt.id);
+    const correct =
+      selectedOptionIds.length === correctOptionIds.length &&
+      selectedOptionIds.every(id => correctOptionIds.includes(id));
+
+    // Return explanation from first selected option
+    const firstSelected = quizWidget.options.find(opt => opt.id === selectedOptionIds[0]);
     return {
       correct,
-      explanation: step.quiz.explanation,
+      explanation: firstSelected?.explanation,
     };
   }
 
@@ -210,12 +196,20 @@ export class WalkthroughEngine {
       switch (op.type) {
         case 'add-node':
           if (op.node) {
-            this.state.canvasNodes.push(op.node);
+            this.state.canvasNodes.push(op.node as Node);
+            // Handle highlight flag
+            if (op.highlight) {
+              this.state.highlightedNodeIds.push(op.node.id);
+            }
           }
           break;
         case 'add-edge':
           if (op.edge) {
-            this.state.canvasEdges.push(op.edge);
+            this.state.canvasEdges.push(op.edge as Edge);
+            // Handle highlight flag
+            if (op.highlight) {
+              this.state.animatedEdgeIds.push(op.edge.id);
+            }
           }
           break;
         case 'highlight':
@@ -224,8 +218,20 @@ export class WalkthroughEngine {
           }
           break;
         case 'animate-flow':
-          if (op.edgeIds) {
-            this.state.animatedEdgeIds = [...op.edgeIds];
+          // AnimateFlowOperation uses path (array of node IDs), not edgeIds
+          // For now, we'll just store the path in highlightedNodeIds
+          if (op.path) {
+            this.state.highlightedNodeIds = [...op.path];
+          }
+          break;
+        case 'remove-highlight':
+          // Remove highlights for specified nodes, or all if not specified
+          if (op.nodeIds && op.nodeIds.length > 0) {
+            this.state.highlightedNodeIds = this.state.highlightedNodeIds.filter(
+              id => !op.nodeIds!.includes(id)
+            );
+          } else {
+            this.state.highlightedNodeIds = [];
           }
           break;
       }
@@ -250,12 +256,29 @@ export class WalkthroughEngine {
   }
 
   private isQuizCorrect(step: WalkthroughStep): boolean {
-    if (!step.quiz) return false;
-    const answer = this.state.quizAnswers[step.id];
-    return answer !== undefined && answer === step.quiz.correctIndex;
+    if (!step.widgets) return false;
+
+    // Find quiz widget in widgets array
+    const quizWidget = step.widgets.find(w => w.type === 'quiz') as QuizWidgetConfig | undefined;
+    if (!quizWidget) return false;
+
+    const selectedOptionIds = this.state.quizAnswers[step.id];
+    if (!selectedOptionIds || selectedOptionIds.length === 0) return false;
+
+    // Get all correct option IDs
+    const correctOptionIds = quizWidget.options.filter(opt => opt.correct).map(opt => opt.id);
+
+    // Check if all selected options are correct
+    return (
+      selectedOptionIds.length === correctOptionIds.length &&
+      selectedOptionIds.every(id => correctOptionIds.includes(id))
+    );
   }
 
   private isActionComplete(step: WalkthroughStep): boolean {
+    // Check if step has a userAction requirement
+    if (!step.userAction) return true; // No action required, can proceed
+
     return this.state.completedActionStepIds.includes(step.id);
   }
 }

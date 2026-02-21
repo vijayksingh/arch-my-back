@@ -145,11 +145,9 @@ Before we dive into solutions, put yourself in the architect's seat. How would Y
           highlight: true,
         },
       ],
-      requiredAction: {
-        type: 'connect-edge',
-        description: 'Connect User to Server',
-        sourceId: 'user-simple',
-        targetNodeId: 'server-simple',
+      userAction: {
+        type: 'click-node',
+        nodeId: 'server-simple',
       },
       nextCondition: 'action-complete',
     },
@@ -646,11 +644,9 @@ Each strategy runs independently as a **candidate generator**, producing ~500 ca
           },
         },
       ],
-      requiredAction: {
-        type: 'connect-edge',
-        description: 'Connect the Recommender Engine to the Redis Cache to serve pre-computed results',
-        sourceId: 'simple-recommender',
-        targetNodeId: 'redis-cache',
+      userAction: {
+        type: 'click-node',
+        nodeId: 'redis-cache',
       },
       nextCondition: 'action-complete',
       widgets: [
