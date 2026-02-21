@@ -85,17 +85,12 @@ export class WalkthroughEngine {
   }
 
   /**
-   * Go to a specific step directly (useful for scrollytelling)
+   * Go to a specific step directly (for navigation, does NOT mark steps complete)
+   * Steps are only marked complete via explicit next() calls
    */
   goToStep(index: number): WalkthroughState {
     if (index < 0 || index >= this.steps.length) {
       return this.state;
-    }
-
-    // Mark current step as completed before moving
-    const currentStep = this.getCurrentStep();
-    if (currentStep && !this.state.completedStepIds.includes(currentStep.id)) {
-      this.state.completedStepIds.push(currentStep.id);
     }
 
     this.state.currentStepIndex = index;
