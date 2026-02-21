@@ -99,6 +99,20 @@
     --node-selected-scale: 1.02;
 
     --export-bg: hsl(var(--background));
+
+    /* Status colors */
+    --status-success: 142 71% 45%;       /* green */
+    --status-success-foreground: 0 0% 100%;
+    --status-success-muted: 142 71% 45%;  /* for bg with /10 opacity */
+    --status-error: 0 84% 60%;            /* red */
+    --status-error-foreground: 0 0% 100%;
+    --status-error-muted: 0 84% 60%;
+    --status-warning: 38 92% 50%;         /* amber */
+    --status-warning-foreground: 0 0% 10%;
+    --status-warning-muted: 38 92% 50%;
+    --status-info: 217 91% 60%;           /* blue */
+    --status-info-foreground: 0 0% 100%;
+    --status-info-muted: 217 91% 60%;
   }
 
   .dark,
@@ -186,6 +200,20 @@
     --node-hover-shadow: 0 10px 24px rgba(0, 0, 0, 0.42);
     --node-selected-shadow: 0 0 0 1px hsl(var(--background) / 0.6), 0 14px 28px rgba(0, 0, 0, 0.48);
     --node-selected-scale: 1.02;
+
+    /* Status colors - increased lightness for dark mode readability */
+    --status-success: 142 71% 65%;       /* green - lighter for dark mode */
+    --status-success-foreground: 0 0% 10%;
+    --status-success-muted: 142 71% 65%;
+    --status-error: 0 84% 72%;            /* red - lighter for dark mode */
+    --status-error-foreground: 0 0% 10%;
+    --status-error-muted: 0 84% 72%;
+    --status-warning: 38 92% 65%;         /* amber - lighter for dark mode */
+    --status-warning-foreground: 0 0% 10%;
+    --status-warning-muted: 38 92% 65%;
+    --status-info: 217 91% 72%;           /* blue - lighter for dark mode */
+    --status-info-foreground: 0 0% 10%;
+    --status-info-muted: 217 91% 72%;
   }
 }
 

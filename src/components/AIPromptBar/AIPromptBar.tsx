@@ -42,7 +42,7 @@ export function AIPromptBar({ onGenerate, disabled = false }: AIPromptBarProps) 
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Describe your architecture... (e.g., 'Build an e-commerce platform with React frontend, Node.js API, PostgreSQL database, and Redis cache')"
             className={`min-h-[100px] resize-none pr-24 ${
-              error ? 'border-red-500 focus-visible:ring-red-500' : ''
+              error ? 'border-error focus-visible:ring-error' : ''
             }`}
             disabled={disabled || isLoading}
           />
@@ -67,7 +67,7 @@ export function AIPromptBar({ onGenerate, disabled = false }: AIPromptBarProps) 
         </div>
 
         {error && (
-          <div className="text-sm text-red-500 dark:text-red-400">
+          <div className="text-sm text-error">
             {error}
           </div>
         )}

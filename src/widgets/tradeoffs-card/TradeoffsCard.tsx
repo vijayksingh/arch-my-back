@@ -48,7 +48,6 @@ export interface TradeoffsCardConfig {
  * Trade-offs Card Widget Component
  */
 export function TradeoffsCard({
-  instanceId,
   input,
   config,
   onOutput,
@@ -201,46 +200,46 @@ export function TradeoffsCard({
         {/* Pros & Cons */}
         <div className="mb-4 grid grid-cols-2 gap-3">
           {/* Pros */}
-          <div className="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/30">
+          <div className="rounded-lg border border-success/30 bg-success-muted p-3">
             <div className="mb-2 flex items-center gap-2">
-              <ThumbsUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <div className="text-sm font-semibold text-green-900 dark:text-green-100">
+              <ThumbsUp className="h-4 w-4 text-success" />
+              <div className="text-sm font-semibold text-success">
                 Pros ({prosCount})
               </div>
             </div>
             <ul className="space-y-1.5">
               {input.pros.map((pro, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm">
-                  <span className="mt-1 text-green-600 dark:text-green-400">✓</span>
-                  <span className="flex-1 text-green-800 dark:text-green-200">{pro}</span>
+                  <span className="mt-1 text-success">✓</span>
+                  <span className="flex-1 text-success">{pro}</span>
                 </li>
               ))}
             </ul>
             {input.pros.length === 0 && (
-              <div className="text-sm italic text-green-700/50 dark:text-green-300/50">
+              <div className="text-sm italic text-success/50">
                 No pros listed
               </div>
             )}
           </div>
 
           {/* Cons */}
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/30">
+          <div className="rounded-lg border border-error/30 bg-error-muted p-3">
             <div className="mb-2 flex items-center gap-2">
-              <ThumbsDown className="h-4 w-4 text-red-600 dark:text-red-400" />
-              <div className="text-sm font-semibold text-red-900 dark:text-red-100">
+              <ThumbsDown className="h-4 w-4 text-error" />
+              <div className="text-sm font-semibold text-error">
                 Cons ({consCount})
               </div>
             </div>
             <ul className="space-y-1.5">
               {input.cons.map((con, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm">
-                  <span className="mt-1 text-red-600 dark:text-red-400">✗</span>
-                  <span className="flex-1 text-red-800 dark:text-red-200">{con}</span>
+                  <span className="mt-1 text-error">✗</span>
+                  <span className="flex-1 text-error">{con}</span>
                 </li>
               ))}
             </ul>
             {input.cons.length === 0 && (
-              <div className="text-sm italic text-red-700/50 dark:text-red-300/50">
+              <div className="text-sm italic text-error/50">
                 No cons listed
               </div>
             )}
@@ -252,9 +251,9 @@ export function TradeoffsCard({
           <div
             className={`rounded-full px-3 py-1 text-sm font-medium ${
               balance > 0
-                ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200'
+                ? 'bg-success-muted text-success'
                 : balance < 0
-                  ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200'
+                  ? 'bg-error-muted text-error'
                   : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
             }`}
           >
@@ -341,26 +340,26 @@ export function TradeoffsCard({
                       )}
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <div className="mb-1 text-xs font-semibold text-green-600 dark:text-green-400">
+                          <div className="mb-1 text-xs font-semibold text-success">
                             Pros
                           </div>
                           <ul className="space-y-1">
                             {alt.pros.map((pro, i) => (
                               <li key={i} className="flex items-start gap-1 text-xs">
-                                <span className="text-green-600 dark:text-green-400">✓</span>
+                                <span className="text-success">✓</span>
                                 <span>{pro}</span>
                               </li>
                             ))}
                           </ul>
                         </div>
                         <div>
-                          <div className="mb-1 text-xs font-semibold text-red-600 dark:text-red-400">
+                          <div className="mb-1 text-xs font-semibold text-error">
                             Cons
                           </div>
                           <ul className="space-y-1">
                             {alt.cons.map((con, i) => (
                               <li key={i} className="flex items-start gap-1 text-xs">
-                                <span className="text-red-600 dark:text-red-400">✗</span>
+                                <span className="text-error">✗</span>
                                 <span>{con}</span>
                               </li>
                             ))}

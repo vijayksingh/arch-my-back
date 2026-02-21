@@ -56,7 +56,6 @@ export interface ComparisonTableConfig {
  * Comparison Table Widget Component
  */
 export function ComparisonTable({
-  instanceId,
   input,
   config,
   onOutput,
@@ -196,12 +195,12 @@ export function ComparisonTable({
       return (
         <div className="space-y-1 text-sm">
           {cell.pros && cell.pros.length > 0 && (
-            <div className="text-green-600 dark:text-green-400">
+            <div className="text-success">
               ✓ {cell.pros.join(', ')}
             </div>
           )}
           {cell.cons && cell.cons.length > 0 && (
-            <div className="text-red-600 dark:text-red-400">
+            <div className="text-error">
               ✗ {cell.cons.join(', ')}
             </div>
           )}

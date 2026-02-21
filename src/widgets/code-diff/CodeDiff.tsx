@@ -52,7 +52,6 @@ interface DiffLine {
  * Code Diff Widget Component
  */
 export function CodeDiff({
-  instanceId,
   input,
   config,
   onOutput,
@@ -151,9 +150,9 @@ export function CodeDiff({
   const getLineColor = (type: DiffLineType) => {
     switch (type) {
       case 'added':
-        return 'bg-green-100 dark:bg-green-950/30 text-green-900 dark:text-green-100';
+        return 'bg-success-muted text-success';
       case 'removed':
-        return 'bg-red-100 dark:bg-red-950/30 text-red-900 dark:text-red-100';
+        return 'bg-error-muted text-error';
       case 'unchanged':
         return 'bg-background';
       case 'empty':

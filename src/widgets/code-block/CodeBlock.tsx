@@ -47,7 +47,6 @@ export interface CodeBlockConfig {
  * Interactive Code Block Widget Component
  */
 export function CodeBlock({
-  instanceId,
   input,
   config,
   onOutput,
@@ -187,7 +186,6 @@ export function CodeBlock({
       }
 
       const iframe = iframeRef.current;
-      const logs: string[] = [];
 
       // Create a safe sandbox HTML document
       const sandboxHTML = `
@@ -354,7 +352,7 @@ export function CodeBlock({
           </div>
           <div className="max-h-48 overflow-auto px-4 pb-3">
             {error ? (
-              <div className="flex items-start gap-2 rounded bg-red-50 p-2 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
+              <div className="flex items-start gap-2 rounded bg-error-muted p-2 text-sm text-error">
                 <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <pre className="whitespace-pre-wrap font-mono text-xs">{error}</pre>
               </div>
