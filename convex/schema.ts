@@ -177,6 +177,8 @@ export default defineSchema({
     title: v.string(),
     description: v.optional(v.string()),
     isPublic: v.boolean(),
+    isExample: v.optional(v.boolean()),
+    templateSlug: v.optional(v.string()),
     shareSlug: v.optional(v.string()),
     thumbnailStorageId: v.optional(v.id('_storage')),
     createdAt: v.number(),
