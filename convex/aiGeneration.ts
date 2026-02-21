@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { v } from 'convex/values';
 import { action, query, mutation } from './_generated/server';
 import { api } from './_generated/api';

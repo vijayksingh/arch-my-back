@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { ArchspecDocumentSchema, type ArchspecDocument } from './archspecZodSchema';
 
 /**
@@ -55,7 +54,7 @@ export function validateArchspec(input: unknown): ValidationResult<ArchspecDocum
  *
  * @param input - Unknown input to validate
  * @returns Typed ArchspecDocument
- * @throws {z.ZodError} If validation fails
+ * @throws {ZodError} If validation fails
  */
 export function validateArchspecStrict(input: unknown): ArchspecDocument {
   return ArchspecDocumentSchema.parse(input);

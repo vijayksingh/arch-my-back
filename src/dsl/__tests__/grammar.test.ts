@@ -16,7 +16,7 @@ architecture "Simple" {
       // Check for no syntax errors
       let hasError = false;
       tree.iterate({
-        enter(node) {
+        enter(node: any) {
           if (node.type.isError) {
             hasError = true;
           }
@@ -50,7 +50,7 @@ architecture "E-Commerce" {
 
       let hasError = false;
       tree.iterate({
-        enter(node) {
+        enter(node: any) {
           if (node.type.isError) {
             hasError = true;
           }
@@ -77,7 +77,7 @@ architecture "All Types" {
       const tree = parser.parse(dsl);
       let hasError = false;
       tree.iterate({
-        enter(node) {
+        enter(node: any) {
           if (node.type.isError) {
             hasError = true;
           }
@@ -104,7 +104,7 @@ architecture "Connections" {
       const tree = parser.parse(dsl);
       let hasError = false;
       tree.iterate({
-        enter(node) {
+        enter(node: any) {
           if (node.type.isError) {
             hasError = true;
           }
@@ -127,7 +127,7 @@ architecture "Chain" {
       const tree = parser.parse(dsl);
       let hasError = false;
       tree.iterate({
-        enter(node) {
+        enter(node: any) {
           if (node.type.isError) {
             hasError = true;
           }
@@ -152,7 +152,7 @@ architecture "Properties" {
       const tree = parser.parse(dsl);
       let hasError = false;
       tree.iterate({
-        enter(node) {
+        enter(node: any) {
           if (node.type.isError) {
             hasError = true;
           }
@@ -173,7 +173,7 @@ architecture "Incomplete" {
       const tree = parser.parse(dsl);
       let errorCount = 0;
       tree.iterate({
-        enter(node) {
+        enter(node: any) {
           if (node.type.isError) {
             errorCount++;
           }

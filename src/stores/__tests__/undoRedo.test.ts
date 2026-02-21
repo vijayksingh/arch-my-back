@@ -1,6 +1,7 @@
-import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach } from 'vitest';
 import { useCanvasStore } from '../canvasStore';
-import type { CanvasNode, ArchEdge } from '@/types';
+import type { CanvasNode } from '@/types';
+import type { Connection } from '@xyflow/react';
 
 describe('canvasStore undo/redo', () => {
   beforeEach(() => {
@@ -208,10 +209,13 @@ describe('canvasStore undo/redo', () => {
     const targetId = nodes[1].id;
 
     // Connect them
-    store.onConnect({
+    const connection: Connection = {
       source: sourceId,
       target: targetId,
-    });
+      sourceHandle: null,
+      targetHandle: null,
+    };
+    store.onConnect(connection);
 
     expect(useCanvasStore.getState().edges).toHaveLength(1);
 

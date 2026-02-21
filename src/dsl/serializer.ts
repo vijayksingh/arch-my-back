@@ -87,11 +87,11 @@ function serializeBody(
   const lines: string[] = [];
 
   // Filter components for this level
-  const components = doc.components.filter(c => c.group === currentGroupId);
+  const components = doc.components.filter((c: Component) => c.group === currentGroupId);
 
   // Serialize groups first
   for (const group of groups) {
-    const childGroups = (doc.groups ?? []).filter(g => g.parent === group.id);
+    const childGroups = (doc.groups ?? []).filter((g: Group) => g.parent === group.id);
     const groupLines = serializeGroup(group, doc, childGroups, groupMap, indent, spacing);
     lines.push(...groupLines);
     if (spacing && groupLines.length > 0) lines.push('');

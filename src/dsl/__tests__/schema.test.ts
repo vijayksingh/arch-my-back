@@ -157,7 +157,7 @@ describe('archspec Zod schema validation', () => {
       const result = ArchspecDocumentSchema.safeParse(invalidDoc);
       expect(result.success).toBe(false);
       if (!result.success) {
-        const nameError = result.error.issues.find((e) => e.path[0] === 'name');
+        const nameError = result.error.issues.find((e: any) => e.path[0] === 'name');
         expect(nameError).toBeDefined();
         expect(nameError?.code).toBe('invalid_type');
       }

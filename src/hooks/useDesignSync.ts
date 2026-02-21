@@ -7,14 +7,7 @@ import { useCanvasStore } from "@/stores/canvasStore";
 import { useDocumentStore } from "@/stores/documentStore";
 
 /** Extract only domain fields from a React Flow node — strips runtime state */
-function cleanNodeForStorage(node: {
-  id: string;
-  type: string;
-  position: { x: number; y: number };
-  data: unknown;
-  style?: unknown;
-  measured?: { width: number; height: number };
-}) {
+function cleanNodeForStorage(node: CanvasNode) {
   return {
     id: node.id,
     type: node.type,
@@ -26,15 +19,7 @@ function cleanNodeForStorage(node: {
 }
 
 /** Extract only domain fields from a React Flow edge — strips runtime state */
-function cleanEdgeForStorage(edge: {
-  id: string;
-  source: string;
-  target: string;
-  type?: string;
-  data?: unknown;
-  sourceHandle?: string | null;
-  targetHandle?: string | null;
-}) {
+function cleanEdgeForStorage(edge: ArchEdge) {
   return {
     id: edge.id,
     source: edge.source,
@@ -103,8 +88,8 @@ export function useDesignSync(designId: DesignId | null) {
         const { nodes, edges, sections } = useCanvasStore.getState();
         saveCanvas({
           designId,
-          nodes: nodes.map(cleanNodeForStorage),
-          edges: edges.map(cleanEdgeForStorage),
+          nodes: nodes.map(cleanNodeForStorage) as any,
+          edges: edges.map(cleanEdgeForStorage) as any,
           sections,
         }).catch((err: Error) => {
           console.error("Failed to save canvas:", err);

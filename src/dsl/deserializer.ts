@@ -5,10 +5,13 @@
  * Handles variable resolution, connection chain expansion, and error recovery.
  */
 
+/// <reference path="./parser-types.d.ts" />
+
 import { parser } from './syntax.js';
 import type { SyntaxNode } from '@lezer/common';
-import { validateArchspec, type ValidationResult } from './validator.js';
+import { validateArchspec } from './validator.js';
 import type { ArchspecDocument } from './archspecZodSchema.js';
+// @ts-expect-error - Generated Lezer terms file
 import * as terms from './archspec.parser.terms.js';
 
 /**
@@ -60,7 +63,7 @@ export function deserialize(dslText: string): DeserializeResult {
 
   // Collect syntax errors
   tree.iterate({
-    enter(node) {
+    enter(node: SyntaxNode) {
       if (node.type.isError) {
         diagnostics.push({
           severity: 'error',

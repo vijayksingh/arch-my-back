@@ -56,7 +56,7 @@ architecture "E-Commerce" {
         expect(result.data.connections).toHaveLength(2);
 
         // Check component grouping
-        const apiComponent = result.data.components.find((c) => c.id === 'api');
+        const apiComponent = result.data.components.find((c: any) => c.id === 'api');
         expect(apiComponent?.group).toBe('compute');
       }
     });
@@ -152,8 +152,8 @@ architecture "Broken" {
         archspec_version: '1.0',
         name: 'URL Shortener',
         components: [
-          { id: 'api', type: 'app_server', label: 'API' },
-          { id: 'db', type: 'postgres', label: 'Database' },
+          { id: 'api', type: 'app_server' as const, label: 'API' },
+          { id: 'db', type: 'postgres' as const, label: 'Database' },
         ],
         connections: [{ from: 'api', to: 'db' }],
       };
@@ -171,7 +171,7 @@ architecture "Broken" {
         archspec_version: '1.0',
         name: 'With Groups',
         components: [
-          { id: 'api', type: 'app_server', label: 'API', group: 'compute' },
+          { id: 'api', type: 'app_server' as const, label: 'API', group: 'compute' },
         ],
         groups: [{ id: 'compute', label: 'Compute Layer', parent: null }],
         connections: [],
@@ -189,7 +189,7 @@ architecture "Broken" {
         components: [
           {
             id: 'api',
-            type: 'app_server',
+            type: 'app_server' as const,
             label: 'API',
             config: { runtime: 'node:20', replicas: 3 },
           },
@@ -207,8 +207,8 @@ architecture "Broken" {
         archspec_version: '1.0',
         name: 'Connection Config',
         components: [
-          { id: 'a', type: 'app_server', label: 'A' },
-          { id: 'b', type: 'postgres', label: 'B' },
+          { id: 'a', type: 'app_server' as const, label: 'A' },
+          { id: 'b', type: 'postgres' as const, label: 'B' },
         ],
         connections: [
           { from: 'a', to: 'b', config: { protocol: 'TCP', port: 5432 } },
@@ -226,8 +226,8 @@ architecture "Broken" {
         archspec_version: '1.0',
         name: 'Type Mapping',
         components: [
-          { id: 'c1', type: 'redis', label: 'Cache' },
-          { id: 'c2', type: 'kafka', label: 'Stream' },
+          { id: 'c1', type: 'redis' as const, label: 'Cache' },
+          { id: 'c2', type: 'kafka' as const, label: 'Stream' },
         ],
         connections: [],
       };
@@ -290,7 +290,7 @@ architecture "Groups" {
 
         expect(result2.success).toBe(true);
         if (result2.data) {
-          const api = result2.data.components.find((c) => c.id === 'api');
+          const api = result2.data.components.find((c: any) => c.id === 'api');
           expect(api?.group).toBe('backend');
         }
       }

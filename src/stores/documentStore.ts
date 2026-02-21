@@ -100,7 +100,7 @@ interface DocumentStore {
   setBlocks: (blocks: NotebookBlock[]) => void;
 }
 
-export const useDocumentStore = create<DocumentStore>()((set, get) => ({
+export const useDocumentStore = create<DocumentStore>()((set, _get) => ({
   blocks: [defaultTextBlock],
   pendingFocusBlockId: null,
 

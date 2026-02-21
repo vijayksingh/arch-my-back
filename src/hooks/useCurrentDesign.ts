@@ -72,7 +72,7 @@ export function useCurrentDesign() {
 
         // Run migration with adapter functions
         migrateLocalStorageToConvex(
-          async (args) => createDesignRef.current(args),
+          async (args) => createDesignRef.current(args) as any,
           async (args) => saveCanvasRef.current(args as any),
           async (args) => saveBlocksRef.current(args as any)
         )
@@ -103,7 +103,7 @@ export function useCurrentDesign() {
       createDesignRef
         .current({
           title: "My Design",
-          folderId: null,
+          folderId: undefined,
         })
         .then((id) => {
           setDesignId(id as DesignId);

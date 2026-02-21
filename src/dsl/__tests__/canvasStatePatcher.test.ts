@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { patchCanvasState } from '../canvasStatePatcher';
 import type { ArchspecDocument } from '../archspecZodSchema';
-import type { CanvasNode, CanvasEdge } from '../canvasAdapter';
 
 describe('canvas state patcher (diff/patch algorithm)', () => {
   describe('first load (no previous state)', () => {
@@ -33,7 +32,7 @@ describe('canvas state patcher (diff/patch algorithm)', () => {
         name: 'Multiple',
         components: [
           { id: 'a', type: 'app_server', label: 'A' },
-          { id: 'b', type: 'cache', label: 'B' },
+          { id: 'b', type: 'redis', label: 'B' },
           { id: 'c', type: 'postgres', label: 'C' },
         ],
         connections: [],

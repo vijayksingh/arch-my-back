@@ -2,9 +2,9 @@ import ELK from 'elkjs/lib/elk-api';
 import type { CanvasNode, ArchEdge } from '@/types';
 
 // ELK.js instance with Web Worker
-let elkInstance: ELK | null = null;
+let elkInstance: InstanceType<typeof ELK> | null = null;
 
-function getElkInstance(): ELK {
+function getElkInstance(): InstanceType<typeof ELK> {
   if (!elkInstance) {
     elkInstance = new ELK({
       workerFactory: () =>
@@ -18,6 +18,8 @@ interface ElkNode {
   id: string;
   width?: number;
   height?: number;
+  x?: number;
+  y?: number;
   children?: ElkNode[];
 }
 
@@ -156,13 +158,7 @@ export async function runElkLayout(
   const elk = getElkInstance();
   const elkGraph = toElkGraph(nodes, edges);
 
-  const layoutedGraph = await elk.layout(elkGraph);
+  const layoutedGraph = await elk.layout(elkGraph) as ElkGraph;
 
   return applyElkLayout(nodes, layoutedGraph);
-}
-
-// Type augmentation for ELK result (includes x, y positions)
-interface ElkNode {
-  x?: number;
-  y?: number;
 }

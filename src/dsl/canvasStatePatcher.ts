@@ -279,7 +279,7 @@ function buildPositionMap(nodes: CanvasNode[]): Map<string, PositionHint> {
 function patchNodes(
   diff: ArchspecDiff,
   positionMap: Map<string, PositionHint>,
-  oldNodes: CanvasNode[]
+  _oldNodes: CanvasNode[]
 ): CanvasNode[] {
   const newNodes: CanvasNode[] = [];
   const processedIds = new Set<string>();
@@ -370,7 +370,7 @@ function createGroupNode(group: Group, position: PositionHint): CanvasNode {
 function computeNewComponentPosition(
   component: Component,
   existingNodes: CanvasNode[],
-  positionMap: Map<string, PositionHint>
+  _positionMap: Map<string, PositionHint>
 ): PositionHint {
   // If component belongs to a group, place near sibling nodes
   if (component.group) {
@@ -410,7 +410,7 @@ function computeNewComponentPosition(
 function computeNewGroupPosition(
   group: Group,
   existingNodes: CanvasNode[],
-  positionMap: Map<string, PositionHint>
+  _positionMap: Map<string, PositionHint>
 ): PositionHint {
   // If group has a parent, place relative to parent
   if (group.parent) {

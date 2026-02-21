@@ -265,7 +265,7 @@ export const useCanvasStore = create<CanvasStore>()(
     if (!node) return false;
 
     set({
-      nodes: get().nodes.map<CanvasNode>((n) => {
+      nodes: get().nodes.map((n): CanvasNode => {
         if (n.id !== nodeId) return n;
 
         // For archComponent nodes, update nested config
@@ -273,14 +273,14 @@ export const useCanvasStore = create<CanvasStore>()(
           return {
             ...n,
             data: { ...n.data, config: { ...n.data.config, ...config } },
-          };
+          } as CanvasNode;
         }
 
         // For other node types (like sectionBadge), update data directly
         return {
           ...n,
           data: { ...n.data, ...config },
-        };
+        } as CanvasNode;
       }),
     });
     return true;
@@ -313,7 +313,7 @@ export const useCanvasStore = create<CanvasStore>()(
         : undefined;
 
     set({
-      nodes: get().nodes.map<CanvasNode>((node) => {
+      nodes: get().nodes.map((node): CanvasNode => {
         if (node.id !== nodeId || node.type === 'archComponent') return node;
 
         const nextStyle = { ...(node.style ?? {}) };
