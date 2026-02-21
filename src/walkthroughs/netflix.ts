@@ -24,7 +24,7 @@ export const netflixWalkthrough: Walkthrough = {
     'Explore trade-offs between caching, freshness, and personalization',
     'Deep dive into ML pipelines, feature engineering, and A/B testing infrastructure',
   ],
-  estimatedMinutes: 105,
+  estimatedMinutes: 120,
   difficulty: 'intermediate',
   tags: [
     'machine-learning',
@@ -69,20 +69,52 @@ You're building Netflix. You have:
 Each user opens Netflix and sees a personalized homepage. How do you decide what to show them?
 
 This isn't just an engineering problem—it's a **business-critical** challenge:
-- 80% of viewer activity comes from recommendations
+- **80% of viewer activity** comes from recommendations (not search!)
 - Poor recommendations = increased churn
 - Better recommendations = higher engagement + retention
+- Small improvements = millions in revenue
 
-## Your Mission
+## Think First: What Would You Do?
 
-Over the next 90 minutes, you'll build understanding from first principles:
-1. Start with a naive approach
-2. Identify scaling bottlenecks
-3. Add complexity layer by layer
-4. Arrive at Netflix's real production architecture
-
-Let's begin with the simplest possible solution...
+Before we dive into solutions, put yourself in the architect's seat. How would YOU solve this?
       `,
+      widgets: [
+        {
+          type: 'quiz',
+          question: 'If you had to build v1 of Netflix recommendations TODAY, what would you start with?',
+          options: [
+            {
+              id: 'popular',
+              text: 'Show everyone the same popular content (top 10 trending)',
+              correct: false,
+              explanation:
+                'This is tempting because it\'s simple! But Netflix tried this early on and found engagement was poor. Why? Your taste in sci-fi is different from someone who loves rom-coms. One-size-fits-all doesn\'t work when tastes vary wildly.',
+            },
+            {
+              id: 'random',
+              text: 'Show random content from the catalog',
+              correct: false,
+              explanation:
+                'Randomness ensures diversity, but it\'s a terrible user experience. Users would spend more time searching than watching. Netflix found that users abandon after 60-90 seconds of browsing without finding something appealing.',
+            },
+            {
+              id: 'genre',
+              text: 'Ask users their favorite genres, then filter by those',
+              correct: true,
+              explanation:
+                'Good thinking! This is exactly where Netflix started. Users select genres during signup, then see content filtered by those preferences. It\'s simple, works reasonably well, and can be built in a few days. The downside? It\'s not very personalized—everyone who likes "Action" sees the same action movies.',
+            },
+            {
+              id: 'ml',
+              text: 'Build a machine learning model that predicts what users will like',
+              correct: false,
+              explanation:
+                'You\'re jumping ahead! ML is powerful but requires data you don\'t have yet. What would you train on? For new users with no viewing history, ML models can\'t make predictions. You need simpler approaches first to collect data, THEN build ML models.',
+            },
+          ],
+          multiSelect: false,
+        },
+      ],
       canvasOperations: [
         {
           type: 'add-node',
@@ -203,15 +235,131 @@ If Alice and Bob both loved *Stranger Things* and *The Crown*, and Alice also lo
 2. **Find Similar Users**: Calculate similarity (cosine similarity, Pearson correlation) between users
 3. **Recommend Items**: For a target user, find the most similar users and recommend items they liked
 
+## Example: Finding Similar Users
+
+Let's say we have 3 users and their ratings:
+
+| Show | Alice | Bob | Charlie |
+|------|-------|-----|---------|
+| Stranger Things | 5 | 5 | 2 |
+| The Crown | 4 | 4 | 1 |
+| Breaking Bad | 5 | ? | 3 |
+| Ozark | 3 | 2 | 5 |
+
+**Similarity scores** (using cosine similarity):
+- Alice ↔ Bob: **0.95** (very similar!)
+- Alice ↔ Charlie: **0.15** (not similar)
+- Bob ↔ Charlie: **0.18** (not similar)
+
+Since Alice and Bob are similar, and Alice rated Breaking Bad highly, we recommend it to Bob!
+
 ## The Architecture
 
 Let's add the basic components:
 - **Users Database**: Store user profiles and viewing history
 - **Recommender Engine**: Compute collaborative filtering
 - **Shows Database**: Catalog of all content
-
-Click "Next" to see this in action...
       `,
+      widgets: [
+        {
+          type: 'code-block',
+          title: 'Collaborative Filtering Algorithm (Python)',
+          language: 'python',
+          code: `import numpy as np
+from scipy.spatial.distance import cosine
+
+def find_similar_users(user_id, user_item_matrix, k=10):
+    """
+    Find k most similar users using cosine similarity
+
+    Args:
+        user_id: Target user
+        user_item_matrix: Rows = users, Cols = items, Values = ratings
+        k: Number of similar users to return
+
+    Returns:
+        List of (user_id, similarity_score) tuples
+    """
+    target_vector = user_item_matrix[user_id]
+    similarities = []
+
+    for other_id in range(len(user_item_matrix)):
+        if other_id == user_id:
+            continue
+
+        other_vector = user_item_matrix[other_id]
+
+        # Cosine similarity (1 - cosine distance)
+        similarity = 1 - cosine(target_vector, other_vector)
+        similarities.append((other_id, similarity))
+
+    # Return top k most similar users
+    similarities.sort(key=lambda x: x[1], reverse=True)
+    return similarities[:k]
+
+
+def recommend_items(user_id, user_item_matrix, n=10):
+    """
+    Recommend top n items for a user based on similar users
+    """
+    # Find similar users
+    similar_users = find_similar_users(user_id, user_item_matrix, k=50)
+
+    # Aggregate ratings from similar users (weighted by similarity)
+    item_scores = {}
+    for other_id, similarity in similar_users:
+        for item_id, rating in enumerate(user_item_matrix[other_id]):
+            if rating > 0:  # User rated this item
+                if item_id not in item_scores:
+                    item_scores[item_id] = 0
+                item_scores[item_id] += rating * similarity
+
+    # Remove items user already watched
+    user_watched = set(np.where(user_item_matrix[user_id] > 0)[0])
+    for item_id in user_watched:
+        item_scores.pop(item_id, None)
+
+    # Return top n recommendations
+    recommendations = sorted(item_scores.items(), key=lambda x: x[1], reverse=True)
+    return recommendations[:n]`,
+          highlights: [8, 9, 10, 24, 25],
+        },
+        {
+          type: 'quiz',
+          question: 'What is the time complexity of finding similar users for ONE user?',
+          options: [
+            {
+              id: 'on',
+              text: 'O(N) - linear in number of users',
+              correct: false,
+              explanation:
+                'Close, but not quite. We need to compare ONE user against ALL other users, which is O(N). However, each comparison requires computing similarity across M items (all shows), so it\'s O(N × M).',
+            },
+            {
+              id: 'onm',
+              text: 'O(N × M) - N users × M items',
+              correct: true,
+              explanation:
+                'Exactly! To find similar users for one user, we compare against N-1 other users, and each comparison computes similarity across M items (shows). For Netflix: 200M users × 10K shows = 2 trillion operations PER USER. This doesn\'t scale!',
+            },
+            {
+              id: 'on2',
+              text: 'O(N²) - quadratic in users',
+              correct: false,
+              explanation:
+                'You\'re thinking of computing similarities for ALL pairs of users, which would indeed be O(N²). But we only need similarities for ONE user at request time, so it\'s O(N × M).',
+            },
+            {
+              id: 'ologn',
+              text: 'O(log N) - logarithmic with indexing',
+              correct: false,
+              explanation:
+                'Unfortunately no. Even with clever indexing (like LSH for approximate nearest neighbors), we still need to compute similarity across all M items for each comparison. The fundamental issue is the high dimensionality (M items).',
+            },
+          ],
+          multiSelect: false,
+        },
+      ],
       canvasOperations: [
         {
           type: 'add-node',
@@ -334,6 +482,41 @@ We need to **pre-compute** and **cache** results. But this creates new trade-off
       ],
       widgets: [
         {
+          type: 'quiz',
+          question: 'How would YOU fix this performance problem? Think about the trade-offs.',
+          options: [
+            {
+              id: 'more-servers',
+              text: 'Add more servers and parallelize the computation',
+              correct: false,
+              explanation:
+                'Adding servers helps, but doesn\'t solve the fundamental problem. Even with 1000 servers, you\'d still need millions of CPU cores to handle 200M concurrent users. The cost would be astronomical ($100M+ annually just for compute).',
+            },
+            {
+              id: 'better-algo',
+              text: 'Use a better algorithm or data structure',
+              correct: true,
+              explanation:
+                'Good thinking! There ARE better algorithms (like Approximate Nearest Neighbors using LSH or FAISS) that reduce complexity. But even the best algorithms still take seconds for 200M users. You\'d also need to...',
+            },
+            {
+              id: 'precompute',
+              text: 'Pre-compute recommendations offline in batch jobs',
+              correct: true,
+              explanation:
+                'Exactly! This is Netflix\'s approach. Run expensive computations ONCE overnight, store results in a cache, then serve them quickly at request time. Batch jobs can take hours—but users see results in milliseconds.',
+            },
+            {
+              id: 'simpler-model',
+              text: 'Use a simpler model that\'s less accurate but faster',
+              correct: false,
+              explanation:
+                'This is a valid approach for some systems, but Netflix\'s business depends on recommendation quality. Showing bad recommendations costs them millions in churn. They need BOTH speed AND accuracy.',
+            },
+          ],
+          multiSelect: true,
+        },
+        {
           type: 'tradeoffs',
           title: 'Pre-computation Trade-offs',
           decision: 'Should we pre-compute recommendations?',
@@ -343,27 +526,39 @@ We need to **pre-compute** and **cache** results. But this creates new trade-off
               pros: ['Always fresh', 'Responds to latest user actions', 'No storage overhead'],
               cons: [
                 'Too slow (minutes to hours per user)',
-                'High compute cost',
-                'Doesn\'t scale',
+                'High compute cost ($100M+ annually)',
+                'Doesn\'t scale beyond 1M users',
               ],
             },
             {
               label: 'Pre-compute everything',
-              pros: ['Fast responses (<100ms)', 'Predictable latency', 'Lower compute at request time'],
+              pros: [
+                'Fast responses (<100ms)',
+                'Predictable latency',
+                'Lower compute at request time',
+                'Can run expensive algorithms offline',
+              ],
               cons: [
                 'Stale recommendations (hours to days old)',
-                'High storage cost',
+                'High storage cost (200M users × 1KB = 200GB)',
                 'Batch jobs take hours',
+                'Miss real-time signals (just-watched shows)',
               ],
             },
             {
-              label: 'Hybrid approach',
+              label: 'Hybrid approach (Netflix)',
               pros: [
                 'Cache popular recommendations',
                 'Real-time for personalized signals',
                 'Best of both worlds',
+                'Can refresh cache incrementally',
               ],
-              cons: ['Complex architecture', 'Cache invalidation is hard', 'More infrastructure'],
+              cons: [
+                'Complex architecture',
+                'Cache invalidation is hard',
+                'More infrastructure (cache layer + batch jobs)',
+                'Need fallback for cache misses',
+              ],
             },
           ],
         },
@@ -373,27 +568,42 @@ We need to **pre-compute** and **cache** results. But this creates new trade-off
 
     // ========== PHASE 3: ADDING COMPLEXITY (20 min) ==========
     {
-      id: 'step-5-add-cache',
-      title: 'Adding a Cache Layer',
+      id: 'step-5-candidate-generation',
+      title: 'Multiple Candidate Sources',
       phase: 'complexity',
       estimatedMinutes: 7,
       content: `
-# Solution: Caching Pre-computed Recommendations
+# Solution: Multiple Candidate Generators
 
-Let's add **Redis** as a caching layer:
-- **Batch job** runs daily/hourly to pre-compute recommendations
-- Results stored in Redis with user_id as key
-- Recommendation service fetches from cache
-- Fallback to real-time if cache miss
+Netflix doesn't rely on a single algorithm. Instead, they use **multiple strategies** to generate candidate recommendations:
 
-## Request Flow
+## The Three Pillars
 
-1. User requests recommendations
-2. Check Redis cache
-3. **Cache hit**: Return immediately (~10ms)
-4. **Cache miss**: Compute on-demand + update cache
+1. **Collaborative Filtering** (User-based)
+   - "Users like you watched..."
+   - Finds similar users based on viewing patterns
+   - Good for discovering unexpected matches
 
-Watch the flow animation below...
+2. **Content-Based Filtering** (Item-based)
+   - "Because you watched..."
+   - Recommends similar shows based on metadata (genre, actors, director)
+   - Solves cold-start problem for new content
+
+3. **Trending/Popular**
+   - "Trending now in your region"
+   - Shows what's popular globally or regionally
+   - Fallback when personalization fails (new users)
+
+## Why Multiple Strategies?
+
+Each approach has strengths and weaknesses. By combining them, Netflix achieves:
+- **Coverage**: Every user gets recommendations (even new users with no history)
+- **Diversity**: Mix of safe picks and unexpected discoveries
+- **Robustness**: If one model fails, others provide fallback
+
+## The Architecture
+
+Each strategy runs independently as a **candidate generator**, producing ~500 candidates each. Then a **ranking layer** scores and combines them into the final top 50.
       `,
       canvasOperations: [
         {
@@ -427,6 +637,41 @@ Watch the flow animation below...
         },
       ],
       widgets: [
+        {
+          type: 'quiz',
+          question: 'A brand new show just launched on Netflix (no user ratings yet). Which approach would work BEST for recommending it?',
+          options: [
+            {
+              id: 'collab',
+              text: 'Collaborative filtering - find users with similar tastes',
+              correct: false,
+              explanation:
+                'This won\'t work! Collaborative filtering relies on user ratings/views. A brand new show has ZERO user interactions, so there\'s no data to compute similarity. This is the classic "cold start" problem.',
+            },
+            {
+              id: 'content',
+              text: 'Content-based filtering - match by genre, actors, themes',
+              correct: true,
+              explanation:
+                'Perfect! Even if no one has watched the show yet, we know its metadata: genre (sci-fi), actors (Pedro Pascal), director, themes. We can compute similarity to other shows and recommend it to users who liked similar content.',
+            },
+            {
+              id: 'trending',
+              text: 'Trending/popularity - show it to everyone',
+              correct: false,
+              explanation:
+                'This could work initially to get early views, but it\'s not personalized. Users who hate sci-fi would see it anyway. Better to use content-based filtering to target relevant users.',
+            },
+            {
+              id: 'random',
+              text: 'None of them - you need to wait for user data',
+              correct: false,
+              explanation:
+                'Waiting would be a missed opportunity! Netflix promotes new releases heavily using content-based filtering and editorial curation. They target users most likely to enjoy the show based on metadata.',
+            },
+          ],
+          multiSelect: false,
+        },
         {
           type: 'timeline',
           title: 'Request Flow with Caching',
@@ -823,6 +1068,91 @@ Let's rebuild our architecture with microservices...
             },
           ],
         },
+        {
+          type: 'quiz',
+          question: 'If the Ranking Service goes down, what should happen?',
+          options: [
+            {
+              id: 'fail',
+              text: 'Return an error to the user - recommendations are broken',
+              correct: false,
+              explanation:
+                'Bad user experience! If ranking fails, users see an error page and can\'t watch anything. This violates Netflix\'s availability goals (99.99% uptime).',
+            },
+            {
+              id: 'fallback',
+              text: 'Fallback to unranked candidates or a cached version',
+              correct: true,
+              explanation:
+                'Exactly! Netflix uses graceful degradation. If ranking fails, they serve unranked candidates (still relevant!) or serve a cached ranking. Slightly worse recommendations are better than NO recommendations.',
+            },
+            {
+              id: 'retry',
+              text: 'Retry the ranking service until it succeeds',
+              correct: false,
+              explanation:
+                'This could cause cascading failures! If ranking is down due to overload, retrying makes it worse. Better to fallback immediately and serve degraded results.',
+            },
+            {
+              id: 'random',
+              text: 'Show random content',
+              correct: false,
+              explanation:
+                'Too extreme! We still have unranked candidates from the recommendation service. Falling back to random content throws away all personalization.',
+            },
+          ],
+          multiSelect: false,
+        },
+        {
+          type: 'tradeoffs',
+          title: 'Monolith vs Microservices',
+          decision: 'Should we split into microservices?',
+          options: [
+            {
+              label: 'Monolith',
+              pros: [
+                'Simpler deployment (single artifact)',
+                'Easier local development',
+                'No network latency between services',
+                'Simpler debugging (single call stack)',
+              ],
+              cons: [
+                'Cannot scale components independently',
+                'Single point of failure',
+                'Hard to maintain as codebase grows',
+                'Team coordination bottlenecks',
+              ],
+            },
+            {
+              label: 'Microservices',
+              pros: [
+                'Independent scaling (scale ranking separately)',
+                'Team autonomy (own deployment pipelines)',
+                'Fault isolation (ranking failure doesn\'t break candidates)',
+                'Technology diversity (Python for ML, Java for throughput)',
+              ],
+              cons: [
+                'Network latency between services',
+                'Distributed debugging is harder',
+                'More complex infrastructure',
+                'Data consistency challenges',
+              ],
+            },
+            {
+              label: 'Netflix Choice',
+              pros: [
+                'Microservices for core paths (recommendation, ranking, personalization)',
+                'Monoliths for smaller domains',
+                'Balance complexity vs benefits',
+              ],
+              cons: [
+                'Requires strong DevOps culture',
+                'High operational overhead',
+                'Need service mesh (Istio) for observability',
+              ],
+            },
+          ],
+        },
       ],
       nextCondition: 'click-next',
     },
@@ -953,6 +1283,88 @@ Let's add Kafka and stream processing...
   }
 }`,
         },
+        {
+          type: 'quiz',
+          question: 'Netflix processes 700 billion events per day. How many events per second is that?',
+          options: [
+            {
+              id: '700k',
+              text: '~700,000 events/second',
+              correct: false,
+              explanation:
+                'Too low! You calculated 700B / (24 * 60 * 60) = 700B / 86,400 ≈ 8M events/second, not 700K.',
+            },
+            {
+              id: '8m',
+              text: '~8 million events/second',
+              correct: true,
+              explanation:
+                'Correct! 700 billion events per day = 700B / 86,400 seconds ≈ 8.1 million events/second on average. During peak hours (evenings), this can spike to 20M+ events/second. This is why Netflix needs Kafka - traditional databases cannot handle this write throughput.',
+            },
+            {
+              id: '80m',
+              text: '~80 million events/second',
+              correct: false,
+              explanation:
+                'Too high! You\'re off by a factor of 10. The calculation is 700B / 86,400 ≈ 8M events/second.',
+            },
+            {
+              id: '1m',
+              text: '~1 million events/second',
+              correct: false,
+              explanation:
+                'Too low! This would only be 86 billion events per day. Netflix processes 700 billion, which is 8M+ events/second.',
+            },
+          ],
+          multiSelect: false,
+        },
+        {
+          type: 'tradeoffs',
+          title: 'Event Streaming Architecture',
+          decision: 'How should we handle 8M+ events/second?',
+          options: [
+            {
+              label: 'Synchronous Database Writes',
+              pros: ['Simple to implement', 'Strong consistency', 'Easy to query'],
+              cons: [
+                'Database cannot handle 8M writes/second',
+                'Single point of failure',
+                'Blocks request until write completes',
+                'Expensive to scale vertically',
+              ],
+            },
+            {
+              label: 'Kafka Event Streaming',
+              pros: [
+                'Handles millions of writes/second',
+                'Decouples producers from consumers',
+                'Multiple consumers can process same events',
+                'Events persisted for replay',
+              ],
+              cons: [
+                'Eventual consistency (not immediate)',
+                'More complex infrastructure',
+                'Consumers must handle out-of-order events',
+                'Schema evolution is tricky',
+              ],
+            },
+            {
+              label: 'Netflix Keystone (Kafka + Flink)',
+              pros: [
+                'Kafka for ingestion (8M+ events/sec)',
+                'Flink for stream processing (aggregations, joins)',
+                'Real-time graph updates (sub-second)',
+                'Supports 190+ data pipelines',
+              ],
+              cons: [
+                'Very complex (requires dedicated platform team)',
+                'High operational cost',
+                'Debugging distributed streams is hard',
+                'Schema registry + governance needed',
+              ],
+            },
+          ],
+        },
       ],
       nextCondition: 'click-next',
     },
@@ -1075,6 +1487,95 @@ This is what powers recommendations for 200M+ users!
           },
         },
       ],
+      widgets: [
+        {
+          type: 'quiz',
+          question: 'Why does Netflix use Cassandra for the Real-Time Distributed Graph instead of PostgreSQL?',
+          options: [
+            {
+              id: 'nosql',
+              text: 'Cassandra is NoSQL, which is always better for graphs',
+              correct: false,
+              explanation:
+                'Not quite! NoSQL isn\'t inherently better for graphs. Neo4j (a graph database) would actually be more natural for graph operations. Netflix chose Cassandra for specific engineering reasons.',
+            },
+            {
+              id: 'writes',
+              text: 'Cassandra handles 5M+ writes/second with sub-second latency',
+              correct: true,
+              explanation:
+                'Exactly! The Real-Time Distributed Graph receives 5M+ writes/second from Kafka (user events → graph updates). PostgreSQL would fall over at this write throughput. Cassandra is optimized for massive write-heavy workloads with tunable consistency.',
+            },
+            {
+              id: 'graph',
+              text: 'Cassandra has built-in graph query support',
+              correct: false,
+              explanation:
+                'Cassandra does NOT have native graph query support. Netflix built a custom graph abstraction layer (KVDAL) on top of Cassandra. They chose Cassandra for write throughput, not graph features.',
+            },
+            {
+              id: 'cheap',
+              text: 'Cassandra is cheaper than PostgreSQL',
+              correct: false,
+              explanation:
+                'Cost isn\'t the primary driver at Netflix\'s scale. Both databases require large clusters. Netflix chose Cassandra because it scales horizontally for write-heavy workloads. Operational complexity and performance matter more than cost.',
+            },
+          ],
+          multiSelect: false,
+        },
+        {
+          type: 'tradeoffs',
+          title: 'Database Selection for Real-Time Graph',
+          decision: 'Which database should power the real-time distributed graph?',
+          options: [
+            {
+              label: 'PostgreSQL',
+              pros: [
+                'ACID transactions',
+                'Rich query language (SQL)',
+                'Strong consistency',
+                'Mature ecosystem',
+              ],
+              cons: [
+                'Cannot handle 5M writes/second',
+                'Vertical scaling limits (~100K writes/sec)',
+                'Joins are expensive at scale',
+                'Single-region deployment',
+              ],
+            },
+            {
+              label: 'Neo4j (Graph DB)',
+              pros: [
+                'Native graph query language (Cypher)',
+                'Optimized for graph traversals',
+                'Built-in graph algorithms',
+                'Natural data model for recommendations',
+              ],
+              cons: [
+                'Write throughput limited (~100K writes/sec)',
+                'Expensive for Netflix\'s graph size (billions of edges)',
+                'Harder to scale horizontally',
+                'Young ecosystem compared to Cassandra',
+              ],
+            },
+            {
+              label: 'Cassandra + KVDAL',
+              pros: [
+                'Handles 5M+ writes/second',
+                'Linear horizontal scalability',
+                'Multi-region deployment',
+                'Tunable consistency (eventual → strong)',
+              ],
+              cons: [
+                'No native graph operations (need custom layer)',
+                'Eventual consistency by default',
+                'Complex operational model',
+                'No joins (denormalize everything)',
+              ],
+            },
+          ],
+        },
+      ],
       nextCondition: 'click-next',
     },
 
@@ -1120,6 +1621,41 @@ Take 10-15 minutes to think through your approach. When ready, click "Next" to s
         },
       ],
       widgets: [
+        {
+          type: 'quiz',
+          question: 'Before writing code, what data do you need to train a watch time prediction model?',
+          options: [
+            {
+              id: 'ratings',
+              text: 'User ratings (1-5 stars) for each show',
+              correct: false,
+              explanation:
+                'Ratings help, but they don\'t tell you watch time! A user might rate a show 5 stars but only watch 10 minutes. You need actual watch time data from video playback events.',
+            },
+            {
+              id: 'playback',
+              text: 'Video playback events (start, progress, stop timestamps)',
+              correct: true,
+              explanation:
+                'Perfect! Watch time = stop_timestamp - start_timestamp. Netflix collects video_progress events every 30 seconds, so they can compute actual watch time for every viewing session. This becomes the training label.',
+            },
+            {
+              id: 'views',
+              text: 'Number of views per show (how many people watched)',
+              correct: false,
+              explanation:
+                'Popularity is a useful feature, but it doesn\'t tell you how long users watch. You need individual watch time data (per user per video) to train the model.',
+            },
+            {
+              id: 'metadata',
+              text: 'Show metadata only (genre, actors, duration)',
+              correct: false,
+              explanation:
+                'Metadata is important for features, but you also need historical watch time data as the training label. Without actual watch time, you can\'t train a model to predict it!',
+            },
+          ],
+          multiSelect: false,
+        },
         {
           type: 'code-block',
           title: 'Starter Code: Watch Time Prediction',
@@ -1241,6 +1777,41 @@ class WatchTimePredictor:
         return min(predicted_minutes, video_feats['duration_minutes'])`,
           highlights: [15, 16, 17],
         },
+        {
+          type: 'quiz',
+          question: 'Why does Netflix use Gradient Boosted Trees (XGBoost) instead of Deep Neural Networks for watch time prediction?',
+          options: [
+            {
+              id: 'better',
+              text: 'GBTs always perform better than neural networks',
+              correct: false,
+              explanation:
+                'Not true! Neural networks can match or beat GBTs on many tasks, especially with large datasets and complex patterns. The choice depends on the specific requirements.',
+            },
+            {
+              id: 'speed',
+              text: 'GBTs have faster inference (<10ms) for ranking 1000s of candidates',
+              correct: true,
+              explanation:
+                'Exactly! The Ranking Service needs to score 1000s of candidates in <100ms total. XGBoost can predict in <1ms per candidate, while deep neural networks take 10-100ms. For real-time ranking at scale, inference speed matters more than a small accuracy gain.',
+            },
+            {
+              id: 'simple',
+              text: 'GBTs are simpler to train and deploy',
+              correct: false,
+              explanation:
+                'While GBTs are somewhat easier to train than DNNs, Netflix has the expertise for both. The primary reason is inference speed, not simplicity.',
+            },
+            {
+              id: 'features',
+              text: 'GBTs handle missing features better',
+              correct: false,
+              explanation:
+                'GBTs do handle missing data well, but that\'s not the main reason. Netflix\'s feature engineering pipeline ensures features are rarely missing. The key driver is inference latency.',
+            },
+          ],
+          multiSelect: false,
+        },
       ],
       nextCondition: 'click-next',
     },
@@ -1317,6 +1888,92 @@ Every change to recommendations is **A/B tested**:
             {
               label: '7-Day Retention',
               values: ['85%', '85.2%', '+0.2%', '0.12', '➖ Not significant'],
+            },
+          ],
+        },
+        {
+          type: 'quiz',
+          question: 'The A/B test shows +5% hours watched but -2% genre diversity. Should Netflix ship this change?',
+          options: [
+            {
+              id: 'ship',
+              text: 'Yes - Hours watched is the most important metric',
+              correct: false,
+              explanation:
+                'Too simplistic! While hours watched is important, diversity matters for long-term health. Users stuck in a filter bubble might watch more short-term but churn long-term. Netflix needs to balance engagement with exploration.',
+            },
+            {
+              id: 'no',
+              text: 'No - Diversity decline is unacceptable',
+              correct: false,
+              explanation:
+                'Too conservative! A 2% diversity decline is small and might be acceptable for a 5% engagement boost. Netflix would ship this but monitor diversity closely and potentially add a diversity bonus to the ranking.',
+            },
+            {
+              id: 'ship-monitor',
+              text: 'Yes, but add diversity as a ranking signal and monitor long-term retention',
+              correct: true,
+              explanation:
+                'Perfect! This is exactly what Netflix would do. Ship the change for immediate engagement gains, but add diversity as a ranking signal (e.g., boost shows from new genres) and monitor long-term metrics (3-month retention). If diversity continues to decline, adjust the model.',
+            },
+            {
+              id: 'extend',
+              text: 'Extend the test for another month to get more data',
+              correct: false,
+              explanation:
+                'With 10M users and p < 0.001, statistical significance is already strong. More time won\'t change the results significantly. Better to ship with monitoring than delay.',
+            },
+          ],
+          multiSelect: false,
+        },
+        {
+          type: 'tradeoffs',
+          title: 'A/B Testing Trade-offs',
+          decision: 'How should Netflix approach A/B testing?',
+          options: [
+            {
+              label: 'Ship Fast (No A/B Tests)',
+              pros: [
+                'Faster iteration',
+                'Lower infrastructure cost',
+                'Simpler deployment',
+                'Engineers move faster',
+              ],
+              cons: [
+                'No validation of impact',
+                'Risk of breaking user experience',
+                'Cannot measure ROI',
+                'Hard to rollback bad changes',
+              ],
+            },
+            {
+              label: 'A/B Test Everything (Netflix)',
+              pros: [
+                'Validate impact before full rollout',
+                'Data-driven decisions',
+                'Catch regressions early',
+                'Quantify improvement',
+              ],
+              cons: [
+                'Slower deployments (2-week tests)',
+                'Complex infrastructure',
+                'Interacting experiments (test interference)',
+                'Culture requires statistical literacy',
+              ],
+            },
+            {
+              label: 'Canary Deployments Only',
+              pros: [
+                'Faster than full A/B tests',
+                'Catch crashes/errors',
+                'Gradual rollout (1% → 10% → 100%)',
+              ],
+              cons: [
+                'Cannot measure subtle metric changes',
+                'No control group for comparison',
+                'Hard to detect 1-2% improvements',
+                'Requires good observability',
+              ],
             },
           ],
         },
@@ -1418,6 +2075,41 @@ class NetflixFoundationModel(nn.Module):
         return predictions`,
           highlights: [23, 24, 25],
         },
+        {
+          type: 'quiz',
+          question: 'Why would a SINGLE multi-task model perform BETTER than 100 specialized models?',
+          options: [
+            {
+              id: 'bigger',
+              text: 'Single models are always better than multiple models',
+              correct: false,
+              explanation:
+                'Not true! Specialized models can outperform general models if tasks are very different. The key is that Netflix\'s tasks (watch time, completion, rating) are RELATED - they all predict user engagement.',
+            },
+            {
+              id: 'transfer',
+              text: 'Shared representations - Learning one task helps predict related tasks',
+              correct: true,
+              explanation:
+                'Exactly! This is called transfer learning. If the model learns that "user loves sci-fi" while predicting ratings, it can use that same knowledge to predict watch time and completion. Shared representations mean each task benefits from data on ALL tasks, not just its own.',
+            },
+            {
+              id: 'faster',
+              text: 'Single model is faster to train than 100 models',
+              correct: false,
+              explanation:
+                'While a single model is operationally simpler, the PRIMARY benefit is improved accuracy through shared learning, not training speed. A multi-task model might actually take longer to train than individual models.',
+            },
+            {
+              id: 'data',
+              text: 'Single model uses more data',
+              correct: false,
+              explanation:
+                'Both approaches use the same data! The difference is that the multi-task model shares learned representations across tasks, allowing each task to benefit from signals in other tasks\' data.',
+            },
+          ],
+          multiSelect: false,
+        },
       ],
       nextCondition: 'click-next',
     },
@@ -1504,6 +2196,41 @@ Thank you for learning with us! 🚀
               values: ['A/B testing, model consolidation', '30 min', '✅ Complete'],
             },
           ],
+        },
+        {
+          type: 'quiz',
+          question: 'Reflection: What was the MOST IMPORTANT architectural principle you learned?',
+          options: [
+            {
+              id: 'microservices',
+              text: 'Always use microservices for scale',
+              correct: false,
+              explanation:
+                'Microservices are powerful, but they\'re not always the answer! For small-scale systems, a monolith is simpler. The key lesson is: DECOMPOSE when you have independent scaling needs, NOT just because microservices are trendy.',
+            },
+            {
+              id: 'cache',
+              text: 'Always cache everything',
+              correct: false,
+              explanation:
+                'Caching helps, but it introduces staleness and complexity. The key lesson is: PRE-COMPUTE expensive operations, but combine with real-time signals for freshness. It\'s about finding the right balance.',
+            },
+            {
+              id: 'iterate',
+              text: 'Start simple, add complexity only when needed',
+              correct: true,
+              explanation:
+                'EXACTLY! This is the most important takeaway. We started with collaborative filtering (simple, works), identified bottlenecks (O(N×M) doesn\'t scale), then added complexity layer by layer (caching, microservices, real-time streaming). Netflix didn\'t start with Kafka and Cassandra—they evolved there as needs grew. This is first principles engineering.',
+            },
+            {
+              id: 'ml',
+              text: 'Machine learning is essential for recommendations',
+              correct: false,
+              explanation:
+                'ML is powerful, but it\'s not the first step! Netflix started with simple genre filtering and collaborative filtering (rule-based). ML came later once they had data. The key lesson is: solve the problem first, THEN optimize with ML.',
+            },
+          ],
+          multiSelect: false,
         },
       ],
       nextCondition: 'click-next',
