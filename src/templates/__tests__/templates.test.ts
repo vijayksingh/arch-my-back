@@ -1,12 +1,11 @@
 import { describe, test, expect } from 'vitest';
 import { templates } from '../index';
 import { componentTypeMap } from '@/registry/componentTypes';
-import type { DesignTemplate } from '@/types';
 
 describe('templates', () => {
   describe('template registry', () => {
-    test('exports 5 templates', () => {
-      expect(templates).toHaveLength(5);
+    test('exports 10 templates', () => {
+      expect(templates).toHaveLength(10);
     });
 
     test('all templates have required fields', () => {
@@ -181,6 +180,16 @@ describe('templates', () => {
       const iotPipeline = templates.find((t) => t.slug === 'iot-pipeline');
       expect(iotPipeline).toBeDefined();
       expect(iotPipeline?.title).toBeTruthy();
+    });
+
+    test('stripePayments template exists', () => {
+      const stripePayments = templates.find((t) => t.slug === 'stripe-payments');
+      expect(stripePayments).toBeDefined();
+      expect(stripePayments?.title).toBe('Stripe Payment Processing');
+      expect(stripePayments?.nodes.length).toBeGreaterThan(10); // Should have comprehensive architecture
+      expect(stripePayments?.description).toContain('authorization');
+      expect(stripePayments?.description).toContain('capture');
+      expect(stripePayments?.description).toContain('settlement');
     });
   });
 });
