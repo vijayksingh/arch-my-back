@@ -9,7 +9,7 @@ import {
   BackgroundVariant,
   useReactFlow,
 } from '@xyflow/react';
-import type { EdgeTypes, Node, NodeTypes, XYPosition } from '@xyflow/react';
+import type { EdgeTypes, Node, NodeTypes, XYPosition, Connection, Edge } from '@xyflow/react';
 import type { CanvasNode, CanvasShapeKind } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
@@ -17,6 +17,7 @@ import { useWidgetStore } from '@/widgets/store/widgetStore';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { categoryColors } from '@/registry/categoryThemes';
 import { cn } from '@/lib/utils';
+import { isConnectionValid } from '@/lib/connectionRules';
 import ArchNodeComponent from './ArchNode';
 import ArchEdge from './ArchEdge';
 import ShapeNode from './ShapeNode';
@@ -242,6 +243,27 @@ export default function Canvas() {
     return categoryColors[typeDef.category];
   }, []);
 
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge) => {
+      // Get source and target nodes to determine their types
+      const sourceNode = nodes.find((n) => n.id === connection.source);
+      const targetNode = nodes.find((n) => n.id === connection.target);
+
+      // Only validate arch component connections (not shapes, badges, etc.)
+      if (sourceNode?.type === 'archComponent' && targetNode?.type === 'archComponent') {
+        const sourceType = sourceNode.data.componentType;
+        const targetType = targetNode.data.componentType;
+
+        const validation = isConnectionValid(sourceType, targetType);
+        return validation.valid;
+      }
+
+      // Allow all other connection types (shapes, badges, etc.)
+      return true;
+    },
+    [nodes]
+  );
+
   useEffect(() => {
     if (!pendingFocusSectionId) return;
 
@@ -274,6 +296,7 @@ export default function Canvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        isValidConnection={isValidConnection}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         onSelectionChange={onSelectionChange}
