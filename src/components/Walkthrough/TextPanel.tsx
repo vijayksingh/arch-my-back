@@ -3,13 +3,13 @@
  */
 
 import { MarkdownLines } from '@/components/DocumentPanel/widgets/MarkdownLines';
-import type { QuizQuestion } from '@/lib/walkthroughEngine';
+import type { QuizWidgetConfig } from '@/lib/walkthroughEngine';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface TextPanelProps {
   title: string;
   content: string;
-  quiz?: QuizQuestion;
+  quiz?: QuizWidgetConfig;
   quizAnswer?: number;
   onQuizAnswer?: (selectedIndex: number) => void;
   quizResult?: { correct: boolean; explanation?: string };
@@ -43,9 +43,9 @@ export function TextPanel({
           </h3>
 
           <div className="flex flex-col gap-2">
-            {quiz.options.map((option, index) => {
+            {quiz.options.map((option: { id: string; text: string; correct: boolean; explanation: string }, index: number) => {
               const isSelected = quizAnswer === index;
-              const isCorrect = quizResult && index === quiz.correctIndex;
+              const isCorrect = quizResult && option.correct;
               const isWrong = quizResult && isSelected && !isCorrect;
 
               return (
@@ -69,7 +69,7 @@ export function TextPanel({
                     <span className="flex h-6 w-6 items-center justify-center rounded-full border border-current">
                       {String.fromCharCode(65 + index)}
                     </span>
-                    <span>{option}</span>
+                    <span>{option.text}</span>
                   </div>
                 </motion.button>
               );
