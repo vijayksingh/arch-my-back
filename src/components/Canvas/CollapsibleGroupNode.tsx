@@ -4,6 +4,7 @@ import type { NodeProps } from '@xyflow/react';
 import type { CollapsibleGroupNode as CollapsibleGroupNodeType } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Z_INDEX } from '@/constants';
 
 function CollapsibleGroupNodeComponent({
   id,
@@ -48,7 +49,7 @@ function CollapsibleGroupNodeComponent({
           borderRadius: 999,
           backgroundColor: 'hsl(var(--card))',
           border: '1px solid hsl(var(--ring) / 0.72)',
-          zIndex: 20,
+          zIndex: Z_INDEX.RESIZE_HANDLE,
         }}
       />
 

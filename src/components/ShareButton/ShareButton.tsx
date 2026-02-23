@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
+import { TIMING } from '@/constants';
 
 interface ShareButtonProps {
   designId: Id<'newDesigns'>;
@@ -49,7 +50,7 @@ export function ShareButton({ designId }: ShareButtonProps) {
     const shareUrl = `${window.location.origin}/share/${shareSlug}`;
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), TIMING.FEEDBACK_DISPLAY);
     });
   }, [shareSlug]);
 

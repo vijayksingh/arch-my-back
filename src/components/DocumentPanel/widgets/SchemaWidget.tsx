@@ -5,6 +5,7 @@ import type { NotebookBlock, SchemaField, SchemaTable } from '@/types';
 import { useDocumentStore } from '@/stores/documentStore';
 import { WidgetPreviewCard } from './WidgetPreviewCard';
 import { useDoubleEnterExit } from './useDoubleEnterExit';
+import { Z_INDEX } from '@/constants';
 
 interface SchemaWidgetProps {
   block: Extract<NotebookBlock, { type: 'schema' }>;
@@ -73,7 +74,7 @@ function TypeInput({ value, onChange }: TypeInputProps) {
             top: pos.top,
             left: pos.left,
             width: Math.max(pos.width, 120),
-            zIndex: 200,
+            zIndex: Z_INDEX.MODAL_PICKER,
             maxHeight: 160,
             overflowY: 'auto',
           }}

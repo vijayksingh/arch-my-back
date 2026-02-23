@@ -8,7 +8,7 @@ import {
 } from '@xyflow/react';
 import type { ArchEdge, CanvasNode } from '@/types';
 import type { CanvasSection } from '@/types/design';
-import { NODE_TYPE } from '@/constants';
+import { NODE_TYPE, LIMITS } from '@/constants';
 import { createNodeSlice, type NodeSlice } from './slices/nodeSlice';
 import { createEdgeSlice, type EdgeSlice } from './slices/edgeSlice';
 import { createSelectionSlice, type SelectionSlice } from './slices/selectionSlice';
@@ -115,12 +115,14 @@ export const useCanvasStore = create<CanvasStore>()(
       },
     }),
     {
-      limit: 50,
+      limit: LIMITS.UNDO_HISTORY,
       // Only track meaningful state changes (not UI state like selection)
+      // Use reference equality: Zustand mutations create new array references,
+      // so if references match, no structural change occurred
       equality: (pastState, currentState) =>
-        JSON.stringify(pastState.nodes) === JSON.stringify(currentState.nodes) &&
-        JSON.stringify(pastState.edges) === JSON.stringify(currentState.edges) &&
-        JSON.stringify(pastState.sections) === JSON.stringify(currentState.sections),
+        pastState.nodes === currentState.nodes &&
+        pastState.edges === currentState.edges &&
+        pastState.sections === currentState.sections,
     }
   )
 );

@@ -1,7 +1,7 @@
 import type { CanvasNode, CollapsibleGroupNode } from '@/types';
 import { generateNodeId } from '@/lib/idGenerator';
 import { computeGroupBounds } from '@/lib/groupBoundsHelper';
-import { NODE_TYPE } from '@/constants';
+import { NODE_TYPE, GROUP_DIMENSIONS } from '@/constants';
 
 export interface GroupSlice {
   toggleGroupCollapse: (groupId: string) => void;
@@ -38,7 +38,7 @@ export const createGroupSlice = (
             data: { ...node.data, isCollapsed: nextCollapsed },
             style: {
               ...node.style,
-              height: nextCollapsed ? 36 : (node.style?.height ?? 120),
+              height: nextCollapsed ? GROUP_DIMENSIONS.COLLAPSED_HEIGHT : (node.style?.height ?? GROUP_DIMENSIONS.DEFAULT_HEIGHT),
             },
           } as CollapsibleGroupNode;
         }

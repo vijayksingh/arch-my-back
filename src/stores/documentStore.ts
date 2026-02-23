@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { NotebookBlock } from "@/types/design";
 import type { BlockType } from "@/types/design";
+import { BLOCK_TYPE, REQUIREMENT_KIND } from "@/constants";
 
 let blockIdCounter = 0;
 
@@ -16,47 +17,47 @@ function makeDefaultBlock(
 ): NotebookBlock {
   const createdAt = Date.now();
   switch (type) {
-    case "text":
+    case BLOCK_TYPE.TEXT:
       return {
         id,
-        type: "text",
+        type: BLOCK_TYPE.TEXT,
         sectionId,
         createdAt,
         data: { markdown: "" },
       };
-    case "requirements":
+    case BLOCK_TYPE.REQUIREMENTS:
       return {
         id,
-        type: "requirements",
+        type: BLOCK_TYPE.REQUIREMENTS,
         sectionId,
         createdAt,
         data: {
           items: [
-            { id: `req_${Date.now()}a`, text: "", kind: "functional" },
-            { id: `req_${Date.now()}b`, text: "", kind: "non-functional" },
+            { id: `req_${Date.now()}a`, text: "", kind: REQUIREMENT_KIND.FUNCTIONAL },
+            { id: `req_${Date.now()}b`, text: "", kind: REQUIREMENT_KIND.NON_FUNCTIONAL },
           ],
         },
       };
-    case "schema":
+    case BLOCK_TYPE.SCHEMA:
       return {
         id,
-        type: "schema",
+        type: BLOCK_TYPE.SCHEMA,
         sectionId,
         createdAt,
         data: { tables: [] },
       };
-    case "api":
+    case BLOCK_TYPE.API:
       return {
         id,
-        type: "api",
+        type: BLOCK_TYPE.API,
         sectionId,
         createdAt,
         data: { endpoints: [] },
       };
-    case "lld":
+    case BLOCK_TYPE.LLD:
       return {
         id,
-        type: "lld",
+        type: BLOCK_TYPE.LLD,
         sectionId,
         createdAt,
         data: { title: "", content: "" },
@@ -66,7 +67,7 @@ function makeDefaultBlock(
 
 const defaultTextBlock: NotebookBlock = {
   id: createBlockId(),
-  type: "text",
+  type: BLOCK_TYPE.TEXT,
   sectionId: null,
   createdAt: Date.now(),
   data: {

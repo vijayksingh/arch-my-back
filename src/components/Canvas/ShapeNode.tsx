@@ -10,7 +10,7 @@ import {
 } from '@xyflow/react';
 import type { CanvasShapeNode } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
-import { NODE_TYPE } from '@/constants';
+import { NODE_TYPE, Z_INDEX } from '@/constants';
 
 function ShapeNodeComponent({
   id,
@@ -134,7 +134,7 @@ function ShapeNodeComponent({
           borderRadius: 999,
           backgroundColor: 'hsl(var(--card))',
           border: '1px solid hsl(var(--ring) / 0.72)',
-          zIndex: 20,
+          zIndex: Z_INDEX.RESIZE_HANDLE,
         }}
         onResizeEnd={handleResizeEnd}
       />

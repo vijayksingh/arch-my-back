@@ -1,12 +1,13 @@
 import { create } from "zustand";
+import { CANVAS_TOOL, VIEW_MODE } from "@/constants";
 
 /**
  * Editor UI preferences (ephemeral, not persisted to Convex)
  * These settings are local-only and reset to defaults when opening a design
  */
 
-export type WorkspaceViewMode = "document" | "both" | "canvas";
-export type CanvasTool = "cursor" | "select" | "rectangle" | "circle" | "text";
+export type WorkspaceViewMode = typeof VIEW_MODE[keyof typeof VIEW_MODE];
+export type CanvasTool = typeof CANVAS_TOOL[keyof typeof CANVAS_TOOL];
 
 interface EditorStore {
   viewMode: WorkspaceViewMode;
@@ -24,8 +25,8 @@ interface EditorStore {
 }
 
 export const useEditorStore = create<EditorStore>()((set) => ({
-  viewMode: "both",
-  activeCanvasTool: "cursor",
+  viewMode: VIEW_MODE.BOTH,
+  activeCanvasTool: CANVAS_TOOL.CURSOR,
   documentEditorMode: "edit",
   dslEditorVisible: false,
 
@@ -34,9 +35,9 @@ export const useEditorStore = create<EditorStore>()((set) => ({
   cycleViewMode: () =>
     set((s) => {
       const next: Record<WorkspaceViewMode, WorkspaceViewMode> = {
-        document: "both",
-        both: "canvas",
-        canvas: "document",
+        [VIEW_MODE.DOCUMENT]: VIEW_MODE.BOTH,
+        [VIEW_MODE.BOTH]: VIEW_MODE.CANVAS,
+        [VIEW_MODE.CANVAS]: VIEW_MODE.DOCUMENT,
       };
       return { viewMode: next[s.viewMode] };
     }),

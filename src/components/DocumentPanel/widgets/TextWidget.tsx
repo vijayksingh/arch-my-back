@@ -4,6 +4,7 @@ import type { NotebookBlock, NotebookBlockType } from '@/types';
 import { useDocumentStore } from '@/stores/documentStore';
 import { SlashCommandPicker } from '../SlashCommandPicker';
 import { MarkdownLines } from './MarkdownLines';
+import { Z_INDEX } from '@/constants';
 
 interface TextWidgetProps {
   block: Extract<NotebookBlock, { type: 'text' }>;
@@ -138,7 +139,7 @@ export function TextWidget({ block, isPreview, autoFocus, onReplaceWith, onExitW
         className="w-full overflow-hidden resize-none bg-transparent px-1.5 py-2 text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/50"
       />
       {pickerVisible && pickerPos && createPortal(
-        <div style={{ position: 'fixed', top: pickerPos.top, left: pickerPos.left, zIndex: 200, width: 240 }}>
+        <div style={{ position: 'fixed', top: pickerPos.top, left: pickerPos.left, zIndex: Z_INDEX.MODAL_PICKER, width: 240 }}>
           <SlashCommandPicker
             filter={pickerFilter}
             onSelect={handlePickerSelect}

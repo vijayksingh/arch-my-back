@@ -20,8 +20,13 @@ import { designNodeTypes, archEdgeTypes } from '@/registry/flowNodeTypes';
 import { cn } from '@/lib/utils';
 import { validateArchConnection } from '@/lib/connectionRules';
 import { SelectionActionBar } from './SelectionActionBar';
-import { CANVAS_TOOL, DRAG_DATA_TYPE, NODE_TYPE } from '@/constants';
-const MIN_DRAG = 20; // minimum drag distance in screen pixels to create a shape
+import {
+  CANVAS_TOOL,
+  DRAG_DATA_TYPE,
+  NODE_TYPE,
+  INTERACTION,
+  Z_INDEX,
+} from '@/constants';
 
 const defaultEdgeOptions = {
   type: 'archEdge' as const,
@@ -98,7 +103,7 @@ export default function Canvas() {
         if (!dragStart.current) return;
         const dx = ev.clientX - dragStart.current.screen.x;
         const dy = ev.clientY - dragStart.current.screen.y;
-        if (Math.hypot(dx, dy) < MIN_DRAG) { setDragPreview(null); return; }
+        if (Math.hypot(dx, dy) < INTERACTION.MIN_DRAG_DISTANCE) { setDragPreview(null); return; }
         setDragPreview({
           x: Math.min(ev.clientX, dragStart.current.screen.x),
           y: Math.min(ev.clientY, dragStart.current.screen.y),
@@ -121,7 +126,7 @@ export default function Canvas() {
         if (!shape) return;
         const dx = ev.clientX - start.screen.x;
         const dy = ev.clientY - start.screen.y;
-        if (Math.hypot(dx, dy) < MIN_DRAG) return; // too small — ignore
+        if (Math.hypot(dx, dy) < INTERACTION.MIN_DRAG_DISTANCE) return; // too small — ignore
 
         const flowEnd = screenToFlowPositionRef.current({ x: ev.clientX, y: ev.clientY });
         const x = Math.min(start.flow.x, flowEnd.x);
@@ -303,7 +308,7 @@ export default function Canvas() {
             width: dragPreview.w,
             height: dragPreview.h,
             pointerEvents: 'none',
-            zIndex: 50,
+            zIndex: Z_INDEX.DRAG_PREVIEW,
           }}
           className={cn(
             'border-2 border-dashed border-primary/60 bg-primary/5',

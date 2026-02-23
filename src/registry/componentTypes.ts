@@ -1,18 +1,29 @@
 import type { ComponentTypeConfig } from '@/types';
+import { deriveConfigFields, deriveDefaultConfig } from '@/lib/configSchemaUtils';
+
+// Helper to define a component type with derived config
+function defineComponentType(
+  config: Omit<ComponentTypeConfig, 'defaultConfig' | 'configFields'> & {
+    configSchema: { type: 'object'; properties: Record<string, any>; required: string[] };
+    labelOverrides?: Record<string, string>;
+  }
+): ComponentTypeConfig {
+  const { labelOverrides, ...rest } = config;
+  return {
+    ...rest,
+    defaultConfig: deriveDefaultConfig(config.configSchema),
+    configFields: deriveConfigFields(config.configSchema, labelOverrides ? { labels: labelOverrides } : undefined),
+  };
+}
 
 export const componentTypes: ComponentTypeConfig[] = [
   // --- Clients ---
-  {
+  defineComponentType({
     key: 'client_browser',
     label: 'Web Browser',
     category: 'Clients',
     icon: 'Monitor',
     description: 'Web browser / SPA client',
-    defaultConfig: { framework: 'React' },
-    configFields: [
-      { key: 'framework', label: 'Framework', type: 'select', options: ['React', 'Vue', 'Angular', 'Vanilla'], defaultValue: 'React' },
-      { key: 'hosting', label: 'Hosting', type: 'select', options: ['CDN', 'Static', 'SSR'], defaultValue: 'CDN' },
-    ],
     configSchema: {
       type: 'object',
       properties: {
@@ -23,18 +34,13 @@ export const componentTypes: ComponentTypeConfig[] = [
       required: ['framework', 'hosting'],
     },
     primaryFields: ['framework', 'hosting'],
-  },
-  {
+  }),
+  defineComponentType({
     key: 'client_mobile',
     label: 'Mobile App',
     category: 'Clients',
     icon: 'Smartphone',
     description: 'Mobile app (iOS/Android)',
-    defaultConfig: { platform: 'iOS/Android' },
-    configFields: [
-      { key: 'platform', label: 'Platform', type: 'select', options: ['iOS', 'Android', 'iOS/Android'], defaultValue: 'iOS/Android' },
-      { key: 'framework', label: 'Framework', type: 'select', options: ['Native', 'React Native', 'Flutter'], defaultValue: 'React Native' },
-    ],
     configSchema: {
       type: 'object',
       properties: {
@@ -45,20 +51,15 @@ export const componentTypes: ComponentTypeConfig[] = [
       required: ['platform', 'framework'],
     },
     primaryFields: ['platform', 'framework'],
-  },
+  }),
 
   // --- Traffic ---
-  {
+  defineComponentType({
     key: 'load_balancer',
     label: 'Load Balancer',
     category: 'Traffic',
     icon: 'Scale',
     description: 'Distributes traffic across multiple servers',
-    defaultConfig: { type: 'L7', algorithm: 'round-robin' },
-    configFields: [
-      { key: 'type', label: 'Type', type: 'select', options: ['L4', 'L7'], defaultValue: 'L7' },
-      { key: 'algorithm', label: 'Algorithm', type: 'select', options: ['round-robin', 'least-connections', 'ip-hash'], defaultValue: 'round-robin' },
-    ],
     configSchema: {
       type: 'object',
       properties: {
@@ -70,17 +71,13 @@ export const componentTypes: ComponentTypeConfig[] = [
       required: ['type', 'algorithm'],
     },
     primaryFields: ['algorithm', 'health_check_interval'],
-  },
-  {
+  }),
+  defineComponentType({
     key: 'api_gateway',
     label: 'API Gateway',
     category: 'Traffic',
     icon: 'Router',
     description: 'API routing, rate limiting, authentication',
-    defaultConfig: { rate_limit: 10000 },
-    configFields: [
-      { key: 'rate_limit', label: 'Rate Limit (req/s)', type: 'number', defaultValue: 10000 },
-    ],
     configSchema: {
       type: 'object',
       properties: {
@@ -91,18 +88,17 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['rate_limit'],
     },
+    labelOverrides: {
+      rate_limit: 'Rate Limit (req/s)',
+    },
     primaryFields: ['rate_limit', 'auth_method'],
-  },
-  {
+  }),
+  defineComponentType({
     key: 'cdn',
     label: 'CDN',
     category: 'Traffic',
     icon: 'Globe',
     description: 'Content delivery network for static assets',
-    defaultConfig: { cache_ttl: 3600 },
-    configFields: [
-      { key: 'cache_ttl', label: 'Cache TTL (s)', type: 'number', defaultValue: 3600 },
-    ],
     configSchema: {
       type: 'object',
       properties: {
@@ -113,19 +109,17 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['cache_ttl'],
     },
+    labelOverrides: {
+      cache_ttl: 'Cache TTL (s)',
+    },
     primaryFields: ['cache_ttl', 'origin_protocol'],
-  },
-  {
+  }),
+  defineComponentType({
     key: 'dns',
     label: 'DNS',
     category: 'Traffic',
     icon: 'Globe2',
     description: 'DNS resolver for domain name resolution',
-    defaultConfig: { provider: 'Route53', ttl: 300 },
-    configFields: [
-      { key: 'provider', label: 'Provider', type: 'select', options: ['Route53', 'CloudFlare', 'Custom'], defaultValue: 'Route53' },
-      { key: 'ttl', label: 'TTL (s)', type: 'number', defaultValue: 300 },
-    ],
     configSchema: {
       type: 'object',
       properties: {
@@ -135,23 +129,19 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['provider', 'ttl'],
     },
+    labelOverrides: {
+      ttl: 'TTL (s)',
+    },
     primaryFields: ['provider', 'ttl'],
-  },
+  }),
 
   // --- Compute ---
-  {
+  defineComponentType({
     key: 'app_server',
     label: 'App Server',
     category: 'Compute',
     icon: 'Server',
     description: 'Application server running business logic',
-    defaultConfig: { runtime: 'node:20', replicas: 2, cpu: '2vCPU', memory: '4GB' },
-    configFields: [
-      { key: 'runtime', label: 'Runtime', type: 'select', options: ['node:20', 'python:3.12', 'go:1.22', 'java:21', 'rust:1.77'], defaultValue: 'node:20' },
-      { key: 'replicas', label: 'Replicas', type: 'number', defaultValue: 2 },
-      { key: 'cpu', label: 'CPU', type: 'select', options: ['1vCPU', '2vCPU', '4vCPU', '8vCPU'], defaultValue: '2vCPU' },
-      { key: 'memory', label: 'Memory', type: 'select', options: ['1GB', '2GB', '4GB', '8GB', '16GB'], defaultValue: '4GB' },
-    ],
     configSchema: {
       type: 'object',
       properties: {
@@ -165,20 +155,17 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['runtime', 'replicas', 'cpu', 'memory'],
     },
+    labelOverrides: {
+      cpu: 'CPU',
+    },
     primaryFields: ['runtime', 'replicas', 'cpu'],
-  },
-  {
+  }),
+  defineComponentType({
     key: 'worker',
     label: 'Worker',
     category: 'Compute',
     icon: 'Cog',
     description: 'Background job processor',
-    defaultConfig: { runtime: 'python:3.12', replicas: 2, concurrency: 10 },
-    configFields: [
-      { key: 'runtime', label: 'Runtime', type: 'select', options: ['node:20', 'python:3.12', 'go:1.22', 'java:21'], defaultValue: 'python:3.12' },
-      { key: 'replicas', label: 'Replicas', type: 'number', defaultValue: 2 },
-      { key: 'concurrency', label: 'Concurrency', type: 'number', defaultValue: 10 },
-    ],
     configSchema: {
       type: 'object',
       properties: {
@@ -191,19 +178,13 @@ export const componentTypes: ComponentTypeConfig[] = [
       required: ['runtime', 'replicas', 'concurrency'],
     },
     primaryFields: ['runtime', 'replicas'],
-  },
-  {
+  }),
+  defineComponentType({
     key: 'serverless',
     label: 'Serverless Function',
     category: 'Compute',
     icon: 'Zap',
     description: 'Event-driven serverless compute (Lambda/Cloud Functions)',
-    defaultConfig: { runtime: 'node:20', memory: '256MB', timeout: 30 },
-    configFields: [
-      { key: 'runtime', label: 'Runtime', type: 'select', options: ['node:20', 'python:3.12', 'go:1.22'], defaultValue: 'node:20' },
-      { key: 'memory', label: 'Memory', type: 'select', options: ['128MB', '256MB', '512MB', '1GB', '2GB'], defaultValue: '256MB' },
-      { key: 'timeout', label: 'Timeout (s)', type: 'number', defaultValue: 30 },
-    ],
     configSchema: {
       type: 'object',
       properties: {
@@ -215,22 +196,25 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['runtime', 'memory', 'timeout'],
     },
+    labelOverrides: {
+      timeout: 'Timeout (s)',
+    },
     primaryFields: ['runtime', 'memory', 'timeout'],
-  },
+  }),
 
   // --- Databases ---
-  {
+  defineComponentType({
+
     key: 'postgres',
+
     label: 'PostgreSQL',
+
     category: 'Databases',
+
     icon: 'Database',
+
     description: 'Relational database with ACID transactions',
-    defaultConfig: { storage: '100GB', replicas: 1, mode: 'single' },
-    configFields: [
-      { key: 'storage', label: 'Storage', type: 'select', options: ['10GB', '50GB', '100GB', '500GB', '1TB'], defaultValue: '100GB' },
-      { key: 'replicas', label: 'Replicas', type: 'number', defaultValue: 1 },
-      { key: 'mode', label: 'Mode', type: 'select', options: ['single', 'primary-replica', 'multi-primary'], defaultValue: 'single' },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -243,18 +227,22 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['storage', 'replicas', 'mode'],
     },
+
     primaryFields: ['replicas', 'mode', 'storage'],
-  },
-  {
+
+  }), 
+  defineComponentType({
+
     key: 'object_storage',
+
     label: 'Object Storage',
+
     category: 'Databases',
+
     icon: 'HardDrive',
+
     description: 'S3-compatible object/blob storage',
-    defaultConfig: { versioning: false },
-    configFields: [
-      { key: 'versioning', label: 'Versioning', type: 'select', options: ['true', 'false'], defaultValue: 'false' },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -266,19 +254,22 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['versioning'],
     },
+
     primaryFields: ['storage_class', 'versioning'],
-  },
-  {
+
+  }), 
+  defineComponentType({
+
     key: 'mysql',
+
     label: 'MySQL',
+
     category: 'Databases',
+
     icon: 'Database',
+
     description: 'MySQL relational database',
-    defaultConfig: { storage: '100GB', replicas: 1 },
-    configFields: [
-      { key: 'storage', label: 'Storage', type: 'select', options: ['10GB', '50GB', '100GB', '500GB', '1TB'], defaultValue: '100GB' },
-      { key: 'replicas', label: 'Replicas', type: 'number', defaultValue: 1 },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -289,19 +280,22 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['storage', 'replicas'],
     },
+
     primaryFields: ['replicas', 'storage'],
-  },
-  {
+
+  }), 
+  defineComponentType({
+
     key: 'mongodb',
+
     label: 'MongoDB',
+
     category: 'Databases',
+
     icon: 'Database',
+
     description: 'MongoDB document store',
-    defaultConfig: { storage: '100GB', shards: 1 },
-    configFields: [
-      { key: 'storage', label: 'Storage', type: 'select', options: ['10GB', '50GB', '100GB', '500GB', '1TB'], defaultValue: '100GB' },
-      { key: 'shards', label: 'Shards', type: 'number', defaultValue: 1 },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -312,19 +306,22 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['storage', 'shards'],
     },
+
     primaryFields: ['shards', 'storage'],
-  },
-  {
+
+  }), 
+  defineComponentType({
+
     key: 'cassandra',
+
     label: 'Cassandra',
+
     category: 'Databases',
+
     icon: 'Database',
+
     description: 'Cassandra wide-column store',
-    defaultConfig: { nodes: 3, replication_factor: 3 },
-    configFields: [
-      { key: 'nodes', label: 'Nodes', type: 'number', defaultValue: 3 },
-      { key: 'replication_factor', label: 'Replication Factor', type: 'number', defaultValue: 3 },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -335,19 +332,22 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['nodes', 'replication_factor'],
     },
+
     primaryFields: ['nodes', 'replication_factor'],
-  },
-  {
+
+  }), 
+  defineComponentType({
+
     key: 'dynamodb',
+
     label: 'DynamoDB',
+
     category: 'Databases',
+
     icon: 'Database',
+
     description: 'DynamoDB key-value store',
-    defaultConfig: { capacity_mode: 'on-demand' },
-    configFields: [
-      { key: 'capacity_mode', label: 'Capacity Mode', type: 'select', options: ['on-demand', 'provisioned'], defaultValue: 'on-demand' },
-      { key: 'read_capacity', label: 'Read Capacity', type: 'number', defaultValue: 5 },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -358,21 +358,18 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['capacity_mode'],
     },
+
     primaryFields: ['capacity_mode', 'read_capacity'],
-  },
+
+  }), 
 
   // --- Caching ---
-  {
+  defineComponentType({
     key: 'redis',
     label: 'Redis',
     category: 'Caching',
     icon: 'MemoryStick',
     description: 'In-memory cache and data store',
-    defaultConfig: { memory: '6GB', ttl: 3600 },
-    configFields: [
-      { key: 'memory', label: 'Memory', type: 'select', options: ['1GB', '2GB', '4GB', '6GB', '16GB', '32GB'], defaultValue: '6GB' },
-      { key: 'ttl', label: 'Default TTL (s)', type: 'number', defaultValue: 3600 },
-    ],
     configSchema: {
       type: 'object',
       properties: {
@@ -384,21 +381,25 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['memory', 'ttl'],
     },
+    labelOverrides: {
+      ttl: 'Default TTL (s)',
+    },
     primaryFields: ['memory', 'eviction_policy'],
-  },
+  }), 
 
   // --- Search & Analytics ---
-  {
+  defineComponentType({
+
     key: 'elasticsearch',
+
     label: 'Elasticsearch',
+
     category: 'Search & Analytics',
+
     icon: 'Search',
+
     description: 'Elasticsearch full-text search engine',
-    defaultConfig: { nodes: 3, storage: '500GB' },
-    configFields: [
-      { key: 'nodes', label: 'Nodes', type: 'number', defaultValue: 3 },
-      { key: 'storage', label: 'Storage', type: 'select', options: ['100GB', '500GB', '1TB', '5TB'], defaultValue: '500GB' },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -409,19 +410,22 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['nodes', 'storage'],
     },
+
     primaryFields: ['nodes', 'storage'],
-  },
-  {
+
+  }), 
+  defineComponentType({
+
     key: 'data_warehouse',
+
     label: 'Data Warehouse',
+
     category: 'Search & Analytics',
+
     icon: 'Warehouse',
+
     description: 'Data warehouse / OLAP system',
-    defaultConfig: { storage: '1TB', compute: 'Medium' },
-    configFields: [
-      { key: 'storage', label: 'Storage', type: 'select', options: ['500GB', '1TB', '5TB', '10TB'], defaultValue: '1TB' },
-      { key: 'compute', label: 'Compute', type: 'select', options: ['Small', 'Medium', 'Large', 'X-Large'], defaultValue: 'Medium' },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -432,21 +436,24 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['storage', 'compute'],
     },
+
     primaryFields: ['compute', 'storage'],
-  },
+
+  }), 
 
   // --- ML / AI ---
-  {
+  defineComponentType({
+
     key: 'ml_model',
+
     label: 'ML Model',
+
     category: 'ML / AI',
+
     icon: 'Brain',
+
     description: 'ML model serving endpoint',
-    defaultConfig: { framework: 'PyTorch', accelerator: 'GPU' },
-    configFields: [
-      { key: 'framework', label: 'Framework', type: 'select', options: ['PyTorch', 'TensorFlow', 'ONNX', 'Custom'], defaultValue: 'PyTorch' },
-      { key: 'accelerator', label: 'Accelerator', type: 'select', options: ['CPU', 'GPU', 'TPU'], defaultValue: 'GPU' },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -457,19 +464,22 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['framework', 'accelerator'],
     },
+
     primaryFields: ['framework', 'accelerator'],
-  },
-  {
+
+  }), 
+  defineComponentType({
+
     key: 'vector_db',
+
     label: 'Vector Database',
+
     category: 'ML / AI',
+
     icon: 'Waypoints',
+
     description: 'Vector database for embeddings',
-    defaultConfig: { dimensions: 1536, index_type: 'HNSW' },
-    configFields: [
-      { key: 'dimensions', label: 'Dimensions', type: 'number', defaultValue: 1536 },
-      { key: 'index_type', label: 'Index Type', type: 'select', options: ['HNSW', 'IVF', 'Flat'], defaultValue: 'HNSW' },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -480,21 +490,24 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['dimensions', 'index_type'],
     },
+
     primaryFields: ['dimensions', 'index_type'],
-  },
+
+  }), 
 
   // --- Observability ---
-  {
+  defineComponentType({
+
     key: 'logging',
+
     label: 'Logging',
+
     category: 'Observability',
+
     icon: 'FileText',
+
     description: 'Centralized logging (ELK, Datadog)',
-    defaultConfig: { retention: '30d', storage: '500GB' },
-    configFields: [
-      { key: 'retention', label: 'Retention', type: 'select', options: ['7d', '30d', '90d', '1y'], defaultValue: '30d' },
-      { key: 'storage', label: 'Storage', type: 'select', options: ['100GB', '500GB', '1TB', '5TB'], defaultValue: '500GB' },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -505,19 +518,22 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['retention', 'storage'],
     },
+
     primaryFields: ['retention', 'storage'],
-  },
-  {
+
+  }), 
+  defineComponentType({
+
     key: 'metrics',
+
     label: 'Metrics',
+
     category: 'Observability',
+
     icon: 'Activity',
+
     description: 'Metrics & monitoring (Prometheus, Grafana)',
-    defaultConfig: { scrape_interval: 15, retention: '30d' },
-    configFields: [
-      { key: 'scrape_interval', label: 'Scrape Interval (s)', type: 'number', defaultValue: 15 },
-      { key: 'retention', label: 'Retention', type: 'select', options: ['7d', '30d', '90d', '1y'], defaultValue: '30d' },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -528,21 +544,27 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['scrape_interval', 'retention'],
     },
+
     primaryFields: ['scrape_interval', 'retention'],
-  },
+    labelOverrides: {
+      scrape_interval: 'Scrape Interval (s)',
+    },
+
+  }), 
 
   // --- Messaging ---
-  {
+  defineComponentType({
+
     key: 'kafka',
+
     label: 'Kafka',
+
     category: 'Messaging',
+
     icon: 'ArrowRightLeft',
+
     description: 'Distributed event streaming platform',
-    defaultConfig: { partitions: 6, retention: '7d' },
-    configFields: [
-      { key: 'partitions', label: 'Partitions', type: 'number', defaultValue: 6 },
-      { key: 'retention', label: 'Retention', type: 'select', options: ['1d', '3d', '7d', '14d', '30d'], defaultValue: '7d' },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -554,18 +576,22 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['partitions', 'retention'],
     },
+
     primaryFields: ['partitions', 'retention', 'replication_factor'],
-  },
-  {
+
+  }), 
+  defineComponentType({
+
     key: 'websocket',
+
     label: 'WebSocket Server',
+
     category: 'Messaging',
+
     icon: 'Plug',
+
     description: 'Real-time bidirectional communication',
-    defaultConfig: { max_connections: 10000 },
-    configFields: [
-      { key: 'max_connections', label: 'Max Connections', type: 'number', defaultValue: 10000 },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -577,19 +603,22 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['max_connections'],
     },
+
     primaryFields: ['max_connections', 'heartbeat_interval'],
-  },
-  {
+
+  }), 
+  defineComponentType({
+
     key: 'message_queue',
+
     label: 'Message Queue',
+
     category: 'Messaging',
+
     icon: 'Inbox',
+
     description: 'General message queue (RabbitMQ, SQS)',
-    defaultConfig: { queue_type: 'RabbitMQ', max_size: 10000 },
-    configFields: [
-      { key: 'queue_type', label: 'Queue Type', type: 'select', options: ['RabbitMQ', 'SQS', 'Azure Queue'], defaultValue: 'RabbitMQ' },
-      { key: 'max_size', label: 'Max Size', type: 'number', defaultValue: 10000 },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -600,21 +629,24 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['queue_type', 'max_size'],
     },
+
     primaryFields: ['queue_type', 'max_size'],
-  },
+
+  }), 
 
   // --- External ---
-  {
+  defineComponentType({
+
     key: 'external_api',
+
     label: 'External API',
+
     category: 'External',
+
     icon: 'ExternalLink',
+
     description: 'Third-party API dependency',
-    defaultConfig: { timeout: 5000 },
-    configFields: [
-      { key: 'base_url', label: 'Base URL', type: 'text', defaultValue: 'https://api.example.com' },
-      { key: 'timeout', label: 'Timeout (ms)', type: 'number', defaultValue: 5000 },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -626,19 +658,26 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['base_url', 'timeout'],
     },
+
     primaryFields: ['base_url', 'auth_type'],
-  },
-  {
+    labelOverrides: {
+      base_url: 'Base URL',
+      timeout: 'Timeout (ms)',
+    },
+
+  }), 
+  defineComponentType({
+
     key: 'payment_gateway',
+
     label: 'Payment Gateway',
+
     category: 'External',
+
     icon: 'CreditCard',
+
     description: 'Payment processor (Stripe, PayPal)',
-    defaultConfig: { provider: 'Stripe' },
-    configFields: [
-      { key: 'provider', label: 'Provider', type: 'select', options: ['Stripe', 'PayPal', 'Square', 'Braintree'], defaultValue: 'Stripe' },
-      { key: 'mode', label: 'Mode', type: 'select', options: ['test', 'live'], defaultValue: 'test' },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -649,19 +688,22 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['provider', 'mode'],
     },
+
     primaryFields: ['provider', 'mode'],
-  },
-  {
+
+  }), 
+  defineComponentType({
+
     key: 'auth_provider',
+
     label: 'Auth Provider',
+
     category: 'External',
+
     icon: 'Shield',
+
     description: 'Auth/identity provider (OAuth, Auth0)',
-    defaultConfig: { provider: 'Auth0', protocol: 'OAuth2' },
-    configFields: [
-      { key: 'provider', label: 'Provider', type: 'select', options: ['Auth0', 'Okta', 'Firebase', 'Cognito'], defaultValue: 'Auth0' },
-      { key: 'protocol', label: 'Protocol', type: 'select', options: ['OAuth2', 'SAML', 'OpenID'], defaultValue: 'OAuth2' },
-    ],
+
     configSchema: {
       type: 'object',
       properties: {
@@ -672,8 +714,10 @@ export const componentTypes: ComponentTypeConfig[] = [
       },
       required: ['provider', 'protocol'],
     },
+
     primaryFields: ['provider', 'protocol'],
-  },
+
+  }), 
 ];
 
 export const componentTypeMap = new Map(

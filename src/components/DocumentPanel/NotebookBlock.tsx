@@ -4,7 +4,7 @@ import type { NotebookBlock, NotebookBlockType } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { removeBlockWithSectionCleanup } from '@/actions/designActions';
 import { cn } from '@/lib/utils';
-import { BLOCK_TYPE } from '@/constants';
+import { BLOCK_TYPE, TIMING } from '@/constants';
 import { SectionBadge } from './widgets/SectionBadge';
 import { TextWidget } from './widgets/TextWidget';
 import { RequirementsWidget } from './widgets/RequirementsWidget';
@@ -35,7 +35,7 @@ export function NotebookBlockComponent({
 
   const handleDelete = useCallback(() => {
     setIsExiting(true);
-    setTimeout(() => removeBlockWithSectionCleanup(block.id), 180);
+    setTimeout(() => removeBlockWithSectionCleanup(block.id), TIMING.ANIMATION_SHORT);
   }, [block.id]);
 
   const linkedSection = block.sectionId

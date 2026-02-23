@@ -10,7 +10,12 @@ import type {
 import { componentTypeMap } from '@/registry/componentTypes';
 import { generateNodeId } from '@/lib/idGenerator';
 import { getDefaultShapeSize } from '@/lib/shapeSizeDefaults';
-import { NODE_TYPE } from '@/constants';
+import {
+  NODE_TYPE,
+  SIZE_CONSTRAINTS,
+  FONT_SIZE,
+  SECTION_BADGE,
+} from '@/constants';
 
 export interface NodeSlice {
   addNode: (componentType: string, position: { x: number; y: number }) => boolean;
@@ -91,7 +96,7 @@ export const createNodeSlice = (
       data: {
         label: labelByShape[shape],
         shape,
-        fontSize: shape === 'text' ? 14 : undefined,
+        fontSize: shape === 'text' ? FONT_SIZE.DEFAULT_TEXT : undefined,
       },
       style: { width, height },
     };
@@ -177,15 +182,15 @@ export const createNodeSlice = (
 
     const width =
       typeof style.width === 'number' && Number.isFinite(style.width)
-        ? Math.max(48, Math.round(style.width))
+        ? Math.max(SIZE_CONSTRAINTS.MIN_WIDTH, Math.round(style.width))
         : undefined;
     const height =
       typeof style.height === 'number' && Number.isFinite(style.height)
-        ? Math.max(32, Math.round(style.height))
+        ? Math.max(SIZE_CONSTRAINTS.MIN_HEIGHT, Math.round(style.height))
         : undefined;
     const fontSize =
       typeof style.fontSize === 'number' && Number.isFinite(style.fontSize)
-        ? Math.min(96, Math.max(10, Math.round(style.fontSize)))
+        ? Math.min(FONT_SIZE.MAX, Math.max(FONT_SIZE.MIN, Math.round(style.fontSize)))
         : undefined;
 
     set({
@@ -217,7 +222,7 @@ export const createNodeSlice = (
       type: NODE_TYPE.SECTION_BADGE,
       position,
       data: { blockId, blockType, label },
-      style: { width: 260 },
+      style: { width: SECTION_BADGE.WIDTH },
     };
     set({ nodes: [...get().nodes, newNode] });
     return id;

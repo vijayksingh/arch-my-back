@@ -14,6 +14,7 @@ import type {
   CanvasOperation,
   QuizWidgetConfig,
 } from '@/types/walkthrough';
+import { WIDGET_TYPE } from '@/constants';
 
 // Re-export types that consumers need
 export type { WalkthroughStep, QuizWidgetConfig } from '@/types/walkthrough';
@@ -168,7 +169,7 @@ export class WalkthroughEngine {
     const { correct } = this.checkQuizAnswer(step, selectedOptionIds);
 
     // Find quiz widget to get explanation
-    const quizWidget = step.widgets.find(w => w.type === 'quiz') as QuizWidgetConfig | undefined;
+    const quizWidget = step.widgets.find(w => w.type === WIDGET_TYPE.QUIZ) as QuizWidgetConfig | undefined;
     const firstSelected = quizWidget?.options.find(opt => opt.id === selectedOptionIds[0]);
 
     return {
@@ -326,7 +327,7 @@ export class WalkthroughEngine {
     selectedOptionIds: string[]
   ): { correct: boolean; correctOptionIds: string[] } {
     // Find quiz widget in widgets array
-    const quizWidget = step.widgets?.find(w => w.type === 'quiz') as QuizWidgetConfig | undefined;
+    const quizWidget = step.widgets?.find(w => w.type === WIDGET_TYPE.QUIZ) as QuizWidgetConfig | undefined;
     if (!quizWidget) {
       return { correct: false, correctOptionIds: [] };
     }

@@ -11,3 +11,16 @@ export { REQUIREMENT_KIND, type RequirementKindId } from './requirements';
 export { LLD_STATUS, type LLDStatusId } from './lldStatus';
 export { VIEW_MODE, type ViewModeId } from './viewModes';
 export { DRAG_DATA_TYPE, type DragDataTypeId } from './dragDataTypes';
+
+// Numeric constants
+export {
+  ARCH_NODE,
+  SECTION_BADGE,
+  SIZE_CONSTRAINTS,
+  FONT_SIZE,
+  GROUP_DIMENSIONS,
+  INTERACTION,
+} from './dimensions';
+export { TIMING } from './timing';
+export { Z_INDEX } from './zIndex';
+export { LIMITS } from './limits';

@@ -5,7 +5,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { addBlockWithSectionCoordination } from '@/actions/designActions';
 import type { NotebookBlockType } from '@/types';
 import { NotebookBlockComponent } from './NotebookBlock';
-import { BLOCK_TYPE } from '@/constants';
+import { BLOCK_TYPE, TIMING } from '@/constants';
 
 export function DocumentPanel() {
   const blocks = useDocumentStore((s) => s.blocks);
@@ -41,7 +41,7 @@ export function DocumentPanel() {
   // Clear newBlockId after one render cycle (enough for autoFocus to fire)
   useEffect(() => {
     if (!newBlockId) return;
-    const timer = setTimeout(() => setNewBlockId(null), 350);
+    const timer = setTimeout(() => setNewBlockId(null), TIMING.BLOCK_HIGHLIGHT_CLEAR);
     return () => clearTimeout(timer);
   }, [newBlockId]);
 
@@ -69,7 +69,7 @@ export function DocumentPanel() {
     setHighlightedBlockId(pendingFocusBlockId);
     clearPendingFocusBlock();
 
-    const timer = setTimeout(() => setHighlightedBlockId(null), 1500);
+    const timer = setTimeout(() => setHighlightedBlockId(null), TIMING.BLOCK_HIGHLIGHT_FADE);
     return () => clearTimeout(timer);
   }, [pendingFocusBlockId, clearPendingFocusBlock]);
 

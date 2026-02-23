@@ -5,6 +5,7 @@ import type { DesignId, CanvasSection, NotebookBlock } from "@/types/design";
 import type { CanvasNode, ArchEdge } from "@/types";
 import { useCanvasStore } from "@/stores/canvasStore";
 import { useDocumentStore } from "@/stores/documentStore";
+import { TIMING } from "@/constants";
 
 /** Extract only domain fields from a React Flow node — strips runtime state */
 function cleanNodeForStorage(node: CanvasNode) {
@@ -94,7 +95,7 @@ export function useDesignSync(designId: DesignId | null) {
         }).catch((err: Error) => {
           console.error("Failed to save canvas:", err);
         });
-      }, 2000);
+      }, TIMING.DEBOUNCE_SAVE);
     });
 
     return () => {
@@ -119,7 +120,7 @@ export function useDesignSync(designId: DesignId | null) {
         }).catch((err: Error) => {
           console.error("Failed to save blocks:", err);
         });
-      }, 2000);
+      }, TIMING.DEBOUNCE_SAVE);
     });
 
     return () => {

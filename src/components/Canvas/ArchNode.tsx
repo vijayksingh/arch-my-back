@@ -5,6 +5,7 @@ import type { ArchNode as ArchNodeType } from '@/types';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { getIconByName } from '@/registry/iconRegistry';
 import { categoryGlows, categoryAccentTokens } from '@/registry/categoryThemes';
+import { ARCH_NODE } from '@/constants';
 
 function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
   const [isHovered, setIsHovered] = useState(false);
@@ -46,8 +47,8 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
     <div
       className="relative flex flex-col items-center justify-center gap-2.5 rounded-xl border px-4 py-3 transition-all duration-160"
       style={{
-        width: 156,
-        minHeight: 96,
+        width: ARCH_NODE.WIDTH,
+        minHeight: ARCH_NODE.MIN_HEIGHT,
         background: surfaceBackground,
         borderColor: baseBorderColor,
         boxShadow,

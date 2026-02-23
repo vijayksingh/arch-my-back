@@ -1,4 +1,5 @@
 import { componentTypeMap } from '@/registry/componentTypes';
+import { NODE_TYPE } from '@/constants';
 
 export interface ConnectionValidationResult {
   valid: boolean;
@@ -120,7 +121,7 @@ export function validateArchConnection<
   const targetNode = nodes.find((n) => n.id === connection.target);
 
   // Only validate arch component connections (not shapes, badges, etc.)
-  if (sourceNode?.type === 'archComponent' && targetNode?.type === 'archComponent') {
+  if (sourceNode?.type === NODE_TYPE.ARCH_COMPONENT && targetNode?.type === NODE_TYPE.ARCH_COMPONENT) {
     const sourceType = sourceNode.data?.componentType;
     const targetType = targetNode.data?.componentType;
 

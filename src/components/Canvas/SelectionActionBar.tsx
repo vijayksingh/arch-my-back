@@ -4,6 +4,7 @@ import { Link2 } from 'lucide-react';
 import type { CanvasNode } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { TIMING } from '@/constants';
 
 function getNodeWidth(node: CanvasNode): number {
   const sw = node.style?.width;
@@ -71,7 +72,7 @@ export function SelectionActionBar() {
 
     if (!created) {
       setFeedback('Could not create group.');
-      setTimeout(() => setFeedback(null), 2000);
+      setTimeout(() => setFeedback(null), TIMING.FEEDBACK_DISPLAY);
       return;
     }
 

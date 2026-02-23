@@ -6,6 +6,7 @@ import type {
   WidgetConnection,
 } from '../types';
 import { widgetRegistry } from '../registry/widgetRegistry';
+import { LIMITS } from '@/constants';
 
 /**
  * Widget Store - Manages widget instances, flows, and connections
@@ -303,7 +304,7 @@ export const useWidgetStore = create<WidgetStore>()(
       },
     }),
     {
-      limit: 50,
+      limit: LIMITS.UNDO_HISTORY,
       // Only track meaningful state changes (not UI state like selection)
       equality: (pastState, currentState) =>
         JSON.stringify(pastState.widgets) ===
