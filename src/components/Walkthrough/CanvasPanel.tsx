@@ -19,8 +19,31 @@ import { baseNodeTypes, archEdgeTypes } from '@/registry/flowNodeTypes';
 import { validateArchConnection } from '@/lib/connectionRules';
 import type { BuildPaletteComponent } from '@/types/walkthrough';
 import { NODE_TYPE } from '@/constants';
+import { componentTypes } from '@/registry/componentTypes';
 
-function CanvasEffects({ highlightedNodeIds, nodesCount }: { highlightedNodeIds: string[], nodesCount: number }) {
+// Category to tier mapping for semantic layout
+const CATEGORY_TIER: Record<string, number> = {
+  'Clients': 0,
+  'Traffic': 1,
+  'Compute': 2,
+  'Caching': 2,        // same tier as compute, placed to the side
+  'Messaging': 2,      // same tier as compute
+  'Search & Analytics': 3,
+  'ML / AI': 3,
+  'Databases': 4,
+  'Observability': 3,  // side channel
+  'External': 1,       // similar to traffic layer
+};
+
+const TIER_Y: Record<number, number> = {
+  0: 0,
+  1: 150,
+  2: 300,
+  3: 450,
+  4: 600,
+};
+
+function CanvasEffects({ highlightedNodeIds, stepId }: { highlightedNodeIds: string[], stepId: string }) {
   const { fitView } = useReactFlow();
 
   useEffect(() => {
@@ -31,13 +54,13 @@ function CanvasEffects({ highlightedNodeIds, nodesCount }: { highlightedNodeIds:
           duration: 800,
           padding: 0.3,
         }).catch(() => { });
-      } else if (nodesCount > 0) {
+      } else {
         fitView({ duration: 800, padding: 0.1 }).catch(() => { });
       }
     }, 100);
 
     return () => clearTimeout(timeout);
-  }, [highlightedNodeIds, nodesCount, fitView]);
+  }, [highlightedNodeIds, stepId, fitView]);
 
   return null;
 }
@@ -45,6 +68,7 @@ function CanvasEffects({ highlightedNodeIds, nodesCount }: { highlightedNodeIds:
 interface CanvasPanelProps {
   nodes: Node[];
   edges: Edge[];
+  stepId: string;
   highlightedNodeIds?: string[];
   animatedEdgeIds?: string[];
   nodesDraggable?: boolean;
@@ -57,6 +81,7 @@ interface CanvasPanelProps {
 export function CanvasPanel({
   nodes,
   edges,
+  stepId,
   highlightedNodeIds = [],
   animatedEdgeIds = [],
   nodesDraggable = false,
@@ -101,6 +126,7 @@ export function CanvasPanel({
         <CanvasPanelInner
           displayNodes={displayNodes}
           displayEdges={displayEdges}
+          stepId={stepId}
           nodesDraggable={nodesDraggable}
           nodesConnectable={nodesConnectable}
           onNodeDragStop={onNodeDragStop}
@@ -118,6 +144,7 @@ export function CanvasPanel({
 interface CanvasPanelInnerProps {
   displayNodes: Node[];
   displayEdges: Edge[];
+  stepId: string;
   nodesDraggable: boolean;
   nodesConnectable: boolean;
   onNodeDragStop?: (e: React.MouseEvent, node: Node) => void;
@@ -131,6 +158,7 @@ interface CanvasPanelInnerProps {
 function CanvasPanelInner({
   displayNodes,
   displayEdges,
+  stepId,
   nodesDraggable,
   nodesConnectable,
   onNodeDragStop,
@@ -169,47 +197,29 @@ function CanvasPanelInner({
 
       const component: BuildPaletteComponent = JSON.parse(componentData);
 
-      // Get position on canvas where the component was dropped
-      const position = screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
+      // Tier-based semantic placement using component categories
+      const componentConfig = componentTypes.find(c => c.key === component.componentType);
+      const category = componentConfig?.category || 'Compute';
+      const tier = CATEGORY_TIER[category] ?? 2;
+      const baseY = TIER_Y[tier] ?? 300;
+
+      // Find existing nodes in same tier
+      const sameTierNodes = displayNodes.filter(n => {
+        const existingConfig = componentTypes.find(c => c.key === n.data?.componentType);
+        const existingCategory = existingConfig?.category || 'Compute';
+        const existingTier = CATEGORY_TIER[existingCategory] ?? 2;
+        return existingTier === tier;
       });
 
-      // Grid-based placement to avoid stacking
-      const GRID_CELL_W = 220;  // node width (~160) + gap
-      const GRID_CELL_H = 120;  // node height (~80) + gap
-      let finalPosition = { ...position };
-
-      // Check if any existing node occupies this grid cell
-      const isOccupied = (pos: { x: number; y: number }) =>
-        displayNodes.some(n =>
-          Math.abs(n.position.x - pos.x) < GRID_CELL_W * 0.7 &&
-          Math.abs(n.position.y - pos.y) < GRID_CELL_H * 0.7
-        );
-
-      if (isOccupied(finalPosition)) {
-        // Spiral outward to find an open cell
-        let found = false;
-        for (let ring = 1; ring <= 5 && !found; ring++) {
-          for (let dx = -ring; dx <= ring && !found; dx++) {
-            for (let dy = -ring; dy <= ring && !found; dy++) {
-              if (Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue; // only check ring perimeter
-              const candidate = {
-                x: finalPosition.x + dx * GRID_CELL_W,
-                y: finalPosition.y + dy * GRID_CELL_H,
-              };
-              if (!isOccupied(candidate)) {
-                finalPosition = candidate;
-                found = true;
-              }
-            }
-          }
-        }
-        // If all cells occupied (unlikely with 5 rings = 100 cells), just offset right
-        if (!found) {
-          finalPosition = { x: finalPosition.x + GRID_CELL_W * 6, y: finalPosition.y };
-        }
+      let finalX: number;
+      if (sameTierNodes.length === 0) {
+        finalX = 300; // center
+      } else {
+        const rightmost = Math.max(...sameTierNodes.map(n => n.position.x));
+        finalX = rightmost + 220;
       }
+
+      const finalPosition = { x: finalX, y: baseY };
 
       // Create new node
       const newNode: Node = {
@@ -238,7 +248,6 @@ function CanvasPanelInner({
       nodeTypes={baseNodeTypes}
       edgeTypes={archEdgeTypes}
       connectionMode={ConnectionMode.Loose}
-      fitView
       minZoom={0.1}
       maxZoom={4}
       defaultViewport={{ x: 0, y: 0, zoom: 1 }}
@@ -254,7 +263,7 @@ function CanvasPanelInner({
       <Background />
       <Controls />
       <MiniMap position="bottom-left" pannable zoomable />
-      <CanvasEffects highlightedNodeIds={highlightedNodeIds} nodesCount={enrichedNodes.length} />
+      <CanvasEffects highlightedNodeIds={highlightedNodeIds} stepId={stepId} />
     </ReactFlow>
   );
 }
