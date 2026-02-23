@@ -17,6 +17,7 @@ export interface CanvasNode {
   position: { x: number; y: number };
   data: Record<string, any>;
   parentNode?: string;
+  draggable?: boolean;
 }
 
 /**

@@ -57,7 +57,7 @@ export default function Canvas() {
   const edges = useCanvasStore((s) => s.edges);
   const onNodesChange = useCanvasStore((s) => s.onNodesChange);
   const onEdgesChange = useCanvasStore((s) => s.onEdgesChange);
-  const onConnect = useCanvasStore((s) => s.onConnect);
+  const onConnectStore = useCanvasStore((s) => s.onConnect);
   const addNode = useCanvasStore((s) => s.addNode);
   const addShapeNodeWithSize = useCanvasStore((s) => s.addShapeNodeWithSize);
   const addWidgetNode = useCanvasStore((s) => s.addWidgetNode);
@@ -74,6 +74,13 @@ export default function Canvas() {
   const dragStart = useRef<{ screen: { x: number; y: number }; flow: XYPosition } | null>(null);
   const activeDragTool = useRef<CanvasShapeKind | null>(null);
   const [dragPreview, setDragPreview] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+
+  // Connection feedback state
+  const [connectionFeedback, setConnectionFeedback] = useState<{
+    message: string;
+    type: 'error' | 'warning';
+  } | null>(null);
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Stable ref for screenToFlowPosition so window listeners see the latest version
   const screenToFlowPositionRef = useRef(screenToFlowPosition);
@@ -224,6 +231,45 @@ export default function Canvas() {
     [nodes]
   );
 
+  const showConnectionFeedback = useCallback(
+    (message: string, type: 'error' | 'warning') => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+
+      setConnectionFeedback({ message, type });
+
+      feedbackTimeoutRef.current = setTimeout(() => {
+        setConnectionFeedback(null);
+        feedbackTimeoutRef.current = null;
+      }, 3500);
+    },
+    []
+  );
+
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      const validation = validateArchConnection(nodes, connection);
+
+      if (!validation.valid) {
+        // Hard rejection - show error and prevent connection
+        if (validation.warning) {
+          showConnectionFeedback(validation.warning, 'error');
+        }
+        return;
+      }
+
+      // Valid connection - proceed
+      onConnectStore(connection);
+
+      // Show soft warning if present
+      if (validation.warning) {
+        showConnectionFeedback(validation.warning, 'warning');
+      }
+    },
+    [nodes, onConnectStore, showConnectionFeedback]
+  );
+
   useEffect(() => {
     if (!pendingFocusSectionId) return;
 
@@ -244,6 +290,14 @@ export default function Canvas() {
     sections,
     setSelectedNode,
   ]);
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div
@@ -271,6 +325,9 @@ export default function Canvas() {
         selectionOnDrag={activeCanvasTool === CANVAS_TOOL.SELECT}
         selectionMode={SelectionMode.Partial}
         fitView
+        minZoom={0.1}
+        maxZoom={2.0}
+        fitViewOptions={{ maxZoom: 1.0, padding: 0.15 }}
         deleteKeyCode={['Backspace', 'Delete']}
         proOptions={{ hideAttribution: true }}
         className="bg-background"
@@ -319,6 +376,23 @@ export default function Canvas() {
 
       {/* Floating group/section action bar — visible when nodes are selected */}
       <SelectionActionBar />
+
+      {/* Connection feedback toast */}
+      {connectionFeedback && (
+        <div
+          className={cn(
+            'fixed bottom-8 left-1/2 -translate-x-1/2 px-4 py-3 rounded-lg shadow-lg',
+            'text-sm font-medium max-w-md text-center',
+            'animate-in fade-in slide-in-from-bottom-2 duration-200',
+            connectionFeedback.type === 'error'
+              ? 'bg-destructive text-destructive-foreground border border-destructive/20'
+              : 'bg-amber-500/90 text-white border border-amber-600/20'
+          )}
+          style={{ zIndex: Z_INDEX.DRAG_PREVIEW + 1 }}
+        >
+          {connectionFeedback.message}
+        </div>
+      )}
     </div>
   );
 }
