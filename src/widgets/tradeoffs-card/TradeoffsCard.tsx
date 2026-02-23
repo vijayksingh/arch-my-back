@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { WidgetProps } from '../types';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Download, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, ThumbsUp, ThumbsDown, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 /**
@@ -13,6 +13,8 @@ export interface Alternative {
   description?: string;
   pros: string[];
   cons: string[];
+  consequence?: string; // What happens if this option is chosen (for decision mode)
+  recommended?: boolean; // Whether this is the recommended option (for decision mode)
 }
 
 /**
@@ -25,6 +27,9 @@ export interface TradeoffsCardInput {
   cons: string[];
   decision?: string;
   alternatives?: Alternative[];
+  mode?: 'display' | 'decision'; // New: decision mode for interactive learning
+  scenario?: string; // Context for decision mode
+  constraints?: string[]; // Requirements/constraints for decision mode
 }
 
 /**
@@ -57,6 +62,7 @@ export function TradeoffsCard({
     new Set(config.expandedByDefault ? input?.alternatives?.map((a) => a.id) : [])
   );
   const [selectedAlternative, setSelectedAlternative] = useState<string | undefined>();
+  const [decisionMade, setDecisionMade] = useState(false);
 
   if (!input) {
     return (
@@ -67,6 +73,8 @@ export function TradeoffsCard({
       </div>
     );
   }
+
+  const mode = input.mode || 'display';
 
   const toggleAlternative = (id: string) => {
     setExpandedAlternatives((prev) => {
@@ -85,6 +93,14 @@ export function TradeoffsCard({
     setSelectedAlternative(newSelected);
     onOutput?.({
       selectedAlternative: newSelected,
+    });
+  };
+
+  const handleDecisionSelect = (id: string) => {
+    setSelectedAlternative(id);
+    setDecisionMade(true);
+    onOutput?.({
+      selectedAlternative: id,
     });
   };
 
@@ -167,6 +183,207 @@ export function TradeoffsCard({
   const consCount = input.cons.length;
   const balance = prosCount - consCount;
 
+  // Decision mode rendering
+  if (mode === 'decision' && input.alternatives) {
+    const selectedAlt = input.alternatives.find((a) => a.id === selectedAlternative);
+    const recommendedAlt = input.alternatives.find((a) => a.recommended);
+
+    return (
+      <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-background">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-2">
+          <div className="text-sm font-medium">{config.name || 'Decision Exercise'}</div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-4">
+          {/* Title */}
+          <h2 className="mb-3 text-xl font-bold">{input.title}</h2>
+
+          {/* Scenario */}
+          {input.scenario && (
+            <div className="mb-4 rounded-lg bg-blue-50/50 p-3 dark:bg-blue-950/20">
+              <div className="mb-1 text-xs font-semibold uppercase text-blue-700 dark:text-blue-300">
+                Scenario
+              </div>
+              <div className="text-sm text-blue-900 dark:text-blue-100">{input.scenario}</div>
+            </div>
+          )}
+
+          {/* Constraints */}
+          {input.constraints && input.constraints.length > 0 && (
+            <div className="mb-4 rounded-lg bg-amber-50/50 p-3 dark:bg-amber-950/20">
+              <div className="mb-2 text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">
+                Constraints
+              </div>
+              <ul className="space-y-1">
+                {input.constraints.map((constraint, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-amber-900 dark:text-amber-100">
+                    <span className="mt-0.5">•</span>
+                    <span>{constraint}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Decision not made yet - show option cards */}
+          {!decisionMade && (
+            <div className="space-y-2">
+              <div className="mb-3 text-sm font-semibold text-muted-foreground">
+                Choose your approach:
+              </div>
+              {input.alternatives.map((alt) => (
+                <motion.button
+                  key={alt.id}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleDecisionSelect(alt.id)}
+                  className="w-full rounded-lg border-2 border-border bg-background p-4 text-left transition-colors hover:border-primary hover:bg-muted/30"
+                >
+                  <div className="font-medium">{alt.name}</div>
+                  {alt.description && (
+                    <div className="mt-1 text-sm text-muted-foreground">{alt.description}</div>
+                  )}
+                </motion.button>
+              ))}
+            </div>
+          )}
+
+          {/* Decision made - show consequence and comparison */}
+          {decisionMade && selectedAlt && (
+            <AnimatePresence>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="space-y-4"
+              >
+                {/* Selected choice header */}
+                <div className="rounded-lg border-2 border-primary bg-primary/5 p-3">
+                  <div className="mb-1 text-xs font-semibold uppercase text-primary">
+                    You chose
+                  </div>
+                  <div className="font-medium">{selectedAlt.name}</div>
+                </div>
+
+                {/* Consequence */}
+                {selectedAlt.consequence && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ delay: 0.2, duration: 0.4 }}
+                    className="rounded-lg bg-purple-50/50 p-3 dark:bg-purple-950/20"
+                  >
+                    <div className="mb-1 text-xs font-semibold uppercase text-purple-700 dark:text-purple-300">
+                      What happens
+                    </div>
+                    <div className="text-sm text-purple-900 dark:text-purple-100">
+                      {selectedAlt.consequence}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Show better choice if not recommended */}
+                {!selectedAlt.recommended && recommendedAlt && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ delay: 0.4, duration: 0.4 }}
+                    className="rounded-lg border-2 border-green-500/50 bg-green-50/50 p-3 dark:bg-green-950/20"
+                  >
+                    <div className="mb-2 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <div className="text-xs font-semibold uppercase text-green-700 dark:text-green-300">
+                        The better choice
+                      </div>
+                    </div>
+                    <div className="font-medium text-green-900 dark:text-green-100">
+                      {recommendedAlt.name}
+                    </div>
+                    {recommendedAlt.consequence && (
+                      <div className="mt-2 text-sm text-green-800 dark:text-green-200">
+                        {recommendedAlt.consequence}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* Full comparison table */}
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  transition={{ delay: 0.6, duration: 0.4 }}
+                  className="space-y-2"
+                >
+                  <div className="text-sm font-semibold text-muted-foreground">
+                    Full Comparison
+                  </div>
+                  {input.alternatives.map((alt) => {
+                    const isRecommended = alt.recommended;
+                    const isSelected = alt.id === selectedAlternative;
+
+                    return (
+                      <div
+                        key={alt.id}
+                        className={`overflow-hidden rounded-lg border-2 ${
+                          isRecommended
+                            ? 'border-green-500/50 bg-green-50/30 dark:bg-green-950/10'
+                            : 'border-border bg-muted/20'
+                        }`}
+                      >
+                        <div className="p-3">
+                          <div className="mb-2 flex items-center justify-between">
+                            <div className="font-medium">{alt.name}</div>
+                            <div className="flex items-center gap-2">
+                              {isSelected && (
+                                <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                                  Your choice
+                                </span>
+                              )}
+                              {isRecommended && (
+                                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              )}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <div className="mb-1 text-xs font-semibold text-success">Pros</div>
+                              <ul className="space-y-1">
+                                {alt.pros.map((pro, i) => (
+                                  <li key={i} className="flex items-start gap-1 text-xs">
+                                    <span className="text-success">✓</span>
+                                    <span>{pro}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div>
+                              <div className="mb-1 text-xs font-semibold text-error">Cons</div>
+                              <ul className="space-y-1">
+                                {alt.cons.map((con, i) => (
+                                  <li key={i} className="flex items-start gap-1 text-xs">
+                                    <span className="text-error">✗</span>
+                                    <span>{con}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              </motion.div>
+            </AnimatePresence>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Display mode rendering (original behavior)
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-background">
       {/* Header */}
