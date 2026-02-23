@@ -1,5 +1,6 @@
 import type { CanvasNode, ArchEdge, CanvasBounds } from '@/types';
 import { componentTypeMap } from '@/registry/componentTypes';
+import { NODE_TYPE } from '@/constants';
 
 /**
  * Validation result type
@@ -78,7 +79,7 @@ export function validateNode(node: unknown): ValidationResult<CanvasNode> {
   }
 
   // Type-specific validation
-  if (node.type === 'archComponent') {
+  if (node.type === NODE_TYPE.ARCH_COMPONENT) {
     if (!isObject(node.data)) {
       errors.push('ArchNode data must be an object');
     } else {
@@ -102,7 +103,7 @@ export function validateNode(node: unknown): ValidationResult<CanvasNode> {
         errors.push('ArchNode config must be an object');
       }
     }
-  } else if (node.type === 'shapeRect' || node.type === 'shapeCircle' || node.type === 'shapeText') {
+  } else if (node.type === NODE_TYPE.SHAPE_RECT || node.type === NODE_TYPE.SHAPE_CIRCLE || node.type === NODE_TYPE.SHAPE_TEXT) {
     if (!isObject(node.data)) {
       errors.push('ShapeNode data must be an object');
     } else {

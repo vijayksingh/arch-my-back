@@ -1,4 +1,5 @@
 import type { Node, Edge } from '@xyflow/react';
+import { BLOCK_TYPE, VIEW_MODE, CANVAS_TOOL, REQUIREMENT_KIND, LLD_STATUS } from '@/constants';
 
 // --- Component Registry Types ---
 
@@ -101,8 +102,8 @@ export interface DesignTemplate {
 
 // --- Workspace / Document Types ---
 
-export type WorkspaceViewMode = 'document' | 'both' | 'canvas';
-export type CanvasTool = 'cursor' | 'select' | 'rectangle' | 'circle' | 'text';
+export type WorkspaceViewMode = typeof VIEW_MODE[keyof typeof VIEW_MODE];
+export type CanvasTool = typeof CANVAS_TOOL[keyof typeof CANVAS_TOOL];
 
 export interface CanvasBounds {
   x: number;
@@ -122,7 +123,7 @@ export interface CanvasSection {
 
 // --- Notebook Block Types ---
 
-export type NotebookBlockType = 'text' | 'requirements' | 'schema' | 'api' | 'lld';
+export type NotebookBlockType = typeof BLOCK_TYPE[keyof typeof BLOCK_TYPE];
 
 interface NotebookBlockBase {
   id: string;
@@ -138,7 +139,7 @@ export interface TextBlockData {
 export interface RequirementItem {
   id: string;
   text: string;
-  kind: 'functional' | 'non-functional';
+  kind: typeof REQUIREMENT_KIND[keyof typeof REQUIREMENT_KIND];
 }
 
 export interface RequirementsBlockData {
@@ -181,12 +182,12 @@ export interface LldBlockData {
   title: string;
   summary?: string;
   content: string;
-  status?: 'draft' | 'review' | 'final';
+  status?: typeof LLD_STATUS[keyof typeof LLD_STATUS];
 }
 
 export type NotebookBlock =
-  | (NotebookBlockBase & { type: 'text'; data: TextBlockData })
-  | (NotebookBlockBase & { type: 'requirements'; data: RequirementsBlockData })
-  | (NotebookBlockBase & { type: 'schema'; data: SchemaBlockData })
-  | (NotebookBlockBase & { type: 'api'; data: ApiBlockData })
-  | (NotebookBlockBase & { type: 'lld'; data: LldBlockData });
+  | (NotebookBlockBase & { type: typeof BLOCK_TYPE.TEXT; data: TextBlockData })
+  | (NotebookBlockBase & { type: typeof BLOCK_TYPE.REQUIREMENTS; data: RequirementsBlockData })
+  | (NotebookBlockBase & { type: typeof BLOCK_TYPE.SCHEMA; data: SchemaBlockData })
+  | (NotebookBlockBase & { type: typeof BLOCK_TYPE.API; data: ApiBlockData })
+  | (NotebookBlockBase & { type: typeof BLOCK_TYPE.LLD; data: LldBlockData });

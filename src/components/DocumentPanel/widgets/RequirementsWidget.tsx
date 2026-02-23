@@ -4,6 +4,7 @@ import type { NotebookBlock, RequirementItem } from '@/types';
 import { useDocumentStore } from '@/stores/documentStore';
 import { WidgetPreviewCard } from './WidgetPreviewCard';
 import { useDoubleEnterExit } from './useDoubleEnterExit';
+import { REQUIREMENT_KIND } from '@/constants';
 
 interface RequirementsWidgetProps {
   block: Extract<NotebookBlock, { type: 'requirements' }>;
@@ -23,8 +24,8 @@ export function RequirementsWidget({
   const [pendingFocusId, setPendingFocusId] = useState<string | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement>>({});
 
-  const functional = items.filter((i) => i.kind === 'functional');
-  const nonFunctional = items.filter((i) => i.kind === 'non-functional');
+  const functional = items.filter((i) => i.kind === REQUIREMENT_KIND.FUNCTIONAL);
+  const nonFunctional = items.filter((i) => i.kind === REQUIREMENT_KIND.NON_FUNCTIONAL);
 
   useEffect(() => {
     if (!pendingFocusId) return;
@@ -130,12 +131,12 @@ export function RequirementsWidget({
           <div key={item.id} className="flex items-center gap-1.5">
             <span
               className={
-                item.kind === 'functional'
+                item.kind === REQUIREMENT_KIND.FUNCTIONAL
                   ? 'flex-shrink-0 rounded px-1 text-[9px] font-bold bg-blue-500/15 text-blue-400'
                   : 'flex-shrink-0 rounded px-1 text-[9px] font-bold bg-violet-500/15 text-violet-400'
               }
             >
-              {item.kind === 'functional' ? 'F' : 'NF'}
+              {item.kind === REQUIREMENT_KIND.FUNCTIONAL ? 'F' : 'NF'}
             </span>
             <input
               ref={(el) => {

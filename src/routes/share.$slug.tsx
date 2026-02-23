@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useEditorStore } from '@/stores/editorStore';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useDocumentStore } from '@/stores/documentStore';
+import { VIEW_MODE } from '@/constants';
 import { api } from '../../convex/_generated/api';
 
 export const Route = createFileRoute('/share/$slug')({
@@ -129,8 +130,8 @@ function PublicSharePage() {
           <div
             className={cn(
               'h-full min-w-0 bg-background',
-              viewMode === 'both' && 'w-[min(42rem,42vw)] max-w-2xl border-r ui-border-ghost',
-              viewMode === 'document' && 'w-full',
+              viewMode === VIEW_MODE.BOTH && 'w-[min(42rem,42vw)] max-w-2xl border-r ui-border-ghost',
+              viewMode === VIEW_MODE.DOCUMENT && 'w-full',
             )}
           >
             <DocumentPanel />

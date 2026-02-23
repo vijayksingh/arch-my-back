@@ -5,6 +5,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { addBlockWithSectionCoordination } from '@/actions/designActions';
 import type { NotebookBlockType } from '@/types';
 import { NotebookBlockComponent } from './NotebookBlock';
+import { BLOCK_TYPE } from '@/constants';
 
 export function DocumentPanel() {
   const blocks = useDocumentStore((s) => s.blocks);
@@ -23,7 +24,7 @@ export function DocumentPanel() {
   const isPreview = editorMode === 'preview';
 
   const visibleBlocks = isPreview
-    ? blocks.filter((b) => !(b.type === 'text' && (b.data as { markdown: string }).markdown.trim() === ''))
+    ? blocks.filter((b) => !(b.type === BLOCK_TYPE.TEXT && (b.data as { markdown: string }).markdown.trim() === ''))
     : blocks;
 
   // Wrapped addBlock that tracks the newly added block for auto-focus
@@ -76,7 +77,7 @@ export function DocumentPanel() {
   const handleContinuationClick = useCallback(() => {
     if (isPreview) return;
     const lastBlock = blocks[blocks.length - 1];
-    if (lastBlock?.type === 'text') {
+    if (lastBlock?.type === BLOCK_TYPE.TEXT) {
       const el = blockRefs.current.get(lastBlock.id);
       if (el) {
         const textarea = el.querySelector('textarea');

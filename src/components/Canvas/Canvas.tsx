@@ -20,9 +20,7 @@ import { designNodeTypes, archEdgeTypes } from '@/registry/flowNodeTypes';
 import { cn } from '@/lib/utils';
 import { validateArchConnection } from '@/lib/connectionRules';
 import { SelectionActionBar } from './SelectionActionBar';
-
-const DRAG_DATA_TYPE = 'application/archcomponent';
-const WIDGET_DRAG_DATA_TYPE = 'application/widget';
+import { CANVAS_TOOL, DRAG_DATA_TYPE, NODE_TYPE } from '@/constants';
 const MIN_DRAG = 20; // minimum drag distance in screen pixels to create a shape
 
 const defaultEdgeOptions = {
@@ -31,7 +29,7 @@ const defaultEdgeOptions = {
 };
 
 function isShapeTool(tool: string): tool is CanvasShapeKind {
-  return tool === 'rectangle' || tool === 'circle' || tool === 'text';
+  return tool === CANVAS_TOOL.RECTANGLE || tool === CANVAS_TOOL.CIRCLE || tool === CANVAS_TOOL.TEXT;
 }
 
 /** Returns true when the mouse event originates from the ReactFlow pane (background), not from a node, edge, or panel. */
@@ -57,6 +55,7 @@ export default function Canvas() {
   const onConnect = useCanvasStore((s) => s.onConnect);
   const addNode = useCanvasStore((s) => s.addNode);
   const addShapeNodeWithSize = useCanvasStore((s) => s.addShapeNodeWithSize);
+  const addWidgetNode = useCanvasStore((s) => s.addWidgetNode);
   const setSelectedNode = useCanvasStore((s) => s.setSelectedNode);
   const startShapeInlineEdit = useCanvasStore((s) => s.startShapeInlineEdit);
   const stopShapeInlineEdit = useCanvasStore((s) => s.stopShapeInlineEdit);
@@ -131,7 +130,7 @@ export default function Canvas() {
         const h = Math.abs(flowEnd.y - start.flow.y);
 
         const shapeId = addShapeNodeWithSizeRef.current(shape, { x, y }, w, h);
-        if (shape === 'text') startShapeInlineEditRef.current(shapeId);
+        if (shape === CANVAS_TOOL.TEXT) startShapeInlineEditRef.current(shapeId);
       };
 
       document.addEventListener('mousemove', handleMouseMove);
@@ -149,7 +148,7 @@ export default function Canvas() {
 
   const onPaneClick = useCallback(
     (_event: React.MouseEvent) => {
-      if (activeCanvasTool === 'cursor' || activeCanvasTool === 'select') {
+      if (activeCanvasTool === CANVAS_TOOL.CURSOR || activeCanvasTool === CANVAS_TOOL.SELECT) {
         setSelectedNode(null);
         stopShapeInlineEdit();
       }
@@ -183,39 +182,28 @@ export default function Canvas() {
       });
 
       // Check for widget drop
-      const widgetId = event.dataTransfer.getData(WIDGET_DRAG_DATA_TYPE);
+      const widgetId = event.dataTransfer.getData(DRAG_DATA_TYPE.WIDGET);
       if (widgetId) {
         // Create widget instance in store
         const widgetInstanceId = addWidgetInstance(widgetId, undefined, position);
         if (widgetInstanceId) {
-          // Add React Flow node for the widget
-          const newNode: Node = {
-            id: `widget-node-${widgetInstanceId}`,
-            type: 'widgetNode',
-            position,
-            data: {
-              widgetInstanceId,
-            },
-          };
-          const currentNodes = useCanvasStore.getState().nodes;
-          useCanvasStore.setState({
-            nodes: [...currentNodes, newNode as any],
-          });
+          // Add canvas node for the widget using proper store API
+          addWidgetNode(widgetInstanceId, position);
         }
         return;
       }
 
       // Check for component drop (existing behavior)
-      const componentType = event.dataTransfer.getData(DRAG_DATA_TYPE);
+      const componentType = event.dataTransfer.getData(DRAG_DATA_TYPE.COMPONENT);
       if (componentType) {
         addNode(componentType, position);
       }
     },
-    [screenToFlowPosition, addNode, addWidgetInstance],
+    [screenToFlowPosition, addNode, addWidgetNode, addWidgetInstance],
   );
 
   const miniMapNodeColor = useCallback((node: CanvasNode) => {
-    if (node.type !== 'archComponent') return 'hsl(var(--accent-foreground) / 0.65)';
+    if (node.type !== NODE_TYPE.ARCH_COMPONENT) return 'hsl(var(--accent-foreground) / 0.65)';
 
     const componentType = node.data.componentType;
     const typeDef = componentTypeMap.get(componentType);
@@ -274,8 +262,8 @@ export default function Canvas() {
         defaultEdgeOptions={defaultEdgeOptions}
         snapToGrid
         snapGrid={[20, 20]}
-        panOnDrag={activeCanvasTool === 'cursor'}
-        selectionOnDrag={activeCanvasTool === 'select'}
+        panOnDrag={activeCanvasTool === CANVAS_TOOL.CURSOR}
+        selectionOnDrag={activeCanvasTool === CANVAS_TOOL.SELECT}
         selectionMode={SelectionMode.Partial}
         fitView
         deleteKeyCode={['Backspace', 'Delete']}
@@ -319,7 +307,7 @@ export default function Canvas() {
           }}
           className={cn(
             'border-2 border-dashed border-primary/60 bg-primary/5',
-            activeCanvasTool === 'circle' ? 'rounded-full' : 'rounded',
+            activeCanvasTool === CANVAS_TOOL.CIRCLE ? 'rounded-full' : 'rounded',
           )}
         />
       )}

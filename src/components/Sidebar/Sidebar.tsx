@@ -12,6 +12,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore } from '@/stores/editorStore';
 import type { CanvasTool, ComponentCategory } from '@/types';
 import { ComponentCard } from './ComponentCard';
+import { CANVAS_TOOL } from '@/constants';
 
 const categoryOrder: ComponentCategory[] = [
   'Clients',
@@ -43,11 +44,11 @@ const toolItems: {
   label: string;
   icon: LucideIcon;
 }[] = [
-  { id: 'cursor', label: 'Cursor', icon: MousePointer2 },
-  { id: 'select', label: 'Select', icon: BoxSelect },
-  { id: 'rectangle', label: 'Rectangle', icon: Square },
-  { id: 'circle', label: 'Circle', icon: Circle },
-  { id: 'text', label: 'Text', icon: Type },
+  { id: CANVAS_TOOL.CURSOR, label: 'Cursor', icon: MousePointer2 },
+  { id: CANVAS_TOOL.SELECT, label: 'Select', icon: BoxSelect },
+  { id: CANVAS_TOOL.RECTANGLE, label: 'Rectangle', icon: Square },
+  { id: CANVAS_TOOL.CIRCLE, label: 'Circle', icon: Circle },
+  { id: CANVAS_TOOL.TEXT, label: 'Text', icon: Type },
 ];
 
 interface DragState {

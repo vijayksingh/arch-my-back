@@ -10,6 +10,7 @@ import { componentTypeMap } from '@/registry/componentTypes';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { getIconByName } from '@/registry/iconRegistry';
 import { categoryAccentTokens } from '@/registry/categoryThemes';
+import { NODE_TYPE } from '@/constants';
 
 function InlineLabel({
   value,
@@ -143,8 +144,8 @@ function FieldControl({
 }
 
 function getShapeTypeLabel(node: CanvasShapeNode): string {
-  if (node.type === 'shapeCircle') return 'Circle';
-  if (node.type === 'shapeText') return 'Text';
+  if (node.type === NODE_TYPE.SHAPE_CIRCLE) return 'Circle';
+  if (node.type === NODE_TYPE.SHAPE_TEXT) return 'Text';
   return 'Rectangle';
 }
 
@@ -165,8 +166,8 @@ export function ConfigPanel() {
   const [jsonDraft, setJsonDraft] = useState('');
   const [jsonError, setJsonError] = useState<string | null>(null);
 
-  const componentNode = node && node.type === 'archComponent' ? node : null;
-  const shapeNode = node && (node.type === 'shapeRect' || node.type === 'shapeCircle' || node.type === 'shapeText') ? node : null;
+  const componentNode = node && node.type === NODE_TYPE.ARCH_COMPONENT ? node : null;
+  const shapeNode = node && (node.type === NODE_TYPE.SHAPE_RECT || node.type === NODE_TYPE.SHAPE_CIRCLE || node.type === NODE_TYPE.SHAPE_TEXT) ? node : null;
   const typeDef =
     componentNode
       ? componentTypeMap.get(componentNode.data.componentType)
@@ -184,7 +185,7 @@ export function ConfigPanel() {
 
   const accentVar = typeDef ? categoryAccentTokens[typeDef.category] : '--category-external-accent';
   const shapeTypeLabel = shapeNode ? getShapeTypeLabel(shapeNode) : '';
-  const shapeFontSize = shapeNode?.data.fontSize ?? (shapeNode?.type === 'shapeText' ? 14 : 12);
+  const shapeFontSize = shapeNode?.data.fontSize ?? (shapeNode?.type === NODE_TYPE.SHAPE_TEXT ? 14 : 12);
 
   const handleFieldChange = useCallback(
     (fieldKey: string, value: unknown) => {

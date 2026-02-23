@@ -6,6 +6,7 @@
  */
 
 import type { ArchspecDocument, Component, Group, Connection } from './archspecZodSchema.js';
+import { NODE_TYPE } from '@/constants';
 
 /**
  * React Flow Node structure
@@ -65,7 +66,7 @@ export function toCanvasNodes(doc: ArchspecDocument): { nodes: CanvasNode[]; edg
   for (const component of doc.components) {
     nodes.push({
       id: component.id,
-      type: 'archComponent',
+      type: NODE_TYPE.ARCH_COMPONENT,
       position: { x: 0, y: 0 }, // Positions set by CanvasStatePatcher
       data: {
         componentType: component.type,
@@ -133,7 +134,7 @@ export function fromCanvasNodes(
         label: node.data?.label ?? node.id,
         parent: node.parentNode ?? null,
       });
-    } else if (node.type === 'archComponent') {
+    } else if (node.type === NODE_TYPE.ARCH_COMPONENT) {
       components.push({
         id: node.id,
         type: node.data?.componentType ?? 'app_server',

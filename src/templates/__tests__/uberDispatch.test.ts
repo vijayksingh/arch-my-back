@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { uberDispatchTemplate } from '../uberDispatch';
 import { componentTypeMap } from '@/registry/componentTypes';
+import { NODE_TYPE } from '@/constants';
 
 describe('uberDispatchTemplate', () => {
   test('has valid basic structure', () => {
@@ -18,7 +19,7 @@ describe('uberDispatchTemplate', () => {
 
   test('all nodes use valid component types', () => {
     uberDispatchTemplate.nodes.forEach((node) => {
-      if (node.type === 'archComponent') {
+      if (node.type === NODE_TYPE.ARCH_COMPONENT) {
         const componentType = node.data.componentType;
         const typeExists = componentTypeMap.has(componentType);
 
@@ -54,7 +55,7 @@ describe('uberDispatchTemplate', () => {
   test('has appropriate scale configuration', () => {
     // Check that services have high replica counts for scale
     const services = uberDispatchTemplate.nodes.filter(
-      (n) => n.type === 'archComponent' && n.data.componentType === 'app_server'
+      (n) => n.type === NODE_TYPE.ARCH_COMPONENT && n.data.componentType === 'app_server'
     );
 
     expect(services.length).toBeGreaterThan(0);

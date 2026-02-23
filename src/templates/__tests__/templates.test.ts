@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { templates } from '../index';
 import { componentTypeMap } from '@/registry/componentTypes';
+import { NODE_TYPE } from '@/constants';
 
 describe('templates', () => {
   describe('template registry', () => {
@@ -49,7 +50,7 @@ describe('templates', () => {
     test('all archComponent nodes use valid component types from registry', () => {
       templates.forEach((template) => {
         template.nodes.forEach((node) => {
-          if (node.type === 'archComponent') {
+          if (node.type === NODE_TYPE.ARCH_COMPONENT) {
             const componentType = node.data.componentType;
             const typeExists = componentTypeMap.has(componentType);
 
@@ -87,7 +88,7 @@ describe('templates', () => {
     test('all archComponent nodes have label and config', () => {
       templates.forEach((template) => {
         template.nodes.forEach((node) => {
-          if (node.type === 'archComponent') {
+          if (node.type === NODE_TYPE.ARCH_COMPONENT) {
             expect(node.data).toHaveProperty('label');
             expect(node.data).toHaveProperty('config');
             expect(typeof node.data.label).toBe('string');

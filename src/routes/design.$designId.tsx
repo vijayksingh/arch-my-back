@@ -13,6 +13,7 @@ import { useEditorStore, type CanvasTool } from '@/stores/editorStore';
 import { useCurrentDesign } from '@/hooks/useCurrentDesign';
 import { useDesignSync } from '@/hooks/useDesignSync';
 import { useCanvasStore } from '@/stores/canvasStore';
+import { VIEW_MODE } from '@/constants';
 
 // Lazy-load DSL editor
 const DSLEditor = lazy(() => import('@/components/DSLEditor').then(m => ({ default: m.DSLEditor })));
@@ -127,8 +128,8 @@ function DesignEditorPage() {
           <div
             className={cn(
               'h-full min-w-0 bg-background',
-              viewMode === 'both' && 'w-[min(42rem,42vw)] max-w-2xl border-r ui-border-ghost',
-              viewMode === 'document' && 'w-full',
+              viewMode === VIEW_MODE.BOTH && 'w-[min(42rem,42vw)] max-w-2xl border-r ui-border-ghost',
+              viewMode === VIEW_MODE.DOCUMENT && 'w-full',
             )}
           >
             <DocumentPanel />

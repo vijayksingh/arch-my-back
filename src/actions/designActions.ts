@@ -1,6 +1,7 @@
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useDocumentStore } from '@/stores/documentStore';
 import type { NotebookBlock, BlockType, CanvasSection } from '@/types/design';
+import { NODE_TYPE } from '@/constants';
 
 /**
  * Shared action functions for coordinating across stores
@@ -83,7 +84,7 @@ export function addBlockWithSectionCoordination(
     if (section && section.nodeIds.length > 0) {
       const nodeId = section.nodeIds[0];
       const node = useCanvasStore.getState().nodes.find((n) => n.id === nodeId);
-      if (node && node.type === 'sectionBadge') {
+      if (node && node.type === NODE_TYPE.SECTION_BADGE) {
         useCanvasStore.getState().updateNodeConfig(nodeId, { blockId: block.id });
       }
     }

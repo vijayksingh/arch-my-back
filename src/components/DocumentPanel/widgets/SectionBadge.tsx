@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { ExternalLink } from 'lucide-react';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { VIEW_MODE } from '@/constants';
 
 interface SectionBadgeProps {
   sectionId: string;
@@ -14,8 +15,8 @@ export function SectionBadge({ sectionId, label }: SectionBadgeProps) {
   const setViewMode = useEditorStore((s) => s.setViewMode);
 
   const handleClick = useCallback(() => {
-    if (viewMode === 'document') {
-      setViewMode('both');
+    if (viewMode === VIEW_MODE.DOCUMENT) {
+      setViewMode(VIEW_MODE.BOTH);
     }
     requestFocusSection(sectionId);
   }, [sectionId, requestFocusSection, viewMode, setViewMode]);

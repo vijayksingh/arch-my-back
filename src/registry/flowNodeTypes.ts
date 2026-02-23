@@ -6,6 +6,7 @@
  */
 
 import type { NodeTypes, EdgeTypes } from '@xyflow/react';
+import { NODE_TYPE } from '@/constants';
 import ArchNodeComponent from '@/components/Canvas/ArchNode';
 import ArchEdge from '@/components/Canvas/ArchEdge';
 import ShapeNode from '@/components/Canvas/ShapeNode';
@@ -18,11 +19,11 @@ import WidgetNode from '@/widgets/canvas/WidgetNode';
  * Includes: archComponent, shape nodes (rect/circle/text), and sectionBadge.
  */
 export const baseNodeTypes: NodeTypes = {
-  archComponent: ArchNodeComponent,
-  shapeRect: ShapeNode,
-  shapeCircle: ShapeNode,
-  shapeText: ShapeNode,
-  sectionBadge: SectionBadgeNode,
+  [NODE_TYPE.ARCH_COMPONENT]: ArchNodeComponent,
+  [NODE_TYPE.SHAPE_RECT]: ShapeNode,
+  [NODE_TYPE.SHAPE_CIRCLE]: ShapeNode,
+  [NODE_TYPE.SHAPE_TEXT]: ShapeNode,
+  [NODE_TYPE.SECTION_BADGE]: SectionBadgeNode,
 };
 
 /**
@@ -31,8 +32,8 @@ export const baseNodeTypes: NodeTypes = {
  */
 export const designNodeTypes: NodeTypes = {
   ...baseNodeTypes,
-  collapsibleGroup: CollapsibleGroupNode,
-  widgetNode: WidgetNode as any, // Type assertion needed for widget integration
+  [NODE_TYPE.COLLAPSIBLE_GROUP]: CollapsibleGroupNode,
+  [NODE_TYPE.WIDGET_NODE]: WidgetNode as any, // Type assertion needed for widget integration
 };
 
 /**

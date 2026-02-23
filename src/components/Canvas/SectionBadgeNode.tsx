@@ -3,6 +3,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { NotebookBlock, SectionBadgeNode } from '@/types';
 import { useDocumentStore } from '@/stores/documentStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { BLOCK_TYPE, REQUIREMENT_KIND, LLD_STATUS, VIEW_MODE } from '@/constants';
 
 // Convention: every canvas node type should include left/right handles so that
 // React Flow edges can be drawn to/from any node in the graph. Handles are
@@ -40,12 +41,12 @@ const typeLabels: Record<string, string> = {
 
 
 function BlockPreview({ block }: { block: NotebookBlock }) {
-  if (block.type === 'requirements') {
+  if (block.type === BLOCK_TYPE.REQUIREMENTS) {
     const functional = block.data.items
-      .filter((i) => i.kind === 'functional')
+      .filter((i) => i.kind === REQUIREMENT_KIND.FUNCTIONAL)
       .slice(0, 2);
     const nonFunctional = block.data.items
-      .filter((i) => i.kind === 'non-functional')
+      .filter((i) => i.kind === REQUIREMENT_KIND.NON_FUNCTIONAL)
       .slice(0, 2);
 
     if (block.data.items.length === 0) {
@@ -88,7 +89,7 @@ function BlockPreview({ block }: { block: NotebookBlock }) {
     );
   }
 
-  if (block.type === 'schema') {
+  if (block.type === BLOCK_TYPE.SCHEMA) {
     if (block.data.tables.length === 0) return <NoData />;
     return (
       <div className="flex flex-col gap-0.5">
@@ -104,7 +105,7 @@ function BlockPreview({ block }: { block: NotebookBlock }) {
     );
   }
 
-  if (block.type === 'api') {
+  if (block.type === BLOCK_TYPE.API) {
     if (block.data.endpoints.length === 0) return <NoData />;
     return (
       <div className="flex flex-col gap-0.5">
@@ -118,12 +119,12 @@ function BlockPreview({ block }: { block: NotebookBlock }) {
     );
   }
 
-  if (block.type === 'lld') {
+  if (block.type === BLOCK_TYPE.LLD) {
     if (!block.data.title && !block.data.content) return <NoData />;
-    const lldStatus = block.data.status ?? 'draft';
+    const lldStatus = block.data.status ?? LLD_STATUS.DRAFT;
     const statusColor =
-      lldStatus === 'final' ? 'text-green-400' :
-      lldStatus === 'review' ? 'text-amber-400' :
+      lldStatus === LLD_STATUS.FINAL ? 'text-green-400' :
+      lldStatus === LLD_STATUS.REVIEW ? 'text-amber-400' :
       'text-muted-foreground/60';
     return (
       <div className="flex flex-col gap-0.5">
@@ -151,7 +152,7 @@ function BlockPreview({ block }: { block: NotebookBlock }) {
     );
   }
 
-  if (block.type === 'text') {
+  if (block.type === BLOCK_TYPE.TEXT) {
     const firstLine = block.data.markdown
       .split('\n')
       .find((l) => l.trim().length > 0);
@@ -185,8 +186,8 @@ export default function SectionBadgeNodeComponent({
   );
 
   const handleClick = useCallback(() => {
-    if (viewMode === 'canvas') {
-      setViewMode('both');
+    if (viewMode === VIEW_MODE.CANVAS) {
+      setViewMode(VIEW_MODE.BOTH);
     }
     requestFocusBlock(data.blockId);
   }, [data.blockId, requestFocusBlock, viewMode, setViewMode]);

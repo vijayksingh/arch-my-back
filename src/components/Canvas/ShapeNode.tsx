@@ -10,6 +10,7 @@ import {
 } from '@xyflow/react';
 import type { CanvasShapeNode } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
+import { NODE_TYPE } from '@/constants';
 
 function ShapeNodeComponent({
   id,
@@ -29,8 +30,8 @@ function ShapeNodeComponent({
 
   const resolvedWidth = width ?? 160;
   const resolvedHeight = height ?? 96;
-  const isCircle = type === 'shapeCircle';
-  const isText = type === 'shapeText';
+  const isCircle = type === NODE_TYPE.SHAPE_CIRCLE;
+  const isText = type === NODE_TYPE.SHAPE_TEXT;
   const isEditing = activeShapeEditId === id;
   // Handles are subtle by default; visible on node hover via `group-hover:` (root has `group` class).
   const handleClassName =

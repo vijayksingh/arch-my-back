@@ -4,6 +4,7 @@ import type { NotebookBlock, NotebookBlockType } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { removeBlockWithSectionCleanup } from '@/actions/designActions';
 import { cn } from '@/lib/utils';
+import { BLOCK_TYPE } from '@/constants';
 import { SectionBadge } from './widgets/SectionBadge';
 import { TextWidget } from './widgets/TextWidget';
 import { RequirementsWidget } from './widgets/RequirementsWidget';
@@ -50,7 +51,7 @@ export function NotebookBlockComponent({
   );
 
   const handleExitWidget = useCallback(() => {
-    addBlock('text', index + 1);
+    addBlock(BLOCK_TYPE.TEXT, index + 1);
   }, [addBlock, index]);
 
   return (
@@ -72,7 +73,7 @@ export function NotebookBlockComponent({
         </div>
       )}
 
-      {block.type === 'text' && (
+      {block.type === BLOCK_TYPE.TEXT && (
         <TextWidget
           block={block}
           isPreview={isPreview}
@@ -81,7 +82,7 @@ export function NotebookBlockComponent({
           onExitWidget={handleExitWidget}
         />
       )}
-      {block.type === 'requirements' && (
+      {block.type === BLOCK_TYPE.REQUIREMENTS && (
         <RequirementsWidget
           block={block}
           isPreview={isPreview}
@@ -89,7 +90,7 @@ export function NotebookBlockComponent({
           onExitWidget={handleExitWidget}
         />
       )}
-      {block.type === 'schema' && (
+      {block.type === BLOCK_TYPE.SCHEMA && (
         <SchemaWidget
           block={block}
           isPreview={isPreview}
@@ -97,7 +98,7 @@ export function NotebookBlockComponent({
           onExitWidget={handleExitWidget}
         />
       )}
-      {block.type === 'api' && (
+      {block.type === BLOCK_TYPE.API && (
         <ApiWidget
           block={block}
           isPreview={isPreview}
@@ -105,7 +106,7 @@ export function NotebookBlockComponent({
           onExitWidget={handleExitWidget}
         />
       )}
-      {block.type === 'lld' && (
+      {block.type === BLOCK_TYPE.LLD && (
         <LldWidget
           block={block}
           isPreview={isPreview}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { Command } from 'cmdk';
 import { useEditorStore, type CanvasTool } from '@/stores/editorStore';
+import { CANVAS_TOOL, VIEW_MODE } from '@/constants';
 
 interface CommandPaletteProps {
   open: boolean;
@@ -33,17 +34,17 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   if (!open) return null;
 
   const toolItems: { label: string; shortcut: string; tool: CanvasTool }[] = [
-    { label: 'Cursor tool', shortcut: 'V', tool: 'cursor' },
-    { label: 'Select tool', shortcut: 'S', tool: 'select' },
-    { label: 'Rectangle tool', shortcut: 'R', tool: 'rectangle' },
-    { label: 'Circle tool', shortcut: 'C', tool: 'circle' },
-    { label: 'Text tool', shortcut: 'T', tool: 'text' },
+    { label: 'Cursor tool', shortcut: 'V', tool: CANVAS_TOOL.CURSOR },
+    { label: 'Select tool', shortcut: 'S', tool: CANVAS_TOOL.SELECT },
+    { label: 'Rectangle tool', shortcut: 'R', tool: CANVAS_TOOL.RECTANGLE },
+    { label: 'Circle tool', shortcut: 'C', tool: CANVAS_TOOL.CIRCLE },
+    { label: 'Text tool', shortcut: 'T', tool: CANVAS_TOOL.TEXT },
   ];
 
   const viewItems: { label: string; shortcut?: string; fn: () => void }[] = [
-    { label: 'View: Document only', fn: () => setViewMode('document') },
-    { label: 'View: Both', fn: () => setViewMode('both') },
-    { label: 'View: Canvas only', fn: () => setViewMode('canvas') },
+    { label: 'View: Document only', fn: () => setViewMode(VIEW_MODE.DOCUMENT) },
+    { label: 'View: Both', fn: () => setViewMode(VIEW_MODE.BOTH) },
+    { label: 'View: Canvas only', fn: () => setViewMode(VIEW_MODE.CANVAS) },
     { label: 'Cycle view', shortcut: '⌘/Ctrl+\\', fn: cycleViewMode },
   ];
 
