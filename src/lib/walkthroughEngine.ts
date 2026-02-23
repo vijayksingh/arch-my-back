@@ -35,6 +35,7 @@ export interface WalkthroughState {
 export class WalkthroughEngine {
   private steps: WalkthroughStep[];
   private state: WalkthroughState;
+  private initialized: boolean = false;
 
   constructor(steps: WalkthroughStep[], initialState?: Partial<WalkthroughState>) {
     this.steps = steps;
@@ -53,7 +54,13 @@ export class WalkthroughEngine {
     };
 
     // Apply canvas operations for step 0 to initialize canvas state
-    this.applyCanvasOperations(this.steps[0]?.canvasOperations ?? []);
+    this.initialize();
+  }
+
+  private async initialize(): Promise<void> {
+    if (this.initialized) return;
+    await this.applyCanvasOperations(this.steps[0]?.canvasOperations ?? []);
+    this.initialized = true;
   }
 
   getCurrentStep(): WalkthroughStep | undefined {
@@ -112,13 +119,13 @@ export class WalkthroughEngine {
    * Go to a specific step directly (for navigation, does NOT mark steps complete)
    * Steps are only marked complete via explicit next() calls
    */
-  goToStep(index: number): WalkthroughState {
+  async goToStep(index: number): Promise<WalkthroughState> {
     if (index < 0 || index >= this.steps.length) {
       return this.getState();
     }
 
     this.state.currentStepIndex = index;
-    this.rebuildCanvasState();
+    await this.rebuildCanvasState();
 
     return this.getState();
   }
@@ -126,7 +133,7 @@ export class WalkthroughEngine {
   /**
    * Navigate to next step and apply canvas operations
    */
-  next(): WalkthroughState {
+  async next(): Promise<WalkthroughState> {
     if (!this.canGoNext()) {
       return this.getState();
     }
@@ -141,7 +148,7 @@ export class WalkthroughEngine {
     // Apply canvas operations for new step
     const newStep = this.getCurrentStep();
     if (newStep) {
-      this.applyCanvasOperations(newStep.canvasOperations);
+      await this.applyCanvasOperations(newStep.canvasOperations);
     }
 
     return this.getState();
@@ -150,7 +157,7 @@ export class WalkthroughEngine {
   /**
    * Navigate to previous step and revert canvas to that state
    */
-  previous(): WalkthroughState {
+  async previous(): Promise<WalkthroughState> {
     if (!this.canGoPrevious()) {
       return this.getState();
     }
@@ -158,7 +165,7 @@ export class WalkthroughEngine {
     this.state.currentStepIndex--;
 
     // Rebuild canvas state from scratch up to current step
-    this.rebuildCanvasState();
+    await this.rebuildCanvasState();
 
     return this.getState();
   }
@@ -178,7 +185,9 @@ export class WalkthroughEngine {
 
     // Find quiz widget to get explanation
     const quizWidget = step.widgets.find(w => w.type === WIDGET_TYPE.QUIZ) as QuizWidgetConfig | undefined;
-    const firstSelected = quizWidget?.options.find(opt => opt.id === selectedOptionIds[0]);
+    const firstSelected = (quizWidget && (quizWidget.mode === 'mcq' || !quizWidget.mode))
+      ? quizWidget.options.find((opt) => opt.id === selectedOptionIds[0])
+      : undefined;
 
     return {
       correct,
@@ -241,7 +250,7 @@ export class WalkthroughEngine {
   /**
    * Apply canvas operations (add nodes, edges, highlight, animate)
    */
-  private applyCanvasOperations(operations: CanvasOperation[]): void {
+  private async applyCanvasOperations(operations: CanvasOperation[]): Promise<void> {
     // Clear previous highlights/animations
     this.state.highlightedNodeIds = [];
     this.state.animatedEdgeIds = [];
@@ -250,7 +259,12 @@ export class WalkthroughEngine {
       switch (op.type) {
         case 'add-node':
           if (op.node) {
-            this.state.canvasNodes.push(op.node as Node);
+            // Add default position if missing (ELK will override later)
+            const nodeWithPosition = {
+              ...op.node,
+              position: op.node.position ?? { x: 0, y: 0 }
+            };
+            this.state.canvasNodes.push(nodeWithPosition as Node);
             // Handle highlight flag
             if (op.highlight) {
               this.state.highlightedNodeIds.push(op.node.id);
@@ -302,12 +316,21 @@ export class WalkthroughEngine {
           break;
       }
     }
+
+    // Auto-layout with ELK after applying operations
+    if (this.state.canvasNodes.length > 0) {
+      const { runElkLayout } = await import('@/services/layoutService');
+      this.state.canvasNodes = await runElkLayout(
+        this.state.canvasNodes,
+        this.state.canvasEdges
+      );
+    }
   }
 
   /**
    * Rebuild canvas state by replaying all operations up to current step
    */
-  private rebuildCanvasState(): void {
+  private async rebuildCanvasState(): Promise<void> {
     // Save user-created edges before clearing
     const userEdges = this.state.canvasEdges.filter(edge =>
       this.state.userEdgeIds.includes(edge.id)
@@ -321,7 +344,7 @@ export class WalkthroughEngine {
     for (let i = 0; i <= this.state.currentStepIndex; i++) {
       const step = this.steps[i];
       if (step) {
-        this.applyCanvasOperations(step.canvasOperations);
+        await this.applyCanvasOperations(step.canvasOperations);
       }
     }
 
@@ -363,7 +386,9 @@ export class WalkthroughEngine {
     }
 
     // MCQ mode: Get all correct option IDs
-    const correctOptionIds = quizWidget.options.filter(opt => opt.correct).map(opt => opt.id);
+    // At this point, we know mode is 'mcq' or undefined, so quizWidget has options
+    const mcqWidget = quizWidget as Extract<QuizWidgetConfig, { mode?: 'mcq' }>;
+    const correctOptionIds = mcqWidget.options.filter((opt) => opt.correct).map((opt) => opt.id);
 
     // Check if all selected options are correct
     const correct =
