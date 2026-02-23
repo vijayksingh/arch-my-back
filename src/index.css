@@ -1,11 +1,55 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
 
-/* Tailwind v4: register custom animation utilities */
+/* Tailwind v4: custom variant for dark mode */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tailwind v4: theme tokens */
 @theme {
+  /* Animation utilities */
   --animate-block-enter: block-enter 240ms cubic-bezier(.165,.84,.44,1) both;
   --animate-block-exit:  block-exit  180ms ease-out forwards;
   --animate-picker-enter: picker-enter 160ms cubic-bezier(.165,.84,.44,1) both;
+
+  /* Semantic color tokens */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  /* Status color tokens */
+  --color-success: hsl(var(--status-success));
+  --color-success-foreground: hsl(var(--status-success-foreground));
+  --color-success-muted: hsl(var(--status-success-muted) / 0.15);
+  --color-error: hsl(var(--status-error));
+  --color-error-foreground: hsl(var(--status-error-foreground));
+  --color-error-muted: hsl(var(--status-error-muted) / 0.15);
+  --color-warning: hsl(var(--status-warning));
+  --color-warning-foreground: hsl(var(--status-warning-foreground));
+  --color-warning-muted: hsl(var(--status-warning-muted) / 0.15);
+  --color-info: hsl(var(--status-info));
+  --color-info-foreground: hsl(var(--status-info-foreground));
+  --color-info-muted: hsl(var(--status-info-muted) / 0.15);
+
+  /* Border radius tokens */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
 }
 
 @layer base {
@@ -49,26 +93,18 @@
     --surface-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     --panel-shadow: 0 24px 48px rgba(0, 0, 0, 0.16);
 
-    /* Node category tones (monochrome) */
-    --gradient-traffic: linear-gradient(160deg, hsl(0 0% 100%) 0%, hsl(0 0% 95%) 100%);
-    --gradient-compute: linear-gradient(160deg, hsl(0 0% 98%) 0%, hsl(0 0% 92%) 100%);
-    --gradient-storage: linear-gradient(160deg, hsl(0 0% 96%) 0%, hsl(0 0% 90%) 100%);
-    --gradient-messaging: linear-gradient(160deg, hsl(0 0% 94%) 0%, hsl(0 0% 88%) 100%);
-    --gradient-caching: linear-gradient(160deg, hsl(0 0% 92%) 0%, hsl(0 0% 86%) 100%);
-    --gradient-external: linear-gradient(160deg, hsl(0 0% 90%) 0%, hsl(0 0% 84%) 100%);
-
+    /* Node category accent colors */
     --category-traffic-accent: 12 84% 47%;
     --category-compute-accent: 218 86% 50%;
     --category-storage-accent: 274 76% 50%;
     --category-messaging-accent: 168 74% 38%;
     --category-caching-accent: 38 90% 46%;
     --category-external-accent: 218 16% 44%;
-    --category-traffic-icon: var(--category-traffic-accent);
-    --category-compute-icon: var(--category-compute-accent);
-    --category-storage-icon: var(--category-storage-accent);
-    --category-messaging-icon: var(--category-messaging-accent);
-    --category-caching-icon: var(--category-caching-accent);
-    --category-external-icon: var(--category-external-accent);
+    --category-clients-accent: 210 80% 55%;
+    --category-databases-accent: 270 65% 55%;
+    --category-search-accent: 175 70% 40%;
+    --category-ml-accent: 320 70% 55%;
+    --category-observability-accent: 190 80% 45%;
 
     --glow-traffic: hsl(var(--category-traffic-accent) / 0.2);
     --glow-compute: hsl(var(--category-compute-accent) / 0.2);
@@ -76,6 +112,11 @@
     --glow-messaging: hsl(var(--category-messaging-accent) / 0.2);
     --glow-caching: hsl(var(--category-caching-accent) / 0.2);
     --glow-external: hsl(var(--category-external-accent) / 0.2);
+    --glow-clients: hsl(var(--category-clients-accent) / 0.2);
+    --glow-databases: hsl(var(--category-databases-accent) / 0.2);
+    --glow-search: hsl(var(--category-search-accent) / 0.2);
+    --glow-ml: hsl(var(--category-ml-accent) / 0.2);
+    --glow-observability: hsl(var(--category-observability-accent) / 0.2);
 
     --connection: 0 0% 34%;
     --connection-selected: 0 0% 14%;
@@ -97,8 +138,6 @@
     --node-hover-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
     --node-selected-shadow: 0 0 0 1px hsl(var(--background)), 0 10px 20px rgba(0, 0, 0, 0.16);
     --node-selected-scale: 1.02;
-
-    --export-bg: hsl(var(--background));
 
     /* Status colors */
     --status-success: 142 71% 45%;       /* green */
@@ -153,25 +192,17 @@
     --surface-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
     --panel-shadow: 0 30px 56px rgba(0, 0, 0, 0.5);
 
-    --gradient-traffic: linear-gradient(160deg, hsl(0 0% 27%) 0%, hsl(0 0% 20%) 100%);
-    --gradient-compute: linear-gradient(160deg, hsl(0 0% 24%) 0%, hsl(0 0% 18%) 100%);
-    --gradient-storage: linear-gradient(160deg, hsl(0 0% 22%) 0%, hsl(0 0% 16%) 100%);
-    --gradient-messaging: linear-gradient(160deg, hsl(0 0% 20%) 0%, hsl(0 0% 14%) 100%);
-    --gradient-caching: linear-gradient(160deg, hsl(0 0% 18%) 0%, hsl(0 0% 12%) 100%);
-    --gradient-external: linear-gradient(160deg, hsl(0 0% 30%) 0%, hsl(0 0% 22%) 100%);
-
     --category-traffic-accent: 12 94% 70%;
     --category-compute-accent: 214 92% 72%;
     --category-storage-accent: 272 88% 74%;
     --category-messaging-accent: 168 74% 66%;
     --category-caching-accent: 42 96% 70%;
     --category-external-accent: 216 26% 72%;
-    --category-traffic-icon: var(--category-traffic-accent);
-    --category-compute-icon: var(--category-compute-accent);
-    --category-storage-icon: var(--category-storage-accent);
-    --category-messaging-icon: var(--category-messaging-accent);
-    --category-caching-icon: var(--category-caching-accent);
-    --category-external-icon: var(--category-external-accent);
+    --category-clients-accent: 210 80% 65%;
+    --category-databases-accent: 270 65% 65%;
+    --category-search-accent: 175 70% 55%;
+    --category-ml-accent: 320 70% 65%;
+    --category-observability-accent: 190 80% 60%;
 
     --glow-traffic: hsl(var(--category-traffic-accent) / 0.24);
     --glow-compute: hsl(var(--category-compute-accent) / 0.24);
@@ -179,6 +210,11 @@
     --glow-messaging: hsl(var(--category-messaging-accent) / 0.24);
     --glow-caching: hsl(var(--category-caching-accent) / 0.24);
     --glow-external: hsl(var(--category-external-accent) / 0.24);
+    --glow-clients: hsl(var(--category-clients-accent) / 0.24);
+    --glow-databases: hsl(var(--category-databases-accent) / 0.24);
+    --glow-search: hsl(var(--category-search-accent) / 0.24);
+    --glow-ml: hsl(var(--category-ml-accent) / 0.24);
+    --glow-observability: hsl(var(--category-observability-accent) / 0.24);
 
     --connection: 0 0% 68%;
     --connection-selected: 0 0% 96%;
