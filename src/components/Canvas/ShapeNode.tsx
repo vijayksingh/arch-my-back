@@ -10,7 +10,7 @@ import {
 } from '@xyflow/react';
 import type { CanvasShapeNode } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
-import { NODE_TYPE, Z_INDEX } from '@/constants';
+import { NODE_TYPE, Z_INDEX, DIMENSIONS } from '@/constants';
 
 function ShapeNodeComponent({
   id,
@@ -29,7 +29,7 @@ function ShapeNodeComponent({
   const updateShapeStyle = useCanvasStore((s) => s.updateShapeStyle);
 
   const resolvedWidth = width ?? 160;
-  const resolvedHeight = height ?? 96;
+  const resolvedHeight = height ?? DIMENSIONS.ARCH_NODE.MIN_HEIGHT;
   const isCircle = type === NODE_TYPE.SHAPE_CIRCLE;
   const isText = type === NODE_TYPE.SHAPE_TEXT;
   const isEditing = activeShapeEditId === id;

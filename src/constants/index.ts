@@ -21,6 +21,9 @@ export {
   GROUP_DIMENSIONS,
   INTERACTION,
 } from './dimensions';
+
+// Re-export as DIMENSIONS namespace for convenience
+export * as DIMENSIONS from './dimensions';
 export { TIMING } from './timing';
 export { Z_INDEX } from './zIndex';
 export { LIMITS } from './limits';

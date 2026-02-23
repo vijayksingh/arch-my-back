@@ -1,5 +1,6 @@
 import type { Node, Edge } from '@xyflow/react';
 import { BLOCK_TYPE, VIEW_MODE, CANVAS_TOOL, REQUIREMENT_KIND, LLD_STATUS } from '@/constants';
+import type { ComponentTypeKey } from './componentTypes';
 
 // --- Component Registry Types ---
 
@@ -38,7 +39,7 @@ export interface ConfigField {
 // --- Canvas Node/Edge Types ---
 
 export interface ArchNodeData {
-  componentType: string; // key from registry
+  componentType: ComponentTypeKey; // key from registry
   label: string;
   config: Record<string, unknown>;
   [key: string]: unknown;

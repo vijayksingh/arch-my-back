@@ -1,4 +1,4 @@
-import { componentTypeMap } from '@/registry/componentTypes';
+import { componentTypeMap, type ComponentTypeKey } from '@/registry/componentTypes';
 import { NODE_TYPE } from '@/constants';
 
 export interface ConnectionValidationResult {
@@ -11,8 +11,8 @@ export interface ConnectionValidationResult {
  * Uses the component type registry to resolve categories dynamically.
  */
 export function isConnectionValid(
-  sourceType: string,
-  targetType: string
+  sourceType: ComponentTypeKey,
+  targetType: ComponentTypeKey
 ): ConnectionValidationResult {
   // Resolve categories from component types
   const sourceComponent = componentTypeMap.get(sourceType);

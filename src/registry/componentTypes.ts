@@ -16,7 +16,7 @@ function defineComponentType(
   };
 }
 
-export const componentTypes: ComponentTypeConfig[] = [
+const componentTypes = [
   // --- Clients ---
   defineComponentType({
     key: 'client_browser',
@@ -717,8 +717,14 @@ export const componentTypes: ComponentTypeConfig[] = [
 
     primaryFields: ['provider', 'protocol'],
 
-  }), 
-];
+  }),
+] as const;
+
+// Derive the union type from the registry
+export type ComponentTypeKey = typeof componentTypes[number]['key'];
+
+// Export the array and map
+export { componentTypes };
 
 export const componentTypeMap = new Map(
   componentTypes.map((ct) => [ct.key, ct])

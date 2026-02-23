@@ -4,20 +4,20 @@ import { Link2 } from 'lucide-react';
 import type { CanvasNode } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
-import { TIMING } from '@/constants';
+import { TIMING, DIMENSIONS } from '@/constants';
 
 function getNodeWidth(node: CanvasNode): number {
   const sw = node.style?.width;
   if (typeof sw === 'number') return sw;
   if (typeof sw === 'string') { const p = parseFloat(sw); if (!isNaN(p)) return p; }
-  return node.measured?.width ?? node.width ?? 156;
+  return node.measured?.width ?? node.width ?? DIMENSIONS.ARCH_NODE.WIDTH;
 }
 
 function getNodeHeight(node: CanvasNode): number {
   const sh = node.style?.height;
   if (typeof sh === 'number') return sh;
   if (typeof sh === 'string') { const p = parseFloat(sh); if (!isNaN(p)) return p; }
-  return node.measured?.height ?? node.height ?? 96;
+  return node.measured?.height ?? node.height ?? DIMENSIONS.ARCH_NODE.MIN_HEIGHT;
 }
 
 export function SelectionActionBar() {

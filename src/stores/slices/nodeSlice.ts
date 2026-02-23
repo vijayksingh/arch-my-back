@@ -7,7 +7,7 @@ import type {
   SectionBadgeNode,
   NotebookBlockType,
 } from '@/types';
-import { componentTypeMap } from '@/registry/componentTypes';
+import { componentTypeMap, type ComponentTypeKey } from '@/registry/componentTypes';
 import { generateNodeId } from '@/lib/idGenerator';
 import { getDefaultShapeSize } from '@/lib/shapeSizeDefaults';
 import {
@@ -18,7 +18,7 @@ import {
 } from '@/constants';
 
 export interface NodeSlice {
-  addNode: (componentType: string, position: { x: number; y: number }) => boolean;
+  addNode: (componentType: ComponentTypeKey, position: { x: number; y: number }) => boolean;
   addShapeNode: (
     shape: CanvasShapeKind,
     position: { x: number; y: number },
