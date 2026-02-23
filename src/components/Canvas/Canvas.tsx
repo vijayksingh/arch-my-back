@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, createContext, useContext } from 'react';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import {
   ReactFlow,
@@ -13,8 +13,8 @@ import {
   type NodeChange,
   type EdgeChange,
 } from '@xyflow/react';
-import type { Node, XYPosition, Connection, Edge, OnNodesChange } from '@xyflow/react';
-import type { CanvasNode, CanvasShapeKind, ComponentTypeConfig } from '@/types';
+import type { Node, XYPosition, Connection, Edge } from '@xyflow/react';
+import type { CanvasNode, CanvasShapeKind } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useWidgetStore } from '@/widgets/store/widgetStore';
@@ -40,8 +40,8 @@ const defaultEdgeOptions = {
 // Stable module-level constants for ReactFlow props
 const EDITOR_FIT_VIEW_OPTIONS = { maxZoom: 1.0, padding: 0.15 } as const;
 const WALKTHROUGH_FIT_VIEW_OPTIONS = { maxZoom: 1.0, padding: 0.2 } as const;
-const EDITOR_DELETE_KEYS = ['Backspace', 'Delete'] as const;
-const WALKTHROUGH_DELETE_KEYS = [] as const;
+const EDITOR_DELETE_KEYS: string[] = ['Backspace', 'Delete'];
+const WALKTHROUGH_DELETE_KEYS: string[] = [];
 
 function isShapeTool(tool: string): tool is CanvasShapeKind {
   return tool === CANVAS_TOOL.RECTANGLE || tool === CANVAS_TOOL.CIRCLE || tool === CANVAS_TOOL.TEXT;
@@ -59,29 +59,124 @@ function isPaneTarget(target: EventTarget | null): boolean {
   );
 }
 
-interface CanvasProps {
-  mode?: 'editor' | 'walkthrough';
-  walkthroughNodes?: Node[];
-  walkthroughEdges?: Edge[];
-  onNodeAdd?: (node: Node) => void;
-  buildPaletteComponents?: ComponentTypeConfig[];
-  showBuildValidator?: boolean;
-  highlightedNodeIds?: string[];
-  animatedEdgeIds?: string[];
-  stepId?: string;
+// ============================================================================
+// Context for shared canvas logic
+// ============================================================================
+
+interface CanvasContextValue {
+  // ReactFlow methods
+  screenToFlowPosition: (position: { x: number; y: number }) => XYPosition;
+  fitBounds: (bounds: any, options?: any) => void;
+  fitView: (options?: any) => Promise<boolean>;
+
+  // Connection validation
+  isValidConnection: (connection: Connection | Edge) => boolean;
+  onConnect: (connection: Connection) => void;
+  connectionFeedback: { message: string; type: 'error' | 'warning' } | null;
+
+  // Drag-to-create preview
+  dragPreview: { x: number; y: number; w: number; h: number } | null;
+
+  // MiniMap color function
+  miniMapNodeColor: (node: CanvasNode) => string;
 }
 
-export default function Canvas({
-  mode = 'editor',
-  walkthroughNodes,
-  walkthroughEdges,
-  onNodeAdd,
-  highlightedNodeIds = [],
-  animatedEdgeIds = [],
-  stepId,
-}: CanvasProps = {}) {
-  const prefersReducedMotion = usePrefersReducedMotion();
+const CanvasContext = createContext<CanvasContextValue | null>(null);
+
+function useCanvasContext() {
+  const ctx = useContext(CanvasContext);
+  if (!ctx) {
+    throw new Error('useCanvasContext must be used within Canvas provider');
+  }
+  return ctx;
+}
+
+// ============================================================================
+// Canvas Provider (root component)
+// ============================================================================
+
+interface CanvasProps {
+  children: React.ReactNode;
+}
+
+export default function Canvas({ children }: CanvasProps) {
   const { screenToFlowPosition, fitBounds, fitView } = useReactFlow();
+
+  // Connection feedback state
+  const [connectionFeedback, setConnectionFeedback] = useState<{
+    message: string;
+    type: 'error' | 'warning';
+  } | null>(null);
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const miniMapNodeColor = useCallback((node: CanvasNode) => {
+    if (node.type !== NODE_TYPE.ARCH_COMPONENT) return 'hsl(var(--accent-foreground) / 0.65)';
+
+    const componentType = node.data.componentType;
+    const typeDef = componentTypeMap.get(componentType);
+    if (!typeDef) return 'hsl(var(--muted-foreground))';
+
+    return categoryColors[typeDef.category];
+  }, []);
+
+  // Exposed context value
+  const contextValue = useMemo<CanvasContextValue>(
+    () => ({
+      screenToFlowPosition,
+      fitBounds,
+      fitView,
+      isValidConnection: () => true, // Variants implement their own validation
+      onConnect: () => {}, // Variants implement their own connection handling
+      connectionFeedback,
+      dragPreview: null, // Each variant manages its own drag preview
+      miniMapNodeColor,
+    }),
+    [screenToFlowPosition, fitBounds, fitView, connectionFeedback, miniMapNodeColor]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+        feedbackTimeoutRef.current = null;
+      }
+      setConnectionFeedback(null);
+    };
+  }, []);
+
+  return (
+    <CanvasContext.Provider value={contextValue}>
+      <div className="relative h-full w-full">
+        {children}
+
+        {/* Connection feedback toast */}
+        {connectionFeedback && (
+          <div
+            className={cn(
+              'fixed bottom-8 left-1/2 -translate-x-1/2 px-4 py-3 rounded-lg shadow-lg',
+              'text-sm font-medium max-w-md text-center',
+              'animate-in fade-in slide-in-from-bottom-2 duration-200',
+              connectionFeedback.type === 'error'
+                ? 'bg-destructive text-destructive-foreground border border-destructive/20'
+                : 'bg-amber-500/90 text-white border border-amber-600/20'
+            )}
+            style={{ zIndex: Z_INDEX.DRAG_PREVIEW + 1 }}
+          >
+            {connectionFeedback.message}
+          </div>
+        )}
+      </div>
+    </CanvasContext.Provider>
+  );
+}
+
+// ============================================================================
+// Editor Variant
+// ============================================================================
+
+Canvas.Editor = function EditorCanvas() {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const { screenToFlowPosition, fitBounds, miniMapNodeColor } = useCanvasContext();
 
   // Editor mode: use Zustand store
   const storeNodes = useCanvasStore((s) => s.nodes);
@@ -101,58 +196,12 @@ export default function Canvas({
   const clearPendingFocusSection = useCanvasStore((s) => s.clearPendingFocusSection);
   const addWidgetInstance = useWidgetStore((s) => s.addWidget);
 
-  // Walkthrough mode: use local controlled state
-  const [localWalkthroughNodes, setLocalWalkthroughNodes] = useState<Node[]>(walkthroughNodes || []);
-  const [localWalkthroughEdges, setLocalWalkthroughEdges] = useState<Edge[]>(walkthroughEdges || []);
-
-  // Sync walkthrough props to local state
-  useEffect(() => {
-    if (mode === 'walkthrough' && walkthroughNodes) {
-      setLocalWalkthroughNodes(walkthroughNodes);
-    }
-  }, [mode, walkthroughNodes]);
-
-  useEffect(() => {
-    if (mode === 'walkthrough' && walkthroughEdges) {
-      setLocalWalkthroughEdges(walkthroughEdges);
-    }
-  }, [mode, walkthroughEdges]);
-
-  // Determine which nodes/edges to use
-  const nodes = mode === 'walkthrough' ? localWalkthroughNodes : storeNodes;
-  const edges = mode === 'walkthrough' ? localWalkthroughEdges : storeEdges;
-
-  // Walkthrough mode: local controlled handlers
-  const handleWalkthroughNodesChange = useCallback((changes: NodeChange[]) => {
-    setLocalWalkthroughNodes(nds => applyNodeChanges(changes, nds));
-  }, []);
-
-  const handleWalkthroughEdgesChange = useCallback((changes: EdgeChange[]) => {
-    setLocalWalkthroughEdges(eds => applyEdgeChanges(changes, eds));
-  }, []);
-
-  // Create properly-typed wrapper for onNodesChange that bridges the type gap
-  // between OnNodesChange<Node> (ReactFlow) and OnNodesChange<CanvasNode> (store)
-  const onNodesChange: OnNodesChange<Node> = useCallback(
-    (changes: NodeChange[]) => {
-      if (mode === 'walkthrough') {
-        handleWalkthroughNodesChange(changes);
-      } else {
-        // Safe cast: CanvasNode extends Node, and changes are generic NodeChange[]
-        storeOnNodesChange(changes);
-      }
-    },
-    [mode, handleWalkthroughNodesChange, storeOnNodesChange]
-  );
-
-  const onEdgesChange = mode === 'walkthrough' ? handleWalkthroughEdgesChange : storeOnEdgesChange;
-
   // Drag-to-create state
   const dragStart = useRef<{ screen: { x: number; y: number }; flow: XYPosition } | null>(null);
   const activeDragTool = useRef<CanvasShapeKind | null>(null);
   const [dragPreview, setDragPreview] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
-  // Connection feedback state
+  // Connection feedback state (editor-specific)
   const [connectionFeedback, setConnectionFeedback] = useState<{
     message: string;
     type: 'error' | 'warning';
@@ -270,65 +319,32 @@ export default function Canvas({
         y: event.clientY,
       });
 
-      // Walkthrough mode: handle build palette drops
-      if (mode === 'walkthrough' && onNodeAdd) {
-        const componentData = event.dataTransfer.getData('application/reactflow');
-        if (componentData) {
-          // Parse the component from build palette
-          const component = JSON.parse(componentData);
-          const newNode: Node = {
-            id: `${component.componentType}-${Date.now()}`,
-            type: NODE_TYPE.ARCH_COMPONENT,
-            position,
-            data: {
-              label: component.label,
-              componentType: component.componentType,
-            },
-          };
-          onNodeAdd(newNode);
-          return;
+      // Check for widget drop
+      const widgetId = event.dataTransfer.getData(DRAG_DATA_TYPE.WIDGET);
+      if (widgetId) {
+        // Create widget instance in store
+        const widgetInstanceId = addWidgetInstance(widgetId, undefined, position);
+        if (widgetInstanceId) {
+          // Add canvas node for the widget using proper store API
+          addWidgetNode(widgetInstanceId, position);
         }
+        return;
       }
 
-      // Editor mode: handle widget and component drops
-      if (mode === 'editor') {
-        // Check for widget drop
-        const widgetId = event.dataTransfer.getData(DRAG_DATA_TYPE.WIDGET);
-        if (widgetId) {
-          // Create widget instance in store
-          const widgetInstanceId = addWidgetInstance(widgetId, undefined, position);
-          if (widgetInstanceId) {
-            // Add canvas node for the widget using proper store API
-            addWidgetNode(widgetInstanceId, position);
-          }
-          return;
-        }
-
-        // Check for component drop (existing behavior)
-        const componentType = event.dataTransfer.getData(DRAG_DATA_TYPE.COMPONENT);
-        if (componentType) {
-          addNode(componentType, position);
-        }
+      // Check for component drop
+      const componentType = event.dataTransfer.getData(DRAG_DATA_TYPE.COMPONENT);
+      if (componentType) {
+        addNode(componentType, position);
       }
     },
-    [screenToFlowPosition, addNode, addWidgetNode, addWidgetInstance, mode, onNodeAdd],
+    [screenToFlowPosition, addNode, addWidgetNode, addWidgetInstance],
   );
-
-  const miniMapNodeColor = useCallback((node: CanvasNode) => {
-    if (node.type !== NODE_TYPE.ARCH_COMPONENT) return 'hsl(var(--accent-foreground) / 0.65)';
-
-    const componentType = node.data.componentType;
-    const typeDef = componentTypeMap.get(componentType);
-    if (!typeDef) return 'hsl(var(--muted-foreground))';
-
-    return categoryColors[typeDef.category];
-  }, []);
 
   const isValidConnection = useCallback(
     (connection: Connection | Edge) => {
-      return validateArchConnection(nodes, connection).valid;
+      return validateArchConnection(storeNodes, connection).valid;
     },
-    [nodes]
+    [storeNodes]
   );
 
   const showConnectionFeedback = useCallback(
@@ -349,7 +365,7 @@ export default function Canvas({
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      const validation = validateArchConnection(nodes, connection);
+      const validation = validateArchConnection(storeNodes, connection);
 
       if (!validation.valid) {
         // Hard rejection - show error and prevent connection
@@ -360,17 +376,14 @@ export default function Canvas({
       }
 
       // Valid connection - proceed
-      if (mode === 'editor') {
-        onConnectStore(connection);
-      }
-      // Walkthrough mode handles connections via its own handler (passed as prop)
+      onConnectStore(connection);
 
       // Show soft warning if present
       if (validation.warning) {
         showConnectionFeedback(validation.warning, 'warning');
       }
     },
-    [nodes, onConnectStore, showConnectionFeedback, mode]
+    [storeNodes, onConnectStore, showConnectionFeedback]
   );
 
   useEffect(() => {
@@ -392,6 +405,7 @@ export default function Canvas({
     pendingFocusSectionId,
     sections,
     setSelectedNode,
+    prefersReducedMotion,
   ]);
 
   useEffect(() => {
@@ -402,66 +416,21 @@ export default function Canvas({
     };
   }, []);
 
-  // Walkthrough mode: fit view on step change
-  useEffect(() => {
-    if (mode === 'walkthrough' && stepId) {
-      const timeout = setTimeout(() => {
-        fitView({ duration: prefersReducedMotion ? 0 : 800, padding: 0.2 }).catch(() => {});
-      }, 100);
-      return () => clearTimeout(timeout);
-    }
-  }, [mode, stepId, fitView, prefersReducedMotion]);
-
-  // Enrich nodes and edges with walkthrough-specific data
-  const displayNodes = useMemo(() => {
-    if (mode !== 'walkthrough') return nodes;
-
-    const highlightedSet = new Set(highlightedNodeIds);
-    return nodes.map(node => ({
-      ...node,
-      data: {
-        ...node.data,
-        highlighted: highlightedSet.has(node.id),
-      },
-    }));
-  }, [mode, nodes, highlightedNodeIds]);
-
-  const displayEdges = useMemo(() => {
-    if (mode !== 'walkthrough') return edges;
-
-    const animatedSet = new Set(animatedEdgeIds);
-    return edges.map(edge => ({
-      ...edge,
-      animated: animatedSet.has(edge.id),
-    }));
-  }, [mode, edges, animatedEdgeIds]);
-
-  // Stable ReactFlow config props - memoized to prevent re-renders
-  const fitViewOptions = useMemo(
-    () => (mode === 'walkthrough' ? WALKTHROUGH_FIT_VIEW_OPTIONS : EDITOR_FIT_VIEW_OPTIONS),
-    [mode]
-  );
-
-  const deleteKeyCode = useMemo(
-    () => (mode === 'editor' ? EDITOR_DELETE_KEYS : WALKTHROUGH_DELETE_KEYS),
-    [mode]
-  );
-
   return (
     <div
       className="relative h-full w-full"
       onMouseDown={handleContainerMouseDown}
     >
       <ReactFlow
-        nodes={displayNodes}
-        edges={displayEdges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
+        nodes={storeNodes}
+        edges={storeEdges}
+        onNodesChange={storeOnNodesChange}
+        onEdgesChange={storeOnEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
-        onNodeClick={mode === 'editor' ? onNodeClick : undefined}
-        onPaneClick={mode === 'editor' ? onPaneClick : undefined}
-        onSelectionChange={mode === 'editor' ? onSelectionChange : undefined}
+        onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
+        onSelectionChange={onSelectionChange}
         onDragOver={onDragOver}
         onDrop={onDrop}
         nodeTypes={designNodeTypes}
@@ -469,17 +438,14 @@ export default function Canvas({
         defaultEdgeOptions={defaultEdgeOptions}
         snapToGrid
         snapGrid={[20, 20]}
-        panOnDrag={mode === 'editor' ? activeCanvasTool === CANVAS_TOOL.CURSOR : true}
-        selectionOnDrag={mode === 'editor' ? activeCanvasTool === CANVAS_TOOL.SELECT : false}
+        panOnDrag={activeCanvasTool === CANVAS_TOOL.CURSOR}
+        selectionOnDrag={activeCanvasTool === CANVAS_TOOL.SELECT}
         selectionMode={SelectionMode.Partial}
-        nodesDraggable={mode === 'walkthrough' ? true : undefined}
-        nodesConnectable={mode === 'walkthrough' ? true : undefined}
-        elementsSelectable={mode === 'walkthrough' ? true : undefined}
         fitView
         minZoom={0.1}
-        maxZoom={mode === 'walkthrough' ? 4.0 : 2.0}
-        fitViewOptions={fitViewOptions}
-        deleteKeyCode={deleteKeyCode}
+        maxZoom={2.0}
+        fitViewOptions={EDITOR_FIT_VIEW_OPTIONS}
+        deleteKeyCode={EDITOR_DELETE_KEYS}
         proOptions={{ hideAttribution: true }}
         className="bg-background"
       >
@@ -525,8 +491,8 @@ export default function Canvas({
         />
       )}
 
-      {/* Floating group/section action bar — visible when nodes are selected (editor mode only) */}
-      {mode === 'editor' && <SelectionActionBar />}
+      {/* Floating group/section action bar */}
+      <SelectionActionBar />
 
       {/* Connection feedback toast */}
       {connectionFeedback && (
@@ -546,4 +512,175 @@ export default function Canvas({
       )}
     </div>
   );
+};
+
+// ============================================================================
+// Walkthrough Variant
+// ============================================================================
+
+interface WalkthroughCanvasProps {
+  nodes: Node[];
+  edges: Edge[];
+  stepId?: string;
+  highlightedNodeIds?: string[];
+  animatedEdgeIds?: string[];
+  onNodeAdd?: (node: Node) => void;
 }
+
+Canvas.Walkthrough = function WalkthroughCanvas({
+  nodes: initialNodes,
+  edges: initialEdges,
+  stepId,
+  highlightedNodeIds = [],
+  animatedEdgeIds = [],
+  onNodeAdd,
+}: WalkthroughCanvasProps) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const { screenToFlowPosition, fitView, miniMapNodeColor } = useCanvasContext();
+
+  // Walkthrough mode: use local controlled state
+  const [localNodes, setLocalNodes] = useState<Node[]>(initialNodes);
+  const [localEdges, setLocalEdges] = useState<Edge[]>(initialEdges);
+
+  // Sync props to local state
+  useEffect(() => {
+    setLocalNodes(initialNodes);
+  }, [initialNodes]);
+
+  useEffect(() => {
+    setLocalEdges(initialEdges);
+  }, [initialEdges]);
+
+  // Local controlled handlers
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
+    setLocalNodes(nds => applyNodeChanges(changes, nds));
+  }, []);
+
+  const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
+    setLocalEdges(eds => applyEdgeChanges(changes, eds));
+  }, []);
+
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      if (!onNodeAdd) return;
+
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+
+      // Handle build palette drops
+      const componentData = event.dataTransfer.getData('application/reactflow');
+      if (componentData) {
+        // Parse the component from build palette
+        const component = JSON.parse(componentData);
+        const newNode: Node = {
+          id: `${component.componentType}-${Date.now()}`,
+          type: NODE_TYPE.ARCH_COMPONENT,
+          position,
+          data: {
+            label: component.label,
+            componentType: component.componentType,
+          },
+        };
+        onNodeAdd(newNode);
+      }
+    },
+    [screenToFlowPosition, onNodeAdd],
+  );
+
+  // Fit view on step change
+  useEffect(() => {
+    if (stepId) {
+      const timeout = setTimeout(() => {
+        fitView({ duration: prefersReducedMotion ? 0 : 800, padding: 0.2 }).catch(() => {});
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [stepId, fitView, prefersReducedMotion]);
+
+  // Enrich nodes and edges with walkthrough-specific data
+  const displayNodes = useMemo(() => {
+    const highlightedSet = new Set(highlightedNodeIds);
+    return localNodes.map(node => ({
+      ...node,
+      data: {
+        ...node.data,
+        highlighted: highlightedSet.has(node.id),
+      },
+    }));
+  }, [localNodes, highlightedNodeIds]);
+
+  const displayEdges = useMemo(() => {
+    const animatedSet = new Set(animatedEdgeIds);
+    return localEdges.map(edge => ({
+      ...edge,
+      animated: animatedSet.has(edge.id),
+    }));
+  }, [localEdges, animatedEdgeIds]);
+
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge) => {
+      return validateArchConnection(localNodes, connection).valid;
+    },
+    [localNodes]
+  );
+
+  return (
+    <ReactFlow
+      nodes={displayNodes}
+      edges={displayEdges}
+      onNodesChange={handleNodesChange}
+      onEdgesChange={handleEdgesChange}
+      isValidConnection={isValidConnection}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      nodeTypes={designNodeTypes}
+      edgeTypes={archEdgeTypes}
+      defaultEdgeOptions={defaultEdgeOptions}
+      snapToGrid
+      snapGrid={[20, 20]}
+      panOnDrag
+      nodesDraggable
+      nodesConnectable
+      elementsSelectable
+      selectionMode={SelectionMode.Partial}
+      fitView
+      minZoom={0.1}
+      maxZoom={4.0}
+      fitViewOptions={WALKTHROUGH_FIT_VIEW_OPTIONS}
+      deleteKeyCode={WALKTHROUGH_DELETE_KEYS}
+      proOptions={{ hideAttribution: true }}
+      className="bg-background"
+    >
+      <Background
+        variant={BackgroundVariant.Dots}
+        gap={20}
+        size={1}
+        color="hsl(var(--canvas-dot))"
+      />
+      <Controls position="bottom-right" />
+      <MiniMap
+        position="bottom-left"
+        nodeColor={miniMapNodeColor}
+        maskColor="var(--canvas-mask)"
+        pannable
+        zoomable
+        style={{
+          width: 120,
+          height: 80,
+          opacity: 0.5,
+          transition: 'opacity 0.2s ease-in-out',
+        }}
+        className="hover:opacity-100"
+      />
+    </ReactFlow>
+  );
+};

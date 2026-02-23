@@ -152,7 +152,9 @@ function DesignEditorPage() {
               )}
             >
               <ReactFlowProvider>
-                <Canvas />
+                <Canvas>
+                  <Canvas.Editor />
+                </Canvas>
               </ReactFlowProvider>
             </div>
 

@@ -145,7 +145,9 @@ function PublicSharePage() {
               className="absolute inset-0 bg-background"
             >
               <ReactFlowProvider>
-                <Canvas />
+                <Canvas>
+                  <Canvas.Editor />
+                </Canvas>
               </ReactFlowProvider>
             </div>
           </div>
