@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, XCircle, Lightbulb, AlertCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Lightbulb, AlertCircle, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { BuildValidationRule } from '@/types/walkthrough';
 import type { Node, Edge } from '@xyflow/react';
@@ -37,6 +37,7 @@ export function BuildValidator({
   const [showHints, setShowHints] = useState(false);
   const [currentHintIndex, setCurrentHintIndex] = useState(0);
   const [hasValidated, setHasValidated] = useState(false);
+  const [minimized, setMinimized] = useState(false);
 
   const validateArchitecture = (): boolean => {
     const results: ValidationResult[] = [];
@@ -70,6 +71,28 @@ export function BuildValidator({
 
   const allPassed = validationResults.length > 0 && validationResults.every((r) => r.passed);
 
+  // If minimized, show compact floating button
+  if (minimized) {
+    return (
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="absolute bottom-4 left-4 z-10"
+      >
+        <Button
+          onClick={() => setMinimized(false)}
+          className="flex items-center gap-2 shadow-lg"
+          size="lg"
+        >
+          <AlertCircle className="h-4 w-4" />
+          Validate
+        </Button>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ y: 50, opacity: 0 }}
@@ -78,7 +101,16 @@ export function BuildValidator({
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className="absolute bottom-4 left-4 right-4 z-10 mx-auto max-w-2xl"
     >
-      <div className="rounded-lg border border-border bg-card/95 backdrop-blur-sm shadow-lg">
+      <div className="rounded-lg border border-border bg-card/95 backdrop-blur-sm shadow-lg relative">
+        {/* Minimize Button */}
+        <button
+          onClick={() => setMinimized(true)}
+          className="absolute top-3 right-3 p-1.5 rounded-md hover:bg-muted/50 transition-colors z-20"
+          aria-label="Minimize validator"
+        >
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        </button>
+
         {/* Validation Results */}
         <AnimatePresence>
           {hasValidated && (

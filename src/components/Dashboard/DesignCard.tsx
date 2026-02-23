@@ -49,7 +49,7 @@ const gradients = [
   'bg-gradient-to-br from-slate-500/10 via-gray-500/10 to-zinc-500/10',
 ];
 
-// List item variant for horizontal row layout
+// Card variant for grid layout (used in dashboard)
 export function DesignListItem({ design }: DesignCardProps) {
   const navigate = useNavigate();
   const folders = useQuery(api.folders.list);
@@ -60,7 +60,7 @@ export function DesignListItem({ design }: DesignCardProps) {
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Make item draggable
+  // Make card draggable
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: design._id,
     data: { type: 'design', design },
@@ -102,71 +102,83 @@ export function DesignListItem({ design }: DesignCardProps) {
     year: 'numeric',
   });
 
-  // Select gradient based on title hash for color dot
+  // Select gradient based on title hash
   const gradientClass = gradients[hashString(design.title) % gradients.length];
 
   return (
     <>
       <div
         ref={setNodeRef}
-        {...attributes}
-        {...listeners}
-        onClick={handleClick}
-        className={`group flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-sm transition-all duration-150 ease-out hover:border-border/80 hover:shadow-md cursor-pointer ${
+        className={`group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-border/60 hover:shadow-md cursor-pointer ${
           isDragging ? 'opacity-40' : ''
         }`}
       >
-        {/* Color dot indicator */}
-        <div className={`h-3 w-3 rounded-full flex-shrink-0 ${gradientClass}`} />
-
-        {/* Title */}
-        <h3 className="text-sm font-medium text-foreground truncate min-w-0 flex-shrink">
-          {design.title}
-        </h3>
-
-        {/* Description (truncated) */}
-        {design.description && (
-          <p className="text-xs text-muted-foreground truncate min-w-0 flex-1">
-            {design.description}
-          </p>
-        )}
-
-        {/* Date */}
-        <div className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-          {lastUpdated}
+        {/* Preview Area - also the drag handle */}
+        <div
+          onClick={handleClick}
+          {...attributes}
+          {...listeners}
+          className={`aspect-[16/10] w-full ${gradientClass} relative overflow-hidden`}
+        >
+          {/* Grid dot pattern overlay */}
+          <div
+            className="absolute inset-0 opacity-30"
+            style={{
+              backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`,
+              backgroundSize: '20px 20px',
+            }}
+          />
+          {/* Future: thumbnailStorageId will render actual thumbnail here */}
         </div>
 
-        {/* Three-dot Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100 flex-shrink-0"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MoreVertical className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onClick={() => setShowMoveDialog(true)}>
-              <FolderInput className="mr-2 h-4 w-4" />
-              Move to folder
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDuplicate}>
-              <Copy className="mr-2 h-4 w-4" />
-              Duplicate
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => setShowDeleteConfirm(true)}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Content Area */}
+        <div onClick={handleClick} className="flex flex-col gap-1.5 p-4">
+          <h3 className="text-sm font-semibold text-foreground truncate">
+            {design.title}
+          </h3>
+          {design.description && (
+            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+              {design.description}
+            </p>
+          )}
+          <div className="text-xs text-muted-foreground mt-1">
+            Updated {lastUpdated}
+          </div>
+        </div>
+
+        {/* Three-dot Menu (visible on hover) */}
+        <div className="absolute top-2 right-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 bg-card/90 backdrop-blur-sm hover:bg-card shadow-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={() => setShowMoveDialog(true)}>
+                <FolderInput className="mr-2 h-4 w-4" />
+                Move to folder
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDuplicate}>
+                <Copy className="mr-2 h-4 w-4" />
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Move to folder dialog */}

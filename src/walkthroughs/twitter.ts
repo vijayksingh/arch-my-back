@@ -134,7 +134,6 @@ Before we dive into solutions, put yourself in the architect's seat. How would Y
           node: {
             id: 'user-simple',
             type: 'archComponent',
-            position: { x: 100, y: 100 },
             data: {
               componentType: 'client_browser',
               label: 'User',
@@ -148,7 +147,6 @@ Before we dive into solutions, put yourself in the architect's seat. How would Y
           node: {
             id: 'server-simple',
             type: 'archComponent',
-            position: { x: 400, y: 100 },
             data: {
               componentType: 'app_server',
               label: 'Twitter Server',
@@ -309,7 +307,6 @@ It depends on your scale and usage patterns. Think about it...
           node: {
             id: 'tweet-db',
             type: 'archComponent',
-            position: { x: 50, y: 300 },
             data: {
               componentType: 'postgres',
               label: 'Tweets DB',
@@ -322,7 +319,6 @@ It depends on your scale and usage patterns. Think about it...
           node: {
             id: 'feed-cache',
             type: 'archComponent',
-            position: { x: 300, y: 300 },
             data: {
               componentType: 'redis',
               label: 'Feed Cache',
@@ -335,7 +331,6 @@ It depends on your scale and usage patterns. Think about it...
           node: {
             id: 'social-graph',
             type: 'archComponent',
-            position: { x: 550, y: 300 },
             data: {
               componentType: 'postgres',
               label: 'Social Graph',
@@ -460,6 +455,25 @@ Simple, elegant, and... **slow at scale**.
         },
         {
           type: 'quiz',
+          mode: 'predict-output',
+          question:
+            'Given these tweets from followings, what will be the order after chronological sorting?',
+          code: `tweets = [
+  {"id": 1, "author": "alice", "created_at": "2024-01-15 14:30:00", "text": "AI is amazing"},
+  {"id": 2, "author": "bob", "created_at": "2024-01-15 14:25:00", "text": "Coffee time"},
+  {"id": 3, "author": "carol", "created_at": "2024-01-15 14:35:00", "text": "New blog post"},
+]
+
+# Sort by timestamp DESC (newest first)
+sorted_tweets = sorted(tweets, key=lambda t: t["created_at"], reverse=True)
+print([t["id"] for t in sorted_tweets])`,
+          language: 'python',
+          inputs: 'tweets (mixed timestamps)',
+          expectedOutput: '[3, 1, 2]',
+          tolerance: 'whitespace',
+        },
+        {
+          type: 'quiz',
           question:
             'A user follows 5,000 accounts. What is the time complexity of generating their feed?',
           options: [
@@ -501,7 +515,6 @@ Simple, elegant, and... **slow at scale**.
           node: {
             id: 'feed-service',
             type: 'archComponent',
-            position: { x: 300, y: 150 },
             data: {
               componentType: 'app_server',
               label: 'Feed Service',
@@ -585,6 +598,63 @@ The database! PostgreSQL can handle ~100K queries/second per instance. You'd nee
 We need to **pre-compute** feeds using fan-out on write. But we also need to handle celebrities with millions of followers...
       `,
       widgets: [
+        {
+          type: 'scale-explorer',
+          title: 'Twitter Scale Impact on Fan-out',
+          parameter: {
+            name: 'Active Users',
+            min: 1000,
+            max: 500000000,
+            unit: 'users',
+            scale: 'log',
+          },
+          metrics: [
+            {
+              name: 'Fan-out writes per celebrity tweet',
+              unit: 'writes',
+              compute: 'n * 0.01',
+              thresholds: {
+                warning: 1000000,
+                critical: 10000000,
+              },
+            },
+            {
+              name: 'Timeline read latency (pull-based)',
+              unit: 'ms',
+              compute: 'Math.log10(n) * 50',
+              thresholds: {
+                warning: 100,
+                critical: 500,
+              },
+            },
+            {
+              name: 'Pre-computed timeline storage',
+              unit: 'GB',
+              compute: 'n * 3200 * 280 / 1073741824',
+              thresholds: {
+                warning: 1000,
+                critical: 10000,
+              },
+            },
+          ],
+          insights: [
+            {
+              triggerValue: 1000000,
+              message:
+                'At 1M users: Fan-out takes seconds for popular accounts with 10K+ followers',
+            },
+            {
+              triggerValue: 10000000,
+              message:
+                'At 10M users: Storage costs escalate — pre-computed timelines require ~8TB',
+            },
+            {
+              triggerValue: 100000000,
+              message:
+                'At 100M users: Must mix push and pull strategies to handle celebrity fan-out',
+            },
+          ],
+        },
         {
           type: 'timeline',
           title: 'Chronological Feed Load (Current)',
@@ -783,6 +853,41 @@ Let's add the hybrid system to our architecture...
         },
         {
           type: 'quiz',
+          mode: 'ordering',
+          question:
+            'Put these hybrid feed generation steps in the correct order:',
+          items: [
+            {
+              id: 'fetch-cache',
+              text: 'Fetch pre-computed feed from cache',
+            },
+            {
+              id: 'identify-celebs',
+              text: 'Identify which followings are celebrities',
+            },
+            {
+              id: 'pull-celeb-tweets',
+              text: 'Pull tweets from celebrity followings',
+            },
+            {
+              id: 'merge-rank',
+              text: 'Merge cached feed + celebrity tweets and rank',
+            },
+            {
+              id: 'return-feed',
+              text: 'Return final ranked feed to user',
+            },
+          ],
+          correctOrder: [
+            'fetch-cache',
+            'identify-celebs',
+            'pull-celeb-tweets',
+            'merge-rank',
+            'return-feed',
+          ],
+        },
+        {
+          type: 'quiz',
           question:
             'Why does Twitter set the celebrity threshold at 1M followers, not 10M?',
           options: [
@@ -864,7 +969,6 @@ def get_hybrid_feed(user_id, limit=50):
           node: {
             id: 'fanout-service',
             type: 'archComponent',
-            position: { x: 150, y: 450 },
             data: {
               componentType: 'worker',
               label: 'Fan-out Service',
@@ -1081,7 +1185,6 @@ Predict: **"Will this user engage with this tweet?"**
           node: {
             id: 'ranking-service',
             type: 'archComponent',
-            position: { x: 500, y: 150 },
             data: {
               componentType: 'app_server',
               label: 'Ranking Service',
@@ -1104,7 +1207,6 @@ Predict: **"Will this user engage with this tweet?"**
           node: {
             id: 'ml-models',
             type: 'archComponent',
-            position: { x: 500, y: 300 },
             data: {
               componentType: 'serverless',
               label: 'ML Models',
@@ -1278,7 +1380,6 @@ class TrendingDetector:
           node: {
             id: 'kafka',
             type: 'archComponent',
-            position: { x: 300, y: 500 },
             data: {
               componentType: 'kafka',
               label: 'Kafka - Tweet Stream',
@@ -1291,7 +1392,6 @@ class TrendingDetector:
           node: {
             id: 'trending-service',
             type: 'archComponent',
-            position: { x: 500, y: 500 },
             data: {
               componentType: 'worker',
               label: 'Trending Service',
@@ -1366,11 +1466,18 @@ This is what powers feeds for 500M+ users!
         {
           type: 'timeline',
           title: 'Complete Tweet → Feed Flow',
+          interactive: true,
           events: [
             {
               label: '1. User tweets',
               description: 'Tweet Service receives tweet',
               nodeIds: ['server-simple'],
+              predictPrompt: 'What happens first after the user posts a tweet?',
+              predictOptions: [
+                { text: 'Tweet is immediately sent to all followers', correct: false },
+                { text: 'Tweet is stored in the database', correct: true },
+                { text: 'ML ranking model scores the tweet', correct: false },
+              ],
             },
             {
               label: '2. Store tweet',
@@ -1386,6 +1493,13 @@ This is what powers feeds for 500M+ users!
               label: '4. Fan-out decision',
               description: 'Check follower count → push or pull',
               nodeIds: ['fanout-service'],
+              predictPrompt:
+                'How does Twitter decide whether to push this tweet to followers or wait for pull?',
+              predictOptions: [
+                { text: 'Based on tweet content (text vs media)', correct: false },
+                { text: 'Based on author follower count', correct: true },
+                { text: 'Random decision for load balancing', correct: false },
+              ],
             },
             {
               label: '5a. Push to followers (if <1M)',
@@ -1401,6 +1515,12 @@ This is what powers feeds for 500M+ users!
               label: '6. User loads feed',
               description: 'Feed Service merges push + pull',
               nodeIds: ['feed-service'],
+              predictPrompt: 'How do followers get notified of new tweets — push, pull, or both?',
+              predictOptions: [
+                { text: 'Always push to all followers', correct: false },
+                { text: 'Always pull when user opens app', correct: false },
+                { text: 'Hybrid: push for most, pull for celebrities', correct: true },
+              ],
             },
             {
               label: '7. Ranking',
@@ -1457,7 +1577,6 @@ This is what powers feeds for 500M+ users!
           node: {
             id: 'api-gateway',
             type: 'archComponent',
-            position: { x: 300, y: 50 },
             data: {
               componentType: 'api_gateway',
               label: 'API Gateway',
@@ -1470,7 +1589,6 @@ This is what powers feeds for 500M+ users!
           node: {
             id: 'feature-store',
             type: 'archComponent',
-            position: { x: 700, y: 300 },
             data: {
               componentType: 'object_storage',
               label: 'Feature Store',
@@ -1711,7 +1829,6 @@ def train_engagement_model():
           node: {
             id: 'spark-training',
             type: 'archComponent',
-            position: { x: 700, y: 500 },
             data: {
               componentType: 'worker',
               label: 'Apache Spark - ML Training',
@@ -2052,6 +2169,90 @@ Take 10-15 minutes to think through your approach. When ready, click "Next" to s
           color: '#f59e0b',
         },
       ],
+      canvasBuildMode: true,
+      buildConfig: {
+        palette: [
+          {
+            id: 'api-gateway',
+            label: 'API Gateway',
+            componentType: 'api_gateway',
+            description: 'Handles incoming API requests, auth, rate limiting',
+          },
+          {
+            id: 'tweet-service',
+            label: 'Tweet Service',
+            componentType: 'app_server',
+            description: 'Processes tweet creation and retrieval',
+          },
+          {
+            id: 'timeline-service',
+            label: 'Timeline Service',
+            componentType: 'app_server',
+            description: 'Generates personalized timelines',
+          },
+          {
+            id: 'fanout-service',
+            label: 'Fan-out Service',
+            componentType: 'worker',
+            description: 'Pushes tweets to follower feeds',
+          },
+          {
+            id: 'search-index',
+            label: 'Search/Index',
+            componentType: 'search',
+            description: 'Makes tweets searchable',
+          },
+          {
+            id: 'cache-redis',
+            label: 'Cache (Redis)',
+            componentType: 'cache',
+            description: 'Stores pre-computed timelines',
+          },
+          {
+            id: 'user-graph-service',
+            label: 'User Graph Service',
+            componentType: 'database',
+            description: 'Manages follow relationships',
+          },
+          {
+            id: 'notification-service',
+            label: 'Notification Service',
+            componentType: 'worker',
+            description: 'Sends push notifications',
+          },
+        ],
+        validationRules: [
+          {
+            type: 'must-connect',
+            params: { source: 'api-gateway', target: 'tweet-service' },
+            feedback:
+              'API Gateway must route tweet creation requests to Tweet Service',
+          },
+          {
+            type: 'must-exist',
+            params: { nodeId: 'fanout-service' },
+            feedback: 'Fan-out Service is required to distribute tweets to followers',
+          },
+          {
+            type: 'must-connect',
+            params: { source: 'fanout-service', target: 'timeline-service' },
+            feedback: 'Fan-out Service must connect to Timeline Service to update feeds',
+          },
+          {
+            type: 'must-exist',
+            params: { nodeId: 'cache-redis' },
+            feedback: 'Cache is essential for storing pre-computed timelines',
+          },
+        ],
+        successMessage:
+          'Great job! You\'ve built a basic Twitter feed architecture with fan-out and caching.',
+        hints: [
+          'When a tweet is posted, who needs to know about it?',
+          'How do followers\' timelines get updated — push or pull?',
+          'What about search — how do tweets become searchable?',
+          'Where would you cache pre-computed timelines for fast reads?',
+        ],
+      },
       nextCondition: 'click-next',
     },
 

@@ -1,5 +1,6 @@
 import ELK from 'elkjs/lib/elk-api';
 import type { CanvasNode, ArchEdge } from '@/types';
+import { componentTypeMap } from '@/registry/componentTypes';
 
 // ELK.js instance with Web Worker
 let elkInstance: InstanceType<typeof ELK> | null = null;
@@ -14,6 +15,20 @@ function getElkInstance(): InstanceType<typeof ELK> {
   return elkInstance;
 }
 
+// Category to layer mapping for semantic flow layout
+const CATEGORY_TO_LAYER: Record<string, number> = {
+  'Clients': 0,
+  'Traffic': 1,
+  'External': 2,
+  'Compute': 3,
+  'Caching': 4,
+  'Messaging': 4,
+  'Databases': 5,
+  'Search & Analytics': 4,
+  'ML / AI': 4,
+  'Observability': 6,
+};
+
 interface ElkNode {
   id: string;
   width?: number;
@@ -21,6 +36,7 @@ interface ElkNode {
   x?: number;
   y?: number;
   children?: ElkNode[];
+  layoutOptions?: Record<string, string>;
 }
 
 interface ElkEdge {
@@ -40,7 +56,8 @@ const layoutOptions = {
   'elk.algorithm': 'layered',
   'elk.direction': 'RIGHT',
   'elk.spacing.nodeNode': '80',
-  'elk.layered.spacing.nodeNodeBetweenLayers': '150',
+  'elk.layered.spacing.nodeNodeBetweenLayers': '200',
+  'elk.layered.layering.strategy': 'INTERACTIVE',  // respect layer assignments
   'elk.padding': '[top=50,left=50,bottom=50,right=50]',
 };
 
@@ -72,6 +89,17 @@ function toElkGraph(nodes: CanvasNode[], edges: ArchEdge[]): ElkGraph {
       width,
       height,
     };
+
+    // Assign layer based on component category for semantic flow
+    if (node.data?.componentType && typeof node.data.componentType === 'string') {
+      const typeDef = componentTypeMap.get(node.data.componentType);
+      if (typeDef) {
+        const layer = CATEGORY_TO_LAYER[typeDef.category] ?? 3;
+        elkNode.layoutOptions = {
+          'elk.layered.layering.layer': String(layer),
+        };
+      }
+    }
 
     if (children && children.length > 0) {
       elkNode.children = children.map(buildElkNode);

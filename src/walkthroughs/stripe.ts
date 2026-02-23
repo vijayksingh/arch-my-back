@@ -139,7 +139,6 @@ Before we dive into solutions, consider: How would YOU design a payment API that
           node: {
             id: 'merchant',
             type: 'archComponent',
-            position: { x: 100, y: 100 },
             data: {
               componentType: 'external_api',
               label: 'Merchant (Your App)',
@@ -153,7 +152,6 @@ Before we dive into solutions, consider: How would YOU design a payment API that
           node: {
             id: 'stripe-api',
             type: 'archComponent',
-            position: { x: 400, y: 100 },
             data: {
               componentType: 'api_gateway',
               label: 'Stripe API',
@@ -167,7 +165,6 @@ Before we dive into solutions, consider: How would YOU design a payment API that
           node: {
             id: 'bank',
             type: 'archComponent',
-            position: { x: 700, y: 100 },
             data: {
               componentType: 'external_api',
               label: 'Card Network / Bank',
@@ -404,6 +401,91 @@ async function processPayment(amount, cardToken) {
           highlights: [19, 20, 21, 22],
         },
         {
+          type: 'quiz',
+          mode: 'spot-bug',
+          question:
+            'Which line in this retry logic causes the double-charge bug when the network fails?',
+          code: `async function retryPayment(amount, cardToken) {
+  let attempts = 0;
+  while (attempts < 3) {
+    try {
+      const result = await stripe.charges.create({
+        amount: amount,
+        currency: 'usd',
+        source: cardToken,
+      });
+      return result; // Success
+    } catch (error) {
+      attempts++;
+      console.log(\`Attempt \${attempts} failed, retrying...\`);
+      // Retry immediately
+    }
+  }
+  throw new Error('Payment failed after 3 attempts');
+}`,
+          language: 'javascript',
+          buggyLines: [5, 6, 7, 8, 9],
+          explanation:
+            'Lines 5-9 create a NEW charge on every retry without using an idempotency key. If the first request succeeds but the response is lost (network timeout), the retry will create a second charge. The fix: use the same idempotency key for all retries of the same payment attempt.',
+        },
+        {
+          type: 'scale-explorer',
+          title: 'Double-Charge Risk at Scale',
+          parameter: {
+            name: 'Transactions per second',
+            min: 1,
+            max: 100000,
+            unit: 'txn/s',
+            scale: 'log',
+          },
+          metrics: [
+            {
+              name: 'Double-charge probability',
+              unit: '%',
+              compute: '(1 - Math.pow(0.9999, n)) * 100',
+              thresholds: {
+                warning: 1,
+                critical: 5,
+              },
+            },
+            {
+              name: 'Financial exposure per hour',
+              unit: '$',
+              compute: 'n * 3600 * 50 * (1 - Math.pow(0.9999, n))',
+              thresholds: {
+                warning: 1000,
+                critical: 10000,
+              },
+            },
+            {
+              name: 'Customer complaints per day',
+              unit: 'complaints',
+              compute: 'n * 86400 * (1 - Math.pow(0.9999, n)) * 0.1',
+              thresholds: {
+                warning: 10,
+                critical: 100,
+              },
+            },
+          ],
+          insights: [
+            {
+              triggerValue: 100,
+              message:
+                'At 100 txn/s: ~1% chance of occasional duplicates. Customers will notice.',
+            },
+            {
+              triggerValue: 1000,
+              message:
+                'At 1,000 txn/s: ~10% duplicate rate. Expect daily customer complaints and chargebacks.',
+            },
+            {
+              triggerValue: 10000,
+              message:
+                'At 10,000 txn/s: 63%+ duplicate rate. Regulatory risk, massive financial exposure. Idempotency is non-negotiable.',
+            },
+          ],
+        },
+        {
           type: 'timeline',
           title: 'What Goes Wrong: The Double-Charge Scenario',
           events: [
@@ -476,7 +558,6 @@ async function processPayment(amount, cardToken) {
           node: {
             id: 'database',
             type: 'archComponent',
-            position: { x: 400, y: 300 },
             data: {
               componentType: 'postgres',
               label: 'Database',
@@ -572,6 +653,14 @@ We'll build this in the next phase!
           type: 'tradeoffs',
           title: 'Retry Strategies for Payment APIs',
           decision: 'How should we handle failed/timeout payment requests?',
+          mode: 'decision',
+          scenario:
+            'A customer\'s payment request times out after 30 seconds. Your server called Stripe\'s API, but you never received a response. The customer is waiting to see if their order succeeded. What do you do?',
+          constraints: [
+            'Customer must not be double-charged',
+            'Payment must eventually succeed if the first attempt worked',
+            'System must handle network partitions and split-brain scenarios',
+          ],
           options: [
             {
               label: 'Never Retry (At-Most-Once)',
@@ -581,6 +670,8 @@ We'll build this in the next phase!
                 'Poor user experience (users must manually retry)',
                 'High abandonment rate (~70% won\'t retry)',
               ],
+              consequence:
+                'Customer sees "Payment Failed" even though they might have been charged. They check their credit card statement tomorrow and see a charge. They call support angry, dispute the charge, and never buy from you again.',
             },
             {
               label: 'Always Retry (At-Least-Once)',
@@ -594,6 +685,8 @@ We'll build this in the next phase!
                 'Financial liability + customer trust lost',
                 'Chargebacks and refund costs',
               ],
+              consequence:
+                'You retry blindly. The first request actually succeeded (response was just lost). Now the customer is charged $200 instead of $100. They call their bank to dispute. You lose the chargeback, pay a $15 fee, and the customer leaves a 1-star review.',
             },
             {
               label: 'Idempotent Retries (Exactly-Once)',
@@ -608,6 +701,9 @@ We'll build this in the next phase!
                 'Servers must cache request/response',
                 'More complex implementation',
               ],
+              consequence:
+                'You retry with the same idempotency key. Stripe detects the duplicate and returns the original result (success or failure). Customer charged exactly once. Order completes successfully. Everyone is happy.',
+              recommended: true,
             },
           ],
         },
@@ -837,7 +933,6 @@ Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
           node: {
             id: 'redis-idem',
             type: 'archComponent',
-            position: { x: 550, y: 200 },
             data: {
               componentType: 'redis',
               label: 'Redis (Idempotency Cache)',
@@ -1140,6 +1235,63 @@ async function transitionPaymentState(paymentId, newState) {
         },
         {
           type: 'quiz',
+          mode: 'fill-blank',
+          question:
+            'Complete the missing state transition logic for the payment state machine. Fill in the correct state names where payments transition between stages.',
+          code: `async function processPaymentFlow(paymentId) {
+  // 1. Start in pending state
+  let payment = await transitionPaymentState(paymentId, 'pending');
+
+  // 2. Send to bank for processing
+  payment = await transitionPaymentState(paymentId, _____);
+
+  const bankResponse = await waitForBankResponse(paymentId);
+
+  // 3. Handle bank response
+  if (bankResponse.approved) {
+    payment = await transitionPaymentState(paymentId, _____);
+    await notifyMerchant(payment);
+  } else {
+    payment = await transitionPaymentState(paymentId, _____);
+  }
+
+  // 4. If customer requests refund after success
+  if (payment.status === 'succeeded' && customerRequestedRefund) {
+    payment = await transitionPaymentState(paymentId, _____);
+  }
+
+  return payment;
+}`,
+          language: 'javascript',
+          blanks: [
+            {
+              lineNumber: 6,
+              hint: 'What state comes after pending when you send a payment to the bank?',
+              answer: 'processing',
+              acceptAlternatives: ["'processing'"],
+            },
+            {
+              lineNumber: 11,
+              hint: 'What state indicates the bank approved the payment?',
+              answer: 'succeeded',
+              acceptAlternatives: ["'succeeded'"],
+            },
+            {
+              lineNumber: 14,
+              hint: 'What state indicates the bank declined the payment?',
+              answer: 'failed',
+              acceptAlternatives: ["'failed'"],
+            },
+            {
+              lineNumber: 19,
+              hint: 'What is the only valid transition from succeeded state?',
+              answer: 'refunded',
+              acceptAlternatives: ["'refunded'"],
+            },
+          ],
+        },
+        {
+          type: 'quiz',
           question: 'A payment is in "succeeded" state. What transitions are allowed?',
           options: [
             {
@@ -1180,7 +1332,6 @@ async function transitionPaymentState(paymentId, newState) {
           node: {
             id: 'state-machine',
             type: 'archComponent',
-            position: { x: 250, y: 450 },
             data: {
               componentType: 'worker',
               label: 'State Machine Engine',
@@ -1265,26 +1416,87 @@ POST /v1/charges/:id/capture → Capture later
         {
           type: 'timeline',
           title: 'Payment Lifecycle: Authorization → Capture → Settlement',
+          interactive: true,
           events: [
             {
               label: 'Day 0 - Authorization',
               description: 'Customer checks out. Stripe authorizes $100 (hold on card). 7-day window starts.',
               nodeIds: ['merchant', 'stripe-api', 'bank'],
+              predictPrompt: 'Does Stripe charge the customer\'s card immediately during authorization?',
+              predictOptions: [
+                {
+                  text: 'Yes - Money is transferred from customer to merchant',
+                  correct: false,
+                },
+                {
+                  text: 'No - Authorization only places a hold on the card',
+                  correct: true,
+                },
+                {
+                  text: 'Depends - Only for high-risk merchants',
+                  correct: false,
+                },
+              ],
             },
             {
               label: 'Day 0 - Fraud Check',
               description: 'Merchant runs fraud analysis (Stripe Radar). Order flagged for manual review.',
               nodeIds: ['stripe-api'],
+              predictPrompt: 'Can the merchant cancel the payment at this point without any fees?',
+              predictOptions: [
+                {
+                  text: 'No - Authorization fees are non-refundable',
+                  correct: false,
+                },
+                {
+                  text: 'Yes - Can void the authorization with no fees',
+                  correct: true,
+                },
+                {
+                  text: 'Partial - Only get back 50% of the fee',
+                  correct: false,
+                },
+              ],
             },
             {
               label: 'Day 1 - Capture',
               description: 'Order approved, item ships. Merchant captures $100 (transfer funds).',
               nodeIds: ['merchant', 'stripe-api', 'bank'],
+              predictPrompt: 'What happens if capture fails within the 7-day authorization window?',
+              predictOptions: [
+                {
+                  text: 'Customer is charged anyway (authorization guarantee)',
+                  correct: false,
+                },
+                {
+                  text: 'Authorization expires and hold is released (no charge)',
+                  correct: true,
+                },
+                {
+                  text: 'Stripe automatically retries capture every day',
+                  correct: false,
+                },
+              ],
             },
             {
               label: 'Day 3 - Settlement',
               description: 'Stripe pays out $97 to merchant bank account (2-day rolling payout).',
               nodeIds: ['stripe-api', 'merchant'],
+              predictPrompt: 'Can the customer dispute/chargeback the payment after settlement?',
+              predictOptions: [
+                {
+                  text: 'No - Settlement is final and irreversible',
+                  correct: false,
+                },
+                {
+                  text: 'Yes - Customers can dispute up to 120 days later',
+                  correct: true,
+                },
+                {
+                  text: 'Only for fraud - Not for "product not received"',
+                  correct: false,
+                },
+              ],
             },
           ],
         },
@@ -1359,7 +1571,6 @@ const voided = await stripe.refunds.create({
           node: {
             id: 'fraud-radar',
             type: 'archComponent',
-            position: { x: 550, y: 350 },
             data: {
               componentType: 'serverless',
               label: 'Stripe Radar (Fraud Detection)',
@@ -1527,7 +1738,6 @@ async function handlePaymentSuccess(paymentIntent) {
           node: {
             id: 'webhook-worker',
             type: 'archComponent',
-            position: { x: 100, y: 600 },
             data: {
               componentType: 'worker',
               label: 'Webhook Delivery Worker',
@@ -1774,7 +1984,6 @@ const event = stripe.webhooks.constructEvent(
           node: {
             id: 'retry-queue',
             type: 'archComponent',
-            position: { x: 250, y: 600 },
             data: {
               componentType: 'kafka',
               label: 'Retry Queue (SQS)',
@@ -1802,6 +2011,100 @@ const event = stripe.webhooks.constructEvent(
       title: 'Exercise: Build a Webhook Delivery System',
       phase: 'exercise',
       estimatedMinutes: 15,
+      canvasBuildMode: true,
+      buildConfig: {
+        palette: [
+          {
+            id: 'api-gateway',
+            label: 'API Gateway',
+            componentType: 'api_gateway',
+            description: 'Handles incoming merchant payment requests',
+          },
+          {
+            id: 'payment-service',
+            label: 'Payment Service',
+            componentType: 'serverless',
+            description: 'Core payment processing logic',
+          },
+          {
+            id: 'ledger-db',
+            label: 'Ledger DB',
+            componentType: 'postgres',
+            description: 'Immutable ledger for all financial transactions',
+          },
+          {
+            id: 'card-network',
+            label: 'Card Network Gateway',
+            componentType: 'external_api',
+            description: 'Communicates with Visa/Mastercard/bank networks',
+          },
+          {
+            id: 'fraud-detection',
+            label: 'Fraud Detection',
+            componentType: 'serverless',
+            description: 'ML-based risk scoring (Stripe Radar)',
+          },
+          {
+            id: 'webhook-service',
+            label: 'Webhook Service',
+            componentType: 'worker',
+            description: 'Delivers event notifications to merchants',
+          },
+          {
+            id: 'idempotency-store',
+            label: 'Idempotency Store',
+            componentType: 'redis',
+            description: 'Caches idempotency keys to prevent duplicate charges',
+          },
+          {
+            id: 'message-queue',
+            label: 'Message Queue',
+            componentType: 'kafka',
+            description: 'Async job queue for background processing',
+          },
+        ],
+        initialNodes: [],
+        validationRules: [
+          {
+            type: 'must-exist',
+            params: { componentType: 'redis' },
+            feedback:
+              'Your architecture is missing an Idempotency Store. Without this, retries will double-charge customers!',
+          },
+          {
+            type: 'must-connect',
+            params: {
+              sourceType: 'serverless',
+              targetType: 'postgres',
+            },
+            feedback:
+              'Payment Service must connect to Ledger DB to record all financial transactions immutably.',
+          },
+          {
+            type: 'must-connect',
+            params: {
+              sourceType: 'serverless',
+              targetType: 'external_api',
+            },
+            feedback:
+              'Payment Service must connect to Card Network Gateway to authorize charges with banks.',
+          },
+          {
+            type: 'must-exist',
+            params: { componentType: 'serverless', labelMatch: 'Fraud' },
+            feedback:
+              'Missing Fraud Detection! Every payment should be scored for risk before authorization.',
+          },
+        ],
+        successMessage:
+          'Excellent! Your payment architecture includes all critical components: idempotency for safe retries, ledger for audit trails, fraud detection for security, and webhooks for async notifications. This is production-ready!',
+        hints: [
+          'Every payment needs to be recorded somewhere immutable for regulatory compliance.',
+          'How do you prevent double charges when network requests fail and clients retry?',
+          'What notifies the merchant when a payment succeeds asynchronously (e.g., after 3D Secure)?',
+          'Payments involve real money - you need to check for fraud before authorizing charges.',
+        ],
+      },
       content: `
 # Hands-On Challenge
 
@@ -2230,7 +2533,6 @@ HAVING SUM(amount_cents) != 0; -- Should return 0 rows! ✅`,
           node: {
             id: 'ledger-db',
             type: 'archComponent',
-            position: { x: 400, y: 600 },
             data: {
               componentType: 'postgres',
               label: 'Ledger Database',

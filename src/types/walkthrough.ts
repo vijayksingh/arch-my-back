@@ -12,9 +12,17 @@ import type { CanvasNode, ArchEdge } from './index';
 
 // --- Canvas Operations ---
 
+/**
+ * Node type for walkthrough definitions where position is optional
+ * (WalkthroughEngine adds default position {x: 0, y: 0} before ELK layout)
+ */
+export type WalkthroughNodeDef = Omit<CanvasNode, 'position'> & {
+  position?: { x: number; y: number };
+};
+
 export interface AddNodeOperation {
   type: 'add-node';
-  node: CanvasNode;
+  node: WalkthroughNodeDef;
   highlight?: boolean;
   animateIn?: boolean;
 }

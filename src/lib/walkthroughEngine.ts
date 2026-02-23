@@ -9,6 +9,7 @@
  */
 
 import type { Node, Edge, Connection } from '@xyflow/react';
+import type { CanvasNode } from '@/types';
 import type {
   WalkthroughStep,
   CanvasOperation,
@@ -321,7 +322,7 @@ export class WalkthroughEngine {
     if (this.state.canvasNodes.length > 0) {
       const { runElkLayout } = await import('@/services/layoutService');
       this.state.canvasNodes = await runElkLayout(
-        this.state.canvasNodes,
+        this.state.canvasNodes as CanvasNode[],
         this.state.canvasEdges
       );
     }

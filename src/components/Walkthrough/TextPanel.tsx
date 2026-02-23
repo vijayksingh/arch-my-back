@@ -36,14 +36,14 @@ export function TextPanel({
       </div>
 
       {/* Quiz */}
-      {quiz && (
+      {quiz && quiz.mode === 'mcq' && (
         <div className="rounded-lg border border-border bg-card p-6">
           <h3 className="mb-4 font-semibold text-foreground">
             {quiz.question}
           </h3>
 
           <div className="flex flex-col gap-2">
-            {quiz.options.map((option: { id: string; text: string; correct: boolean; explanation: string }, index: number) => {
+            {quiz.options.map((option, index: number) => {
               const isSelected = quizAnswer === index;
               const isCorrect = quizResult && option.correct;
               const isWrong = quizResult && isSelected && !isCorrect;

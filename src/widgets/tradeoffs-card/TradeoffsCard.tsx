@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { WidgetProps } from '../types';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Download, ThumbsUp, ThumbsDown, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, ThumbsUp, ThumbsDown, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 /**

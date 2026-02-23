@@ -187,6 +187,64 @@ function haversineDistance(
           highlights: [3, 9]
         },
         {
+          type: 'scale-explorer',
+          title: "Naive Search Performance at Scale",
+          parameter: {
+            name: "Concurrent Ride Requests",
+            min: 100,
+            max: 5000000,
+            unit: "requests",
+            scale: 'log' as const
+          },
+          metrics: [
+            {
+              name: "Boundary Miss Rate",
+              unit: "requests/min",
+              compute: "n * 0.15",
+              thresholds: {
+                warning: 1500,
+                critical: 15000
+              }
+            },
+            {
+              name: "Average Match Time",
+              unit: "ms",
+              compute: "n * 0.002",
+              thresholds: {
+                warning: 2000,
+                critical: 10000
+              }
+            },
+            {
+              name: "Wasted Driver Miles",
+              unit: "miles/hour",
+              compute: "n * 0.15 * 2.5",
+              thresholds: {
+                warning: 375,
+                critical: 37500
+              }
+            }
+          ],
+          insights: [
+            {
+              triggerValue: 1000,
+              message: "Noticeable boundary misses - 15% of riders near geohash edges get suboptimal matches"
+            },
+            {
+              triggerValue: 10000,
+              message: "Matching takes >10 seconds - riders start abandoning requests"
+            },
+            {
+              triggerValue: 100000,
+              message: "System breaks: 15K riders per minute get wrong driver due to boundary issues"
+            },
+            {
+              triggerValue: 1000000,
+              message: "Completely unusable in dense cities - naive linear scan cannot scale"
+            }
+          ]
+        },
+        {
           type: 'quiz',
           question: "If Uber has 10M active drivers and gets 100K simultaneous requests, how many distance calculations occur with naive search?",
           options: [
@@ -437,6 +495,61 @@ function updateDriverLocation(
         },
         {
           type: 'quiz',
+          mode: 'fill-blank',
+          question: "Complete the geohash encoding logic by filling in the missing lines:",
+          language: "typescript",
+          code: `// Encode GPS coordinates to geohash
+function encodeGeohash(
+  lat: number,
+  lon: number,
+  precision: number
+): string {
+  // _____BLANK_____
+
+  let latMin = -90, latMax = 90;
+  let lonMin = -180, lonMax = 180;
+
+  for (let i = 0; i < precision * 5; i++) {
+    if (i % 2 === 0) {
+      // _____BLANK_____
+      if (lon > lonMid) {
+        bits += '1';
+        lonMin = lonMid;
+      } else {
+        bits += '0';
+        lonMax = lonMid;
+      }
+    } else {
+      const latMid = (latMin + latMax) / 2;
+      if (lat > latMid) {
+        bits += '1';
+        latMin = latMid;
+      } else {
+        bits += '0';
+        latMax = latMid;
+      }
+    }
+  }
+
+  return base32Encode(bits);
+}`,
+          blanks: [
+            {
+              lineNumber: 7,
+              hint: "Initialize an empty string to accumulate the binary bits",
+              answer: "let bits = '';",
+              acceptAlternatives: ["let bits = \"\";", "var bits = '';", "const bits = '';"]
+            },
+            {
+              lineNumber: 14,
+              hint: "Calculate the midpoint for longitude to decide which half the point falls into",
+              answer: "const lonMid = (lonMin + lonMax) / 2;",
+              acceptAlternatives: ["let lonMid = (lonMin + lonMax) / 2;", "var lonMid = (lonMin + lonMax) / 2;"]
+            }
+          ]
+        },
+        {
+          type: 'quiz',
           question: "A driver is at geohash '9q8yy9'. The rider is at '9q8yy8' (literally next door). Why might naive geohash search miss this driver?",
           options: [
             {
@@ -684,10 +797,18 @@ Now that we understand H3 indexing, let's build Uber's real dispatch architectur
         {
           type: 'timeline',
           title: "Uber Ride Request Flow (2 seconds)",
+          interactive: true,
           events: [
             {
               label: "T+0ms - Rider",
-              description: "Taps 'Request Ride' in app - Sends GPS coordinates (37.7749, -122.4194)"
+              description: "Taps 'Request Ride' in app - Sends GPS coordinates (37.7749, -122.4194)",
+              predictPrompt: "What's the first processing step after receiving the rider's GPS coordinates?",
+              predictOptions: [
+                { text: "Find all drivers in the entire city", correct: false },
+                { text: "Convert GPS to spatial index (H3 cell)", correct: true },
+                { text: "Calculate ETA to all drivers", correct: false },
+                { text: "Apply surge pricing immediately", correct: false }
+              ]
             },
             {
               label: "T+50ms - Demand Service",
@@ -695,7 +816,14 @@ Now that we understand H3 indexing, let's build Uber's real dispatch architectur
             },
             {
               label: "T+100ms - Supply Service",
-              description: "Queries available drivers in H3 cell + 2 rings - Finds 47 available drivers within 500m"
+              description: "Queries available drivers in H3 cell + 2 rings - Finds 47 available drivers within 500m",
+              predictPrompt: "Why query multiple H3 rings instead of just the rider's cell?",
+              predictOptions: [
+                { text: "To increase server load for testing", correct: false },
+                { text: "To avoid missing nearby drivers at cell boundaries", correct: true },
+                { text: "To show more options to the rider", correct: false },
+                { text: "To inflate surge pricing", correct: false }
+              ]
             },
             {
               label: "T+200ms - ETA Service",
@@ -703,7 +831,14 @@ Now that we understand H3 indexing, let's build Uber's real dispatch architectur
             },
             {
               label: "T+300ms - DISCO",
-              description: "Ranks drivers by composite score - Score = f(ETA, acceptance rate, rating, surge multiplier)"
+              description: "Ranks drivers by composite score - Score = f(ETA, acceptance rate, rating, surge multiplier)",
+              predictPrompt: "After ranking drivers, what's the best strategy to minimize rider wait time?",
+              predictOptions: [
+                { text: "Offer to the #1 driver only and wait for response", correct: false },
+                { text: "Send offers to top 3-5 drivers in parallel", correct: true },
+                { text: "Let riders choose from all 47 drivers", correct: false },
+                { text: "Randomly pick one driver to be fair", correct: false }
+              ]
             },
             {
               label: "T+400ms - DISCO",
@@ -1084,6 +1219,121 @@ setInterval(() => {
       title: "Exercise: Implement Uber Pool (Shared Rides)",
       estimatedMinutes: 20,
       canvasOperations: [],
+      canvasBuildMode: true,
+      buildConfig: {
+        palette: [
+          {
+            id: 'api-gateway',
+            label: 'API Gateway',
+            componentType: 'gateway',
+            description: 'Entry point for ride requests'
+          },
+          {
+            id: 'location-service',
+            label: 'Location Service',
+            componentType: 'service',
+            description: 'Tracks real-time driver/rider positions'
+          },
+          {
+            id: 'matching-service',
+            label: 'Matching Service',
+            componentType: 'service',
+            description: 'Core dispatch logic for finding driver-rider matches'
+          },
+          {
+            id: 'pool-matching-service',
+            label: 'Pool Matching Service',
+            componentType: 'service',
+            description: 'Specialized logic for shared ride matching'
+          },
+          {
+            id: 'geohash-index',
+            label: 'H3 Spatial Index',
+            componentType: 'database',
+            description: 'Hexagonal grid index for spatial queries'
+          },
+          {
+            id: 'driver-state-store',
+            label: 'Driver State Store',
+            componentType: 'database',
+            description: 'Stores driver availability, location, current riders'
+          },
+          {
+            id: 'eta-service',
+            label: 'ETA Service',
+            componentType: 'service',
+            description: 'ML-based arrival time predictions'
+          },
+          {
+            id: 'route-optimizer',
+            label: 'Route Optimizer',
+            componentType: 'service',
+            description: 'Calculates optimal pickup/dropoff sequences for Pool'
+          },
+          {
+            id: 'pricing-service',
+            label: 'Pricing Service',
+            componentType: 'service',
+            description: 'Calculates fares including Pool discounts'
+          },
+          {
+            id: 'message-queue',
+            label: 'Message Queue',
+            componentType: 'queue',
+            description: 'Async event processing (Kafka/RabbitMQ)'
+          }
+        ],
+        validationRules: [
+          {
+            type: 'must-exist',
+            params: { componentId: 'pool-matching-service' },
+            feedback: 'Pool Matching Service is required - this is the core of shared ride logic'
+          },
+          {
+            type: 'must-exist',
+            params: { componentId: 'geohash-index' },
+            feedback: 'H3 Spatial Index is required for finding nearby drivers efficiently'
+          },
+          {
+            type: 'must-connect',
+            params: { from: 'pool-matching-service', to: 'geohash-index' },
+            feedback: 'Pool Matching Service needs to query the H3 Spatial Index to find candidate drivers'
+          },
+          {
+            type: 'must-connect',
+            params: { from: 'pool-matching-service', to: 'driver-state-store' },
+            feedback: 'Pool Matching Service must check driver state (how many riders already onboard)'
+          },
+          {
+            type: 'must-exist',
+            params: { componentId: 'route-optimizer' },
+            feedback: 'Route Optimizer is needed to calculate detour time for existing riders'
+          },
+          {
+            type: 'must-connect',
+            params: { from: 'pool-matching-service', to: 'route-optimizer' },
+            feedback: 'Pool Matching Service needs Route Optimizer to validate detour constraints'
+          },
+          {
+            type: 'must-connect',
+            params: { from: 'location-service', to: 'driver-state-store' },
+            feedback: 'Location Service updates driver positions in the Driver State Store'
+          },
+          {
+            type: 'must-exist',
+            params: { componentId: 'eta-service' },
+            feedback: 'ETA Service is required to estimate pickup times and route segments'
+          }
+        ],
+        successMessage: "Perfect! You've designed a Pool matching architecture that handles spatial lookup, driver state tracking, route optimization, and detour validation.",
+        hints: [
+          "Start with the Pool Matching Service - what data does it need to make decisions?",
+          "How does the system know where drivers are right now? (Hint: Location Service + storage)",
+          "Pool rides need to check: (1) nearby drivers, (2) how many riders they have, (3) if adding a rider causes too much detour",
+          "Don't forget ETA predictions - you need to estimate time for each route segment",
+          "Route Optimizer calculates the best pickup/dropoff sequence to minimize total trip time"
+        ]
+      },
       content: `# Build Shared Ride Matching
 
 **Your Challenge:** Implement Uber Pool - matching multiple riders heading in similar directions into one vehicle.

@@ -6,10 +6,12 @@ import { componentTypeMap } from '@/registry/componentTypes';
 import { getIconByName } from '@/registry/iconRegistry';
 import { categoryGlows, categoryAccentTokens } from '@/registry/categoryThemes';
 import { ARCH_NODE } from '@/constants';
+import { cn } from '@/lib/utils';
 
 function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
   const [isHovered, setIsHovered] = useState(false);
   const isHighlighted = data.highlighted ?? false;
+  const isNewlyAdded = data.isNewlyAdded ?? false;
   const typeDef = componentTypeMap.get(data.componentType);
   const IconComponent = getIconByName(typeDef?.icon ?? '');
   const glowColor = typeDef ? categoryGlows[typeDef.category] : categoryGlows.External;
@@ -45,7 +47,10 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
 
   return (
     <div
-      className="relative flex flex-col items-center justify-center gap-2.5 rounded-xl border px-4 py-3 transition-all duration-160"
+      className={cn(
+        "relative flex flex-col items-center justify-center gap-2.5 rounded-xl border px-4 py-3 transition-all duration-160",
+        isNewlyAdded && "ring-2 ring-blue-400/60 animate-pulse"
+      )}
       style={{
         width: ARCH_NODE.WIDTH,
         minHeight: ARCH_NODE.MIN_HEIGHT,

@@ -135,7 +135,6 @@ Before we dive into solutions, consider the challenges you'll face...
           node: {
             id: 'user-mobile',
             type: 'archComponent',
-            position: { x: 100, y: 100 },
             data: {
               componentType: 'client_mobile',
               label: 'Mobile User',
@@ -149,7 +148,6 @@ Before we dive into solutions, consider the challenges you'll face...
           node: {
             id: 'instagram-server',
             type: 'archComponent',
-            position: { x: 400, y: 100 },
             data: {
               componentType: 'app_server',
               label: 'Instagram Server',
@@ -360,7 +358,6 @@ This works perfectly for 1,000 users!
           node: {
             id: 'postgres',
             type: 'archComponent',
-            position: { x: 400, y: 250 },
             data: {
               componentType: 'postgres',
               label: 'PostgreSQL',
@@ -373,7 +370,6 @@ This works perfectly for 1,000 users!
           node: {
             id: 's3-simple',
             type: 'archComponent',
-            position: { x: 600, y: 250 },
             data: {
               componentType: 'object_storage',
               label: 'S3 - Images',
@@ -507,6 +503,64 @@ Let's explore each solution...
         },
       ],
       widgets: [
+        {
+          type: 'scale-explorer',
+          title: 'Explore: Feed Query Performance at Scale',
+          parameter: {
+            name: 'Daily Active Users',
+            min: 1000,
+            max: 500000000,
+            unit: 'users',
+            scale: 'log' as const,
+          },
+          metrics: [
+            {
+              name: 'Database Queries',
+              unit: 'queries/sec',
+              compute: 'n * 10',
+              thresholds: {
+                warning: 10000,
+                critical: 100000,
+              },
+            },
+            {
+              name: 'Feed Generation Latency',
+              unit: 'ms',
+              compute: 'n * 0.005',
+              thresholds: {
+                warning: 500,
+                critical: 2000,
+              },
+            },
+            {
+              name: 'Feed Cache Storage',
+              unit: 'bytes',
+              compute: 'n * 50 * 1024',
+              thresholds: {
+                warning: 10737418240,
+                critical: 107374182400,
+              },
+            },
+          ],
+          insights: [
+            {
+              triggerValue: 100000,
+              message: 'At 100K DAU: Database connection pool starts getting exhausted during peak hours',
+            },
+            {
+              triggerValue: 1000000,
+              message: 'At 1M DAU: Feed generation takes >5 seconds per request - users experience delays',
+            },
+            {
+              triggerValue: 10000000,
+              message: 'At 10M DAU: Need database sharding to distribute query load across multiple servers',
+            },
+            {
+              triggerValue: 100000000,
+              message: 'At 100M DAU: Must pre-compute feeds (fanout-on-write) - on-demand queries are impossible',
+            },
+          ],
+        },
         {
           type: 'quiz',
           question: 'At what scale does the naive SQL JOIN approach become too slow?',
@@ -666,7 +720,6 @@ Return feed (50ms)
           node: {
             id: 'redis-feed',
             type: 'archComponent',
-            position: { x: 400, y: 400 },
             data: {
               componentType: 'redis',
               label: 'Redis - Feed Cache',
@@ -679,7 +732,6 @@ Return feed (50ms)
           node: {
             id: 'celery-worker',
             type: 'archComponent',
-            position: { x: 200, y: 400 },
             data: {
               componentType: 'worker',
               label: 'Celery Workers',
@@ -769,6 +821,22 @@ def get_user_feed(user_id, limit=50):
 
     return posts`,
           highlights: [13, 14, 15, 21, 22, 23, 24],
+        },
+        {
+          type: 'quiz',
+          mode: 'predict-output',
+          question: 'Predict the output: How many Redis operations for a user with 250 followers posting a photo?',
+          code: `followers = [f1, f2, f3, ..., f250]  # 250 followers
+
+for follower_id in followers:
+    redis_client.lpush(f"feed:{follower_id}", post_id)  # +1 write
+    redis_client.ltrim(f"feed:{follower_id}", 0, 499)   # +1 trim
+
+total_operations = ?`,
+          language: 'python',
+          inputs: 'followers_count = 250',
+          expectedOutput: '500',
+          tolerance: 'whitespace',
         },
         {
           type: 'timeline',
@@ -870,7 +938,6 @@ Even with optimizations, this is slower than fanout-on-write (~200ms vs ~50ms).
           node: {
             id: 'cassandra-posts',
             type: 'archComponent',
-            position: { x: 300, y: 550 },
             data: {
               componentType: 'object_storage',
               label: 'Cassandra - Posts',
@@ -1128,6 +1195,13 @@ This is the **production approach at Instagram, Twitter, and Facebook**.
           type: 'tradeoffs',
           title: 'Hybrid Approach Trade-offs',
           decision: 'Should Instagram use a hybrid feed generation strategy?',
+          mode: 'decision',
+          scenario: 'Instagram has 500M DAU. Celebrity accounts have 100M+ followers. A celebrity posts a new photo.',
+          constraints: [
+            'Feed must update within 30 seconds for all followers',
+            'Cannot overwhelm write path during celebrity posts',
+            'Storage costs matter at this scale',
+          ],
           options: [
             {
               label: 'Fanout-on-Write Only',
@@ -1141,6 +1215,7 @@ This is the **production approach at Instagram, Twitter, and Facebook**.
                 'Wastes compute for inactive users',
                 'High storage cost',
               ],
+              consequence: 'Celebrity posts take 83+ minutes to fanout to 100M followers. During this time, the fanout queue backs up, delaying all other posts. Eventually the system grinds to a halt during peak celebrity posting hours.',
             },
             {
               label: 'Fanout-on-Read Only',
@@ -1154,6 +1229,7 @@ This is the **production approach at Instagram, Twitter, and Facebook**.
                 'High query complexity',
                 'Database hotspots',
               ],
+              consequence: 'Every feed request queries the database in real-time. At 500M DAU with 2 feed loads per session, that\'s 1B queries per day. Database becomes the bottleneck - query latency degrades to 2-10 seconds during peak hours.',
             },
             {
               label: 'Hybrid (Instagram)',
@@ -1169,6 +1245,8 @@ This is the **production approach at Instagram, Twitter, and Facebook**.
                 'Harder to debug and maintain',
                 'Requires sophisticated infrastructure',
               ],
+              consequence: 'Most users get instant feeds from Redis cache (<50ms). Celebrity posts are fetched on-demand and merged with cached feed. System scales to billions of users with consistent performance. This is what Instagram, Twitter, and Facebook actually use.',
+              recommended: true,
             },
           ],
         },
@@ -1249,7 +1327,6 @@ Instagram achieves **95% cache hit rate**:
           node: {
             id: 's3-photos',
             type: 'archComponent',
-            position: { x: 600, y: 100 },
             data: {
               componentType: 'object_storage',
               label: 'S3 - Photo Storage',
@@ -1262,7 +1339,6 @@ Instagram achieves **95% cache hit rate**:
           node: {
             id: 'cloudfront',
             type: 'archComponent',
-            position: { x: 800, y: 100 },
             data: {
               componentType: 'cdn',
               label: 'CloudFront CDN',
@@ -1275,7 +1351,6 @@ Instagram achieves **95% cache hit rate**:
           node: {
             id: 'lambda-resize',
             type: 'archComponent',
-            position: { x: 700, y: 250 },
             data: {
               componentType: 'serverless',
               label: 'Lambda - Image Processing',
@@ -1570,7 +1645,6 @@ For Instagram, reads vastly outnumber writes (100:1 ratio), so this trade-off is
           node: {
             id: 'cassandra-graph',
             type: 'archComponent',
-            position: { x: 400, y: 700 },
             data: {
               componentType: 'object_storage',
               label: 'Cassandra - Social Graph',
@@ -1791,7 +1865,6 @@ This architecture serves **1 billion users** with **<200ms latency** worldwide!
           node: {
             id: 'api-gateway',
             type: 'archComponent',
-            position: { x: 200, y: 150 },
             data: {
               componentType: 'api_gateway',
               label: 'API Gateway',
@@ -1804,7 +1877,6 @@ This architecture serves **1 billion users** with **<200ms latency** worldwide!
           node: {
             id: 'websocket',
             type: 'archComponent',
-            position: { x: 100, y: 300 },
             data: {
               componentType: 'app_server',
               label: 'WebSocket Server',
@@ -1817,7 +1889,6 @@ This architecture serves **1 billion users** with **<200ms latency** worldwide!
           node: {
             id: 'elasticsearch',
             type: 'archComponent',
-            position: { x: 600, y: 700 },
             data: {
               componentType: 'worker',
               label: 'Elasticsearch',
@@ -1860,11 +1931,18 @@ This architecture serves **1 billion users** with **<200ms latency** worldwide!
         {
           type: 'timeline',
           title: 'Feed Request Flow - Complete System',
+          interactive: true,
           events: [
             {
               label: '1. User opens app',
               description: 'Mobile app connects to API Gateway',
               nodeIds: ['user-mobile', 'api-gateway'],
+              predictPrompt: 'What happens first when a user opens Instagram?',
+              predictOptions: [
+                { text: 'Load images from CDN', correct: false },
+                { text: 'Connect to API Gateway', correct: true },
+                { text: 'Query database for feed', correct: false },
+              ],
             },
             {
               label: '2. Authenticate user',
@@ -1875,6 +1953,12 @@ This architecture serves **1 billion users** with **<200ms latency** worldwide!
               label: '3. Check Redis cache',
               description: 'Django checks Redis for pre-computed feed',
               nodeIds: ['instagram-server', 'redis-feed'],
+              predictPrompt: 'After authentication, where does Instagram look for the feed first?',
+              predictOptions: [
+                { text: 'PostgreSQL database', correct: false },
+                { text: 'Redis cache (pre-computed feeds)', correct: true },
+                { text: 'Cassandra for all posts', correct: false },
+              ],
             },
             {
               label: '4. Query celebrities',
@@ -1885,6 +1969,12 @@ This architecture serves **1 billion users** with **<200ms latency** worldwide!
               label: '5. Merge feeds',
               description: 'Merge cached feed + celebrity posts, sort by timestamp',
               nodeIds: ['instagram-server'],
+              predictPrompt: 'After getting cached feed and celebrity posts, what happens next?',
+              predictOptions: [
+                { text: 'Send immediately to user', correct: false },
+                { text: 'Merge and sort by timestamp', correct: true },
+                { text: 'Run ML ranking algorithm', correct: false },
+              ],
             },
             {
               label: '6. Fetch post metadata',
@@ -1900,6 +1990,12 @@ This architecture serves **1 billion users** with **<200ms latency** worldwide!
               label: '8. Load images',
               description: 'Client requests images from CloudFront CDN (1ms)',
               nodeIds: ['user-mobile', 'cloudfront'],
+              predictPrompt: 'Where do images actually load from?',
+              predictOptions: [
+                { text: 'Instagram server database', correct: false },
+                { text: 'CloudFront CDN (edge cache)', correct: true },
+                { text: 'S3 directly', correct: false },
+              ],
             },
           ],
         },
@@ -2060,6 +2156,84 @@ def get_stories_feed(user_id):
     pass`,
         },
       ],
+      canvasBuildMode: true,
+      buildConfig: {
+        palette: [
+          {
+            id: 'api-gw',
+            label: 'API Gateway',
+            componentType: 'api_gateway',
+            description: 'Entry point for all Stories requests',
+          },
+          {
+            id: 'stories-svc',
+            label: 'Stories Service',
+            componentType: 'app_server',
+            description: 'Handles Stories creation, retrieval, and expiration logic',
+          },
+          {
+            id: 'media-store',
+            label: 'Media Storage (S3)',
+            componentType: 'storage',
+            description: 'Object storage for Stories photos/videos',
+          },
+          {
+            id: 'cdn-node',
+            label: 'CDN (CloudFront)',
+            componentType: 'cdn',
+            description: 'Fast delivery of Stories media to users worldwide',
+          },
+          {
+            id: 'cache-redis',
+            label: 'Cache (Redis)',
+            componentType: 'redis',
+            description: 'Stores Stories feed with 24-hour TTL',
+          },
+          {
+            id: 'msg-queue',
+            label: 'Message Queue',
+            componentType: 'queue',
+            description: 'Async processing for fanout and notifications',
+          },
+          {
+            id: 'notif-svc',
+            label: 'Notification Service',
+            componentType: 'app_server',
+            description: 'Real-time push notifications for new Stories',
+          },
+          {
+            id: 'user-svc',
+            label: 'User Service',
+            componentType: 'app_server',
+            description: 'Follower relationships and user data',
+          },
+        ],
+        initialNodes: ['user-mobile', 'instagram-server', 'redis-feed', 'cassandra-posts', 's3-photos'],
+        validationRules: [
+          {
+            type: 'must-connect',
+            params: { source: 'api-gw', target: 'stories-svc' },
+            feedback: 'API Gateway must route Stories requests to the Stories Service',
+          },
+          {
+            type: 'must-exist',
+            params: { nodeId: 'cdn-node' },
+            feedback: 'Stories need a CDN for fast media delivery worldwide (<100ms)',
+          },
+          {
+            type: 'must-exist',
+            params: { nodeId: 'cache-redis' },
+            feedback: 'Need Redis cache with TTL for auto-expiring Stories after 24 hours',
+          },
+        ],
+        successMessage: 'Great architecture! You\'ve designed a scalable Stories system with auto-expiration and real-time delivery.',
+        hints: [
+          'Think about how Stories media gets stored and delivered quickly',
+          'Stories expire after 24 hours - what component handles TTL automatically?',
+          'How do followers get notified in real-time when someone posts a Story?',
+          'Consider the flow: Upload → Store → Notify → Deliver',
+        ],
+      },
       nextCondition: 'click-next',
     },
 
@@ -2135,7 +2309,6 @@ Instagram tracks who viewed your story:
           node: {
             id: 'redis-stories',
             type: 'archComponent',
-            position: { x: 500, y: 400 },
             data: {
               componentType: 'redis',
               label: 'Redis - Stories (TTL=24h)',
@@ -2334,7 +2507,6 @@ For celebrity hotspots, Instagram **over-provisions** shards (more replicas for 
           node: {
             id: 'postgres-shard-1',
             type: 'archComponent',
-            position: { x: 300, y: 250 },
             data: {
               componentType: 'postgres',
               label: 'PostgreSQL Shard 1',
@@ -2347,7 +2519,6 @@ For celebrity hotspots, Instagram **over-provisions** shards (more replicas for 
           node: {
             id: 'postgres-shard-2',
             type: 'archComponent',
-            position: { x: 400, y: 250 },
             data: {
               componentType: 'postgres',
               label: 'PostgreSQL Shard 2',
@@ -2360,7 +2531,6 @@ For celebrity hotspots, Instagram **over-provisions** shards (more replicas for 
           node: {
             id: 'postgres-shard-3',
             type: 'archComponent',
-            position: { x: 500, y: 250 },
             data: {
               componentType: 'postgres',
               label: 'PostgreSQL Shard 3',
@@ -2597,7 +2767,6 @@ Example:
           node: {
             id: 'redis-pubsub',
             type: 'archComponent',
-            position: { x: 300, y: 500 },
             data: {
               componentType: 'redis',
               label: 'Redis Pub/Sub',

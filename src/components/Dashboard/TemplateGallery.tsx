@@ -1,9 +1,9 @@
+import { Badge } from '@/components/ui/badge';
 import { templates } from '@/templates';
+import type { ArchEdge, CanvasNode, DesignTemplate } from '@/types';
 import { useNavigate } from '@tanstack/react-router';
 import { useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
-import { Badge } from '@/components/ui/badge';
-import type { DesignTemplate, CanvasNode, ArchEdge } from '@/types';
 
 /** Extract only domain fields from a node for storage */
 function cleanNodeForStorage(node: CanvasNode) {
@@ -30,7 +30,12 @@ function cleanEdgeForStorage(edge: ArchEdge) {
   };
 }
 
-export function TemplateGallery() {
+interface TemplateGalleryProps {
+  compact?: boolean;
+  maxVisible?: number;
+}
+
+export function TemplateGallery({ compact = false, maxVisible }: TemplateGalleryProps) {
   const navigate = useNavigate();
   const createDesign = useMutation(api.newDesigns.create);
   const saveCanvas = useMutation(api.designCanvases.save);
@@ -62,29 +67,62 @@ export function TemplateGallery() {
     }
   };
 
-  return (
-    <section className="mb-8">
-      <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        Start from a Template
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {templates.map((template) => (
+  const displayedTemplates = maxVisible ? templates.slice(0, maxVisible) : templates;
+
+  if (compact) {
+    return (
+      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+        {displayedTemplates.map((template) => (
           <button
             key={template.slug}
             onClick={() => handleTemplateClick(template)}
-            className="group flex flex-col p-4 border rounded-lg hover:border-primary transition-colors text-left bg-card hover:bg-accent"
+            className="group shrink-0 w-56 rounded-lg border border-border bg-card p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
           >
-            <div className="flex items-start justify-between mb-2">
-              <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
+            <div className="flex items-start justify-between gap-2 mb-1.5">
+              <h3 className="font-medium text-sm leading-snug flex-1 line-clamp-2">
                 {template.title}
               </h3>
-              <Badge variant="secondary" className="ml-2 shrink-0">
-                {template.nodes.length} nodes
+              <Badge variant="secondary" className="shrink-0 text-xs">
+                {template.nodes.length}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {template.description}
-            </p>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <section className="mb-12">
+      <div className="mb-5">
+        <h2 className="text-xl font-semibold mb-2">Start from a Template</h2>
+        <p className="text-sm text-muted-foreground">
+          Pre-configured architectures to jumpstart your design
+        </p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {displayedTemplates.map((template) => (
+          <button
+            key={template.slug}
+            onClick={() => handleTemplateClick(template)}
+            className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
+          >
+            {/* Gradient background on hover */}
+            <div className="absolute inset-0 bg-linear-to-br from-primary/[0.02] via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+
+            <div className="relative">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <h3 className="font-semibold text-base leading-tight flex-1">
+                  {template.title}
+                </h3>
+                <Badge variant="secondary" className="shrink-0 font-medium">
+                  {template.nodes.length} nodes
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                {template.description}
+              </p>
+            </div>
           </button>
         ))}
       </div>
