@@ -57,15 +57,20 @@ export type CanvasOperation =
 export interface TimelineWidgetConfig {
   type: 'timeline';
   title: string;
+  interactive?: boolean; // enables step-through mode (default false)
   events: Array<{
     label: string;
     description: string;
     nodeIds?: string[]; // highlight when selected
+    predictPrompt?: string; // show before revealing event
+    predictOptions?: Array<{ text: string; correct: boolean }>;
   }>;
 }
 
-export interface QuizWidgetConfig {
+// Quiz Widget - Multiple Choice (default/legacy mode)
+export interface QuizWidgetConfigMCQ {
   type: 'quiz';
+  mode?: 'mcq'; // optional for backward compatibility
   question: string;
   options: Array<{
     id: string;
@@ -76,14 +81,76 @@ export interface QuizWidgetConfig {
   multiSelect?: boolean;
 }
 
+// Quiz Widget - Predict the Output
+export interface QuizWidgetConfigPredictOutput {
+  type: 'quiz';
+  mode: 'predict-output';
+  question: string;
+  code: string;
+  language: string;
+  inputs: string;
+  expectedOutput: string;
+  tolerance?: string; // e.g., "whitespace" or "case-insensitive"
+}
+
+// Quiz Widget - Fill in the Blank
+export interface QuizWidgetConfigFillBlank {
+  type: 'quiz';
+  mode: 'fill-blank';
+  question: string;
+  code: string;
+  language: string;
+  blanks: Array<{
+    lineNumber: number;
+    hint: string;
+    answer: string;
+    acceptAlternatives?: string[];
+  }>;
+}
+
+// Quiz Widget - Spot the Bug
+export interface QuizWidgetConfigSpotBug {
+  type: 'quiz';
+  mode: 'spot-bug';
+  question: string;
+  code: string;
+  language: string;
+  buggyLines: number[];
+  explanation: string;
+}
+
+// Quiz Widget - Ordering/Sequencing
+export interface QuizWidgetConfigOrdering {
+  type: 'quiz';
+  mode: 'ordering';
+  question: string;
+  items: Array<{
+    id: string;
+    text: string;
+  }>;
+  correctOrder: string[]; // array of item IDs in correct order
+}
+
+export type QuizWidgetConfig =
+  | QuizWidgetConfigMCQ
+  | QuizWidgetConfigPredictOutput
+  | QuizWidgetConfigFillBlank
+  | QuizWidgetConfigSpotBug
+  | QuizWidgetConfigOrdering;
+
 export interface TradeoffsWidgetConfig {
   type: 'tradeoffs';
   title: string;
   decision: string;
+  mode?: 'display' | 'decision'; // default 'display' for backward compat
+  scenario?: string; // context for the decision (decision mode)
+  constraints?: string[]; // requirements/constraints (decision mode)
   options: Array<{
     label: string;
     pros: string[];
     cons: string[];
+    consequence?: string; // what happens if this option is chosen (decision mode)
+    recommended?: boolean; // highlights the best choice after reveal (decision mode)
   }>;
 }
 
@@ -105,12 +172,38 @@ export interface ComparisonTableWidgetConfig {
   }>;
 }
 
+export interface ScaleExplorerWidgetConfig {
+  type: 'scale-explorer';
+  title: string;
+  parameter: {
+    name: string;
+    min: number;
+    max: number;
+    unit: string;
+    scale: 'linear' | 'log';
+  };
+  metrics: Array<{
+    name: string;
+    unit: string;
+    compute: string; // formula expression, e.g., "n * n * 0.001"
+    thresholds: {
+      warning: number;
+      critical: number;
+    };
+  }>;
+  insights: Array<{
+    triggerValue: number;
+    message: string;
+  }>;
+}
+
 export type WidgetConfig =
   | TimelineWidgetConfig
   | QuizWidgetConfig
   | TradeoffsWidgetConfig
   | CodeBlockWidgetConfig
-  | ComparisonTableWidgetConfig;
+  | ComparisonTableWidgetConfig
+  | ScaleExplorerWidgetConfig;
 
 // --- User Actions ---
 

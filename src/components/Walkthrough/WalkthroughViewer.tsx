@@ -7,11 +7,13 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { CanvasPanel } from './CanvasPanel';
 import { WalkthroughEngine, type WalkthroughStep } from '@/lib/walkthroughEngine';
 import type { Connection } from '@xyflow/react';
 import {
+  ArrowLeft,
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
@@ -31,12 +33,18 @@ import { cn } from '@/lib/utils';
 import { MarkdownLines } from '@/components/DocumentPanel/widgets/MarkdownLines';
 import { WidgetPreviewCard } from '@/components/DocumentPanel/widgets/WidgetPreviewCard';
 import { HelpCircle } from 'lucide-react';
-import type { WidgetConfig, QuizWidgetConfig, Walkthrough } from '@/types/walkthrough';
+import type { WidgetConfig, QuizWidgetConfig, TimelineWidgetConfig, Walkthrough } from '@/types/walkthrough';
 import { CodeBlock } from '@/widgets/code-block/CodeBlock';
 import { TradeoffsCard } from '@/widgets/tradeoffs-card/TradeoffsCard';
 import { Timeline } from '@/widgets/timeline/Timeline';
 import { ComparisonTable } from '@/widgets/comparison-table/ComparisonTable';
+import { ScaleExplorer } from './widgets/ScaleExplorer';
+import { InteractiveTimelineWidget } from './InteractiveTimelineWidget';
 import { motion, AnimatePresence } from 'motion/react';
+import { PredictOutput } from './quiz/PredictOutput';
+import { FillBlank } from './quiz/FillBlank';
+import { SpotBug } from './quiz/SpotBug';
+import { Ordering } from './quiz/Ordering';
 
 interface WalkthroughViewerProps {
   walkthrough: Walkthrough;
@@ -104,14 +112,20 @@ const getPhaseColor = (phase: WalkthroughStep['phase']) => {
 
 export function WalkthroughViewer({ walkthrough, onComplete }: WalkthroughViewerProps) {
   const { steps } = walkthrough;
+  const navigate = useNavigate();
   const [engine] = useState(() => new WalkthroughEngine(steps));
   const [state, setState] = useState(() => engine.getState());
   const [showLearningGoals, setShowLearningGoals] = useState(false);
+  const [timelineHighlightedNodes, setTimelineHighlightedNodes] = useState<string[]>([]);
 
   const currentStep = engine.getCurrentStep();
   const progress = engine.getProgress();
   const canGoNext = engine.canGoNext();
   const canGoPrevious = engine.canGoPrevious();
+
+  const handleBack = () => {
+    navigate({ to: '/' });
+  };
 
   const handleNext = () => {
     const newState = engine.next();
@@ -208,9 +222,25 @@ export function WalkthroughViewer({ walkthrough, onComplete }: WalkthroughViewer
   const phaseColors = getPhaseColor(currentStep.phase);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
-      {/* Left Panel: Step Content */}
-      <div className="flex h-full w-[min(42rem,42vw)] min-w-0 flex-col border-r ui-border-ghost bg-background">
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
+      {/* Header: Back Navigation + Progress */}
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-card/50 px-4">
+        <button
+          onClick={handleBack}
+          className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="hidden sm:inline">{walkthrough.title}</span>
+        </button>
+        <div className="text-xs font-medium text-muted-foreground">
+          Step {progress.current} of {progress.total}
+        </div>
+      </div>
+
+      {/* Main Content: Left Panel + Right Panel */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        {/* Left Panel: Step Content */}
+        <div className="flex h-full w-[min(42rem,42vw)] min-w-0 flex-col border-r ui-border-ghost bg-background">
         {/* Header with progress */}
         <div className="border-b ui-border-ghost bg-card/50 px-6 py-4">
           <div className="mb-3 flex items-center justify-between">
@@ -315,59 +345,74 @@ export function WalkthroughViewer({ walkthrough, onComplete }: WalkthroughViewer
 
         {/* Navigation Footer */}
         <div className="border-t ui-border-ghost bg-card/30 px-6 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <Button
-              variant="outline"
-              onClick={handlePrevious}
-              disabled={!canGoPrevious}
-              className="flex items-center gap-2"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Previous
-            </Button>
+          <div className="flex flex-col gap-3">
+            {/* Helper text for disabled Next button */}
+            {!canGoNext && currentStep.nextCondition && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <HelpCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  {currentStep.nextCondition === 'quiz-correct' && 'Answer the quiz correctly to continue'}
+                  {currentStep.nextCondition === 'action-complete' && 'Complete the exercise to continue'}
+                </span>
+              </div>
+            )}
 
-            <div className="flex items-center gap-1.5">
-              {steps.map((_, idx) => (
-                <div
-                  key={idx}
-                  className={cn(
-                    'h-1.5 w-1.5 rounded-full transition-colors',
-                    idx === state.currentStepIndex
-                      ? 'bg-primary'
-                      : idx < state.currentStepIndex
-                        ? 'bg-primary/40'
-                        : 'bg-muted',
-                  )}
-                />
-              ))}
+            <div className="flex items-center justify-between gap-3">
+              <Button
+                variant="outline"
+                onClick={handlePrevious}
+                disabled={!canGoPrevious}
+                className="flex items-center gap-2"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+
+              <div className="flex items-center gap-1.5">
+                {steps.map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      'h-1.5 w-1.5 rounded-full transition-colors',
+                      idx === state.currentStepIndex
+                        ? 'bg-primary'
+                        : idx < state.currentStepIndex
+                          ? 'bg-primary/40'
+                          : 'bg-muted',
+                    )}
+                  />
+                ))}
+              </div>
+
+              <Button
+                onClick={handleNext}
+                disabled={!canGoNext}
+                className={cn(
+                  'flex items-center gap-2',
+                  hasCorrectQuizAnswer && 'animate-pulse',
+                  !canGoNext && 'opacity-50 cursor-not-allowed'
+                )}
+              >
+                {progress.current === progress.total ? 'Complete' : 'Next'}
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-
-            <Button
-              onClick={handleNext}
-              disabled={!canGoNext}
-              className={cn(
-                'flex items-center gap-2',
-                hasCorrectQuizAnswer && 'animate-pulse'
-              )}
-            >
-              {progress.current === progress.total ? 'Complete' : 'Next'}
-              <ChevronRight className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </div>
 
-      {/* Right Panel: Canvas */}
-      <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-background">
-        <CanvasPanel
-          nodes={state.canvasNodes}
-          edges={state.canvasEdges}
-          highlightedNodeIds={state.highlightedNodeIds}
-          animatedEdgeIds={state.animatedEdgeIds}
-          nodesDraggable={true}
-          nodesConnectable={true}
-          onConnect={handleConnect}
-        />
+        {/* Right Panel: Canvas */}
+        <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-background">
+          <CanvasPanel
+            nodes={state.canvasNodes}
+            edges={state.canvasEdges}
+            highlightedNodeIds={[...state.highlightedNodeIds, ...timelineHighlightedNodes]}
+            animatedEdgeIds={state.animatedEdgeIds}
+            nodesDraggable={true}
+            nodesConnectable={true}
+            onConnect={handleConnect}
+          />
+        </div>
       </div>
     </div>
   );
@@ -419,11 +464,16 @@ function WidgetRenderer({ widget, quizAnswers, onQuizAnswer }: WidgetRendererPro
             pros: [],
             cons: [],
             decision: widget.decision,
+            mode: widget.mode,
+            scenario: widget.scenario,
+            constraints: widget.constraints,
             alternatives: widget.options.map((opt, i) => ({
               id: `alt-${i}`,
               name: opt.label,
               pros: opt.pros,
               cons: opt.cons,
+              consequence: opt.consequence,
+              recommended: opt.recommended,
             })),
           }}
           config={{
@@ -434,6 +484,16 @@ function WidgetRenderer({ widget, quizAnswers, onQuizAnswer }: WidgetRendererPro
         />
       );
     case 'timeline':
+      // For interactive timelines in walkthroughs, we need to handle nodeId highlighting
+      // Non-interactive timelines work as before
+      if (widget.interactive) {
+        return (
+          <InteractiveTimelineWidget
+            widget={widget}
+            onHighlightNodes={setTimelineHighlightedNodes}
+          />
+        );
+      }
       return (
         <div className="h-[300px] max-h-[300px]">
           <Timeline
@@ -480,6 +540,8 @@ function WidgetRenderer({ widget, quizAnswers, onQuizAnswer }: WidgetRendererPro
           />
         </div>
       );
+    case 'scale-explorer':
+      return <ScaleExplorer config={widget} />;
     default:
       return null;
   }
@@ -494,9 +556,81 @@ interface QuizWidgetProps {
 }
 
 function QuizWidget({ widget, selectedOptionIds, onAnswer }: QuizWidgetProps) {
+  const hasSubmitted = selectedOptionIds.length > 0;
+
+  // Route to appropriate quiz mode component
+  const mode = widget.mode || 'mcq';
+
+  const handleModeSubmit = (correct: boolean) => {
+    // For non-MCQ modes, we use a simple correct/incorrect signal
+    // Store as ['correct'] or ['incorrect'] to track submission state
+    onAnswer(correct ? ['correct'] : ['incorrect']);
+  };
+
+  // Render based on mode
+  if (mode === 'predict-output') {
+    return (
+      <WidgetPreviewCard icon={HelpCircle} title="Quiz: Predict Output" accentBorder>
+        <PredictOutput
+          widget={widget}
+          onSubmit={handleModeSubmit}
+          hasSubmitted={hasSubmitted}
+        />
+      </WidgetPreviewCard>
+    );
+  }
+
+  if (mode === 'fill-blank') {
+    return (
+      <WidgetPreviewCard icon={HelpCircle} title="Quiz: Fill in the Blank" accentBorder>
+        <FillBlank
+          widget={widget}
+          onSubmit={handleModeSubmit}
+          hasSubmitted={hasSubmitted}
+        />
+      </WidgetPreviewCard>
+    );
+  }
+
+  if (mode === 'spot-bug') {
+    return (
+      <WidgetPreviewCard icon={HelpCircle} title="Quiz: Spot the Bug" accentBorder>
+        <SpotBug
+          widget={widget}
+          onSubmit={handleModeSubmit}
+          hasSubmitted={hasSubmitted}
+        />
+      </WidgetPreviewCard>
+    );
+  }
+
+  if (mode === 'ordering') {
+    return (
+      <WidgetPreviewCard icon={HelpCircle} title="Quiz: Put in Order" accentBorder>
+        <Ordering
+          widget={widget}
+          onSubmit={handleModeSubmit}
+          hasSubmitted={hasSubmitted}
+        />
+      </WidgetPreviewCard>
+    );
+  }
+
+  // Default MCQ mode (backward compatible)
+  return <QuizWidgetMCQ widget={widget} selectedOptionIds={selectedOptionIds} onAnswer={onAnswer} />;
+}
+
+// --- MCQ Quiz Widget (legacy/default) ---
+
+function QuizWidgetMCQ({ widget, selectedOptionIds, onAnswer }: QuizWidgetProps) {
   const [localSelection, setLocalSelection] = useState<string[]>(selectedOptionIds);
   const [showSuccess, setShowSuccess] = useState(false);
   const hasSubmitted = selectedOptionIds.length > 0;
+
+  // TypeScript narrowing: only MCQ mode has options
+  if (widget.mode && widget.mode !== 'mcq') {
+    return null; // Should never happen, but satisfies TypeScript
+  }
 
   // Check if answer is correct
   const isAnswerCorrect = hasSubmitted &&

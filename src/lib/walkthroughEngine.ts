@@ -332,7 +332,15 @@ export class WalkthroughEngine {
       return { correct: false, correctOptionIds: [] };
     }
 
-    // Get all correct option IDs
+    // For new quiz modes (predict-output, fill-blank, spot-bug, ordering),
+    // the component submits ['correct'] or ['incorrect'] as a simple signal
+    const mode = quizWidget.mode || 'mcq';
+    if (mode !== 'mcq') {
+      const correct = selectedOptionIds.includes('correct');
+      return { correct, correctOptionIds: [] };
+    }
+
+    // MCQ mode: Get all correct option IDs
     const correctOptionIds = quizWidget.options.filter(opt => opt.correct).map(opt => opt.id);
 
     // Check if all selected options are correct
