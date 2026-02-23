@@ -47,7 +47,6 @@ import { SpotBug } from './quiz/SpotBug';
 import { Ordering } from './quiz/Ordering';
 import { BuildPalette } from './canvas/BuildPalette';
 import { BuildValidator } from './canvas/BuildValidator';
-import { AnimatePresence } from 'motion/react';
 import type { Node } from '@xyflow/react';
 
 interface WalkthroughViewerProps {
