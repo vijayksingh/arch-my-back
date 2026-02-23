@@ -58,6 +58,7 @@ export function toCanvasNodes(doc: ArchspecDocument): { nodes: CanvasNode[]; edg
           isGroup: true,
         },
         parentNode: group.parent ?? undefined,
+        draggable: true,
       });
     }
   }
@@ -74,6 +75,7 @@ export function toCanvasNodes(doc: ArchspecDocument): { nodes: CanvasNode[]; edg
         config: component.config ?? {},
       },
       parentNode: component.group,
+      draggable: true,
     });
   }
 

@@ -213,6 +213,10 @@ export function DashboardPage() {
       // Cast nodes to CanvasNode[] as toCanvasNodes returns a compatible but different type
       loadDesign(nodes as any, edges);
 
+      // Run layout to position nodes properly
+      const { autoLayout } = useCanvasStore.getState();
+      await autoLayout();
+
       // Navigate to the new design
       navigate({ to: '/design/$designId', params: { designId } });
 
@@ -312,192 +316,216 @@ export function DashboardPage() {
     >
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
         {/* Header */}
-        <div className="border-b border-border px-6 py-3">
-          <div className="flex items-center justify-between">
+        <header className="border-b border-border bg-card/50 backdrop-blur-sm">
+          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
             {/* Left: Branding */}
-            <div className="flex items-center gap-2">
-              <Layers className="h-5 w-5 text-primary" />
-              <span className="text-sm font-semibold tracking-tight">System Architect</span>
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+                <Layers className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="text-lg font-semibold tracking-tight">System Architect</span>
             </div>
 
             {/* Right: Actions */}
-            <div className="flex items-center gap-2">
-              <Button onClick={handleCreateDesign} size="default">
-                <PlusIcon className="h-4 w-4 mr-2" />
+            <div className="flex items-center gap-3">
+              <Button onClick={handleCreateDesign} size="default" className="gap-2">
+                <PlusIcon className="h-4 w-4" />
                 New Design
               </Button>
-              <Button onClick={() => setShowFolderDialog(true)} variant="outline" size="default">
-                <FolderPlus className="h-4 w-4 mr-2" />
-                New Folder
+              <Button onClick={() => setShowFolderDialog(true)} variant="outline" size="default" className="gap-2">
+                <FolderPlus className="h-4 w-4" />
+                Folder
               </Button>
-              <Button
-                onClick={toggleTheme}
-                variant="ghost"
-                size="icon"
-                aria-label="Toggle theme"
-              >
-                {theme === 'dark' ? (
-                  <Sun className="h-4 w-4" />
-                ) : (
-                  <Moon className="h-4 w-4" />
-                )}
-              </Button>
-              <Button variant="ghost" size="icon" aria-label="User menu">
-                <User className="h-4 w-4" />
-              </Button>
+              <div className="ml-2 flex items-center gap-1 border-l border-border pl-3">
+                <Button
+                  onClick={toggleTheme}
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Toggle theme"
+                  className="h-9 w-9"
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button variant="ghost" size="icon" aria-label="User menu" className="h-9 w-9">
+                  <User className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* AI Prompt Bar */}
-        <div className="border-b border-border bg-muted/30 px-6 py-4">
-          <div className="mx-auto max-w-4xl">
-            <h3 className="mb-2 text-sm font-medium text-foreground">
-              Generate with AI
-            </h3>
+        {/* AI Hero Section */}
+        <div className="border-b border-border bg-gradient-to-br from-primary/[0.03] via-background to-background">
+          <div className="mx-auto max-w-4xl px-6 py-12">
+            <div className="mb-6 text-center">
+              <h1 className="mb-2 text-3xl font-bold tracking-tight">Design your architecture</h1>
+              <p className="text-muted-foreground">
+                Describe your system and let AI generate a professional diagram
+              </p>
+            </div>
             <AIPromptBar onGenerate={handleAIGenerate} />
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-6">
-        {/* Template Gallery */}
-        <TemplateGallery />
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-7xl px-6 py-8">
+            {/* Template Gallery */}
+            <TemplateGallery />
 
-        {/* Tabs Navigation */}
-        <Tabs defaultValue="my-designs" className="w-full mt-8">
-          <TabsList className="mb-6">
-            <TabsTrigger value="my-designs" className="gap-2">
-              My Designs
-              {myDesigns.length > 0 && (
-                <Badge variant="secondary" className="ml-1">
-                  {myDesigns.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="examples" className="gap-2">
-              Examples
-              {exampleDesigns.length > 0 && (
-                <Badge variant="secondary" className="ml-1">
-                  {exampleDesigns.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+            {/* Tabs Navigation */}
+            <Tabs defaultValue="my-designs" className="w-full mt-12">
+              <TabsList className="mb-8">
+                <TabsTrigger value="my-designs" className="gap-2">
+                  My Designs
+                  {myDesigns.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {myDesigns.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="examples" className="gap-2">
+                  Examples
+                  {exampleDesigns.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {exampleDesigns.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
 
-          {/* My Designs Tab */}
-          <TabsContent value="my-designs">
-            {rootMyDesigns.length === 0 && (!folders || folders.length === 0) ? (
-              <div className="flex h-full items-center justify-center">
-                <div className="flex flex-col items-center text-center py-24">
-                  <div className="mb-6 relative">
-                    <div className="absolute inset-0 rounded-full bg-primary/10 blur-2xl" />
-                    <Layers className="h-16 w-16 text-muted-foreground/50 relative" />
+              {/* My Designs Tab */}
+              <TabsContent value="my-designs">
+                {rootMyDesigns.length === 0 && (!folders || folders.length === 0) ? (
+                  <div className="flex items-center justify-center py-24">
+                    <div className="flex flex-col items-center text-center max-w-md">
+                      <div className="mb-8 relative">
+                        <div className="absolute inset-0 rounded-full bg-primary/5 blur-3xl" />
+                        <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/30">
+                          <Layers className="h-12 w-12 text-muted-foreground/60" />
+                        </div>
+                      </div>
+                      <h2 className="mb-3 text-2xl font-semibold">Create your first architecture</h2>
+                      <p className="mb-8 text-muted-foreground">
+                        Start with a blank canvas, choose a template, or describe your system to AI
+                      </p>
+                      <div className="flex gap-3">
+                        <Button onClick={handleCreateDesign} size="lg" className="gap-2">
+                          <PlusIcon className="h-5 w-5" />
+                          New Design
+                        </Button>
+                        <Button onClick={() => setShowFolderDialog(true)} variant="outline" size="lg" className="gap-2">
+                          <FolderPlus className="h-5 w-5" />
+                          New Folder
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                  <h2 className="text-xl font-semibold mb-2">Create your first architecture</h2>
-                  <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-                    Start with a blank canvas or choose a template above
-                  </p>
-                  <Button onClick={handleCreateDesign} size="lg">
-                    <PlusIcon className="h-5 w-5 mr-2" />
-                    New Design
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Folders */}
-                {folders && folders.length > 0 && (
-                  <section className="mb-8">
-                    <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Folders
-                    </h2>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {folders.map((folder) => (
-                        <FolderCard
-                          key={folder._id}
-                          folder={folder}
-                          designCount={folderDesignCounts.get(folder._id) || 0}
-                          isDropTarget={overedFolderId === folder._id}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                )}
+                ) : (
+                  <>
+                    {/* Folders */}
+                    {folders && folders.length > 0 && (
+                      <section className="mb-12">
+                        <h2 className="mb-5 text-sm font-semibold text-foreground">
+                          Folders
+                        </h2>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                          {folders.map((folder) => (
+                            <FolderCard
+                              key={folder._id}
+                              folder={folder}
+                              designCount={folderDesignCounts.get(folder._id) || 0}
+                              isDropTarget={overedFolderId === folder._id}
+                            />
+                          ))}
+                        </div>
+                      </section>
+                    )}
 
-                {/* Designs */}
-                {rootMyDesigns.length > 0 && (
+                    {/* Designs */}
+                    {rootMyDesigns.length > 0 && (
+                      <section>
+                        <h2 className="mb-5 text-sm font-semibold text-foreground">
+                          Recent Designs
+                        </h2>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                          {rootMyDesigns.map((design) => (
+                            <DesignListItem key={design._id} design={design} />
+                          ))}
+                        </div>
+                      </section>
+                    )}
+                  </>
+                )}
+              </TabsContent>
+
+              {/* Examples Tab */}
+              <TabsContent value="examples">
+                {/* Interactive Walkthroughs Section */}
+                <section className="mb-16">
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold mb-2">Interactive Walkthroughs</h2>
+                      <p className="text-sm text-muted-foreground">
+                        90-120 minute progressive learning experiences with quizzes, hands-on exercises, and real-world depth
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="gap-1 hidden sm:flex">
+                      🎓 Learn by doing
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {WALKTHROUGHS.map((walkthrough) => (
+                      <WalkthroughCard key={walkthrough.slug} walkthrough={walkthrough} />
+                    ))}
+                  </div>
+                </section>
+
+                {/* Example Designs Section */}
+                {exampleDesigns.length === 0 ? (
                   <section>
-                    <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Recent Designs
-                    </h2>
-                    <div className="flex flex-col gap-2">
-                      {rootMyDesigns.map((design) => (
-                        <DesignListItem key={design._id} design={design} />
+                    <h2 className="mb-5 text-sm font-semibold text-foreground">Example Architectures</h2>
+                    <div className="flex flex-col items-center text-center py-16 rounded-xl border-2 border-dashed border-border bg-muted/20">
+                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-muted">
+                        <Layers className="h-8 w-8 text-muted-foreground/70" />
+                      </div>
+                      <p className="text-sm text-muted-foreground max-w-sm">
+                        Run the seed mutation to create example architecture diagrams
+                      </p>
+                    </div>
+                  </section>
+                ) : (
+                  <section>
+                    <div className="mb-5">
+                      <h2 className="text-xl font-semibold mb-2">Example Architectures</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Pre-built architecture diagrams you can view and fork
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {exampleDesigns.map((design) => (
+                        <div key={design._id} className="relative">
+                          <DesignListItem design={design} />
+                          <Badge
+                            variant="secondary"
+                            className="absolute top-3 right-3 bg-primary/10 text-primary pointer-events-none"
+                          >
+                            Example
+                          </Badge>
+                        </div>
                       ))}
                     </div>
                   </section>
                 )}
-              </>
-            )}
-          </TabsContent>
-
-          {/* Examples Tab */}
-          <TabsContent value="examples">
-            {/* Interactive Walkthroughs Section */}
-            <section className="mb-12">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Interactive Walkthroughs</h2>
-                <Badge variant="outline" className="gap-1">
-                  🎓 Learn by doing
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground mb-6">
-                90-120 minute progressive learning experiences with quizzes, hands-on exercises, and real-world depth.
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {WALKTHROUGHS.map((walkthrough) => (
-                  <WalkthroughCard key={walkthrough.slug} walkthrough={walkthrough} />
-                ))}
-              </div>
-            </section>
-
-            {/* Example Designs Section */}
-            {exampleDesigns.length === 0 ? (
-              <section>
-                <h2 className="mb-4 text-lg font-semibold">Example Architectures</h2>
-                <div className="flex flex-col items-center text-center py-12 bg-muted/30 rounded-lg border border-dashed border-border">
-                  <Layers className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                  <p className="text-sm text-muted-foreground max-w-sm">
-                    Run the seed mutation to create example architecture diagrams
-                  </p>
-                </div>
-              </section>
-            ) : (
-              <section>
-                <h2 className="mb-4 text-lg font-semibold">Example Architectures</h2>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Pre-built architecture diagrams you can view and fork.
-                </p>
-                <div className="flex flex-col gap-2">
-                  {exampleDesigns.map((design) => (
-                    <div key={design._id} className="relative">
-                      <DesignListItem design={design} />
-                      <Badge
-                        variant="secondary"
-                        className="absolute top-3 right-3 bg-primary/10 text-primary pointer-events-none"
-                      >
-                        Example
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
 
       {/* Folder creation dialog */}
       <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>

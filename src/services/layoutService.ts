@@ -39,8 +39,8 @@ interface ElkGraph {
 const layoutOptions = {
   'elk.algorithm': 'layered',
   'elk.direction': 'RIGHT',
-  'elk.spacing.nodeNode': '50',
-  'elk.layered.spacing.nodeNodeBetweenLayers': '100',
+  'elk.spacing.nodeNode': '80',
+  'elk.layered.spacing.nodeNodeBetweenLayers': '150',
   'elk.padding': '[top=50,left=50,bottom=50,right=50]',
 };
 
