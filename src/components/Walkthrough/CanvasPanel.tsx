@@ -13,14 +13,13 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
-  useEdgesState,
-  useNodesState,
   useReactFlow,
   type Connection,
   type Edge,
   type Node,
 } from '@xyflow/react';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { isConnectionValid } from '@/lib/connectionRules';
 
 const nodeTypes = {
   archComponent: ArchNode,
@@ -31,6 +30,7 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
+  archEdge: ArchEdge,
   default: ArchEdge,
 };
 
@@ -77,26 +77,52 @@ export function CanvasPanel({
   onNodeDragStop,
   onConnect
 }: CanvasPanelProps) {
-  const [displayNodes, setDisplayNodes, onNodesChange] = useNodesState<Node>([]);
-  const [displayEdges, setDisplayEdges, onEdgesChange] = useEdgesState<Edge>([]);
-
-  // Update nodes and edges when they change
-  useEffect(() => {
-    setDisplayNodes(nodes.map(node => ({
+  // Derive display nodes and edges from props using useMemo
+  const displayNodes = useMemo(() =>
+    nodes.map(node => ({
       ...node,
       data: {
         ...node.data,
         highlighted: highlightedNodeIds.includes(node.id),
       },
-    })));
-  }, [nodes, highlightedNodeIds, setDisplayNodes]);
+    })),
+    [nodes, highlightedNodeIds]
+  );
 
-  useEffect(() => {
-    setDisplayEdges(edges.map(edge => ({
+  const displayEdges = useMemo(() =>
+    edges.map(edge => ({
       ...edge,
       animated: animatedEdgeIds.includes(edge.id),
-    })));
-  }, [edges, animatedEdgeIds, setDisplayEdges]);
+    })),
+    [edges, animatedEdgeIds]
+  );
+
+  // Validate connections in walkthrough mode
+  const handleIsValidConnection = useCallback(
+    (connection: Connection | Edge) => {
+      // Prevent self-loops
+      if (connection.source === connection.target) {
+        return false;
+      }
+
+      // Get source and target nodes to determine their types
+      const sourceNode = nodes.find((n) => n.id === connection.source);
+      const targetNode = nodes.find((n) => n.id === connection.target);
+
+      // Only validate arch component connections (not shapes, badges, etc.)
+      if (sourceNode?.type === 'archComponent' && targetNode?.type === 'archComponent') {
+        const sourceType = sourceNode.data.componentType as string;
+        const targetType = targetNode.data.componentType as string;
+
+        const validation = isConnectionValid(sourceType, targetType);
+        return validation.valid;
+      }
+
+      // Allow all other connection types (shapes, badges, etc.)
+      return true;
+    },
+    [nodes]
+  );
 
   return (
     <div className="h-full w-full bg-transparent">
@@ -104,8 +130,6 @@ export function CanvasPanel({
         <ReactFlow
           nodes={displayNodes}
           edges={displayEdges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           connectionMode={ConnectionMode.Loose}
@@ -118,6 +142,7 @@ export function CanvasPanel({
           elementsSelectable={nodesDraggable || nodesConnectable}
           onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
+          isValidConnection={handleIsValidConnection}
         >
           <Background />
           <Controls />
