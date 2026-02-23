@@ -45,6 +45,10 @@ import { PredictOutput } from './quiz/PredictOutput';
 import { FillBlank } from './quiz/FillBlank';
 import { SpotBug } from './quiz/SpotBug';
 import { Ordering } from './quiz/Ordering';
+import { BuildPalette } from './canvas/BuildPalette';
+import { BuildValidator } from './canvas/BuildValidator';
+import { AnimatePresence } from 'motion/react';
+import type { Node } from '@xyflow/react';
 
 interface WalkthroughViewerProps {
   walkthrough: Walkthrough;
@@ -150,6 +154,18 @@ export function WalkthroughViewer({ walkthrough, onComplete }: WalkthroughViewer
   const handleConnect = (connection: Connection) => {
     // Add user-created edge to the walkthrough state
     engine.addUserEdge(connection);
+    setState(engine.getState());
+  };
+
+  const handleNodeAdd = (node: Node) => {
+    // Add user-created node to the walkthrough state (build mode)
+    engine.addUserNode(node);
+    setState(engine.getState());
+  };
+
+  const handleBuildValidationSuccess = () => {
+    if (!currentStep) return;
+    engine.setBuildModeValidated(currentStep.id, true);
     setState(engine.getState());
   };
 
@@ -411,7 +427,31 @@ export function WalkthroughViewer({ walkthrough, onComplete }: WalkthroughViewer
             nodesDraggable={true}
             nodesConnectable={true}
             onConnect={handleConnect}
+            onNodeAdd={currentStep?.canvasBuildMode ? handleNodeAdd : undefined}
           />
+
+          {/* Build Mode Overlays */}
+          {currentStep?.canvasBuildMode && currentStep.buildConfig && (
+            <>
+              <AnimatePresence>
+                <BuildPalette
+                  palette={currentStep.buildConfig.palette}
+                  onDragStart={() => {}}
+                />
+              </AnimatePresence>
+
+              <AnimatePresence>
+                <BuildValidator
+                  validationRules={currentStep.buildConfig.validationRules}
+                  successMessage={currentStep.buildConfig.successMessage}
+                  hints={currentStep.buildConfig.hints}
+                  nodes={state.canvasNodes}
+                  edges={state.canvasEdges}
+                  onValidationSuccess={handleBuildValidationSuccess}
+                />
+              </AnimatePresence>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -520,6 +560,7 @@ function WidgetRenderer({ widget, quizAnswers, onQuizAnswer }: WidgetRendererPro
           <ComparisonTable
             instanceId={`table-${widget.title}`}
             input={{
+              mode: widget.mode || 'display',
               columns: widget.columns.map((col, i) => ({
                 id: `col-${i}`,
                 title: col,
@@ -530,7 +571,18 @@ function WidgetRenderer({ widget, quizAnswers, onQuizAnswer }: WidgetRendererPro
                 cells: Object.fromEntries(
                   row.values.map((val, j) => [`col-${j}`, val])
                 ),
+                blanks: row.blanks?.map(idx => `col-${idx}`),
+                acceptableAnswers: row.acceptableAnswers
+                  ? Object.fromEntries(
+                      Object.entries(row.acceptableAnswers).map(([idx, vals]) => [
+                        `col-${idx}`,
+                        vals,
+                      ])
+                    )
+                  : undefined,
               })),
+              decisionPrompt: widget.decisionPrompt,
+              decisionOptions: widget.decisionOptions,
             }}
             config={{
               name: widget.title,

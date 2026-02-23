@@ -29,6 +29,7 @@ export interface WalkthroughState {
   animatedEdgeIds: string[];
   quizAnswers: Record<string, string[]>; // stepId -> selected option IDs
   userEdgeIds: string[]; // IDs of edges created by user (for distinct styling)
+  buildModeValidated: Record<string, boolean>; // stepId -> validation success
 }
 
 export class WalkthroughEngine {
@@ -47,6 +48,7 @@ export class WalkthroughEngine {
       animatedEdgeIds: [],
       quizAnswers: {},
       userEdgeIds: [],
+      buildModeValidated: {},
       ...initialState,
     };
 
@@ -69,6 +71,7 @@ export class WalkthroughEngine {
       completedActionStepIds: [...this.state.completedActionStepIds],
       userEdgeIds: [...this.state.userEdgeIds],
       quizAnswers: { ...this.state.quizAnswers },
+      buildModeValidated: { ...this.state.buildModeValidated },
     };
   }
 
@@ -83,6 +86,11 @@ export class WalkthroughEngine {
   canGoNext(): boolean {
     const currentStep = this.getCurrentStep();
     if (!currentStep) return false;
+
+    // If in build mode, must validate successfully before proceeding
+    if (currentStep.canvasBuildMode) {
+      return this.state.buildModeValidated[currentStep.id] === true;
+    }
 
     switch (currentStep.nextCondition) {
       case 'click-next':
@@ -214,6 +222,20 @@ export class WalkthroughEngine {
 
     this.state.canvasEdges.push(newEdge);
     this.state.userEdgeIds.push(edgeId);
+  }
+
+  /**
+   * Add a user-created node to the canvas (from build mode palette)
+   */
+  addUserNode(node: Node): void {
+    this.state.canvasNodes.push(node);
+  }
+
+  /**
+   * Mark build mode as validated for a step
+   */
+  setBuildModeValidated(stepId: string, validated: boolean): void {
+    this.state.buildModeValidated[stepId] = validated;
   }
 
   /**

@@ -166,9 +166,19 @@ export interface ComparisonTableWidgetConfig {
   type: 'comparison-table';
   title: string;
   columns: string[];
+  mode?: 'display' | 'analysis'; // default 'display'
   rows: Array<{
     label: string;
     values: string[];
+    blanks?: number[]; // column indices that are blank for learner to fill
+    acceptableAnswers?: Record<number, string[]>; // col index -> acceptable strings
+  }>;
+  decisionPrompt?: string; // "Based on this data, which option would you ship?"
+  decisionOptions?: Array<{
+    id: string;
+    text: string;
+    correct: boolean;
+    explanation: string;
   }>;
 }
 
@@ -224,6 +234,29 @@ export interface SelectTradeoffAction {
 
 export type UserAction = ClickNodeAction | AnswerQuizAction | SelectTradeoffAction;
 
+// --- Build Mode Configuration ---
+
+export interface BuildPaletteComponent {
+  id: string;
+  label: string;
+  componentType: string; // maps to existing node types
+  description: string;
+}
+
+export interface BuildValidationRule {
+  type: 'must-connect' | 'must-not-connect' | 'must-exist' | 'min-count';
+  params: Record<string, unknown>;
+  feedback: string; // shown when rule fails
+}
+
+export interface BuildConfig {
+  palette: BuildPaletteComponent[];
+  initialNodes?: string[]; // pre-placed node IDs (existing from canvas operations)
+  validationRules: BuildValidationRule[];
+  successMessage: string;
+  hints: string[]; // progressive hints if learner is stuck
+}
+
 // --- Walkthrough Step ---
 
 export interface WalkthroughStep {
@@ -242,6 +275,10 @@ export interface WalkthroughStep {
 
   // Optional user interaction
   userAction?: UserAction;
+
+  // Build Mode (for exercise phases)
+  canvasBuildMode?: boolean;
+  buildConfig?: BuildConfig;
 
   // Completion condition
   nextCondition: 'click-next' | 'quiz-correct' | 'action-complete';

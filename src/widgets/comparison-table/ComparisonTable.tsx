@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { WidgetProps } from '../types';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, CheckCircle2, XCircle } from 'lucide-react';
 
 /**
  * Comparison Table Input Schema
@@ -16,6 +16,16 @@ export interface ComparisonTableInput {
     id: string;
     label: string;
     cells: Record<string, CellContent>;
+    blanks?: string[]; // column IDs that are blank for learner to fill
+    acceptableAnswers?: Record<string, string[]>; // col ID -> acceptable strings
+  }>;
+  mode?: 'display' | 'analysis'; // default 'display'
+  decisionPrompt?: string;
+  decisionOptions?: Array<{
+    id: string;
+    text: string;
+    correct: boolean;
+    explanation: string;
   }>;
 }
 
@@ -62,6 +72,15 @@ export function ComparisonTable({
 }: WidgetProps<ComparisonTableInput, ComparisonTableOutput, ComparisonTableConfig>) {
   const [selectedColumn, setSelectedColumn] = useState<string | undefined>();
   const [selectedRow, setSelectedRow] = useState<string | undefined>();
+
+  // Analysis mode state
+  const [userInputs, setUserInputs] = useState<Record<string, Record<string, string>>>({});
+  const [validation, setValidation] = useState<Record<string, Record<string, boolean>>>({});
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [selectedDecision, setSelectedDecision] = useState<string | undefined>();
+  const [showDecisionFeedback, setShowDecisionFeedback] = useState(false);
+
+  const isAnalysisMode = input?.mode === 'analysis';
 
   if (!input || !input.columns || !input.rows) {
     return (
@@ -186,7 +205,71 @@ export function ComparisonTable({
     return cell.content || '';
   }, []);
 
-  const renderCellContent = (cell: CellContent) => {
+  const handleCheckAnswers = useCallback(() => {
+    if (!input || !isAnalysisMode) return;
+
+    const newValidation: Record<string, Record<string, boolean>> = {};
+
+    input.rows.forEach((row) => {
+      if (row.blanks && row.acceptableAnswers) {
+        newValidation[row.id] = {};
+        row.blanks.forEach((colId) => {
+          const userAnswer = userInputs[row.id]?.[colId]?.trim().toLowerCase() || '';
+          const acceptable = row.acceptableAnswers![colId]?.map(a => a.toLowerCase()) || [];
+          newValidation[row.id][colId] = acceptable.some(ans => userAnswer === ans);
+        });
+      }
+    });
+
+    setValidation(newValidation);
+    setShowFeedback(true);
+  }, [input, isAnalysisMode, userInputs]);
+
+  const handleInputChange = useCallback((rowId: string, colId: string, value: string) => {
+    setUserInputs(prev => ({
+      ...prev,
+      [rowId]: {
+        ...(prev[rowId] || {}),
+        [colId]: value,
+      },
+    }));
+  }, []);
+
+  const renderCellContent = (cell: CellContent, rowId: string, colId: string, isBlank?: boolean) => {
+    // Analysis mode: render blank cells as inputs
+    if (isAnalysisMode && isBlank) {
+      const userValue = userInputs[rowId]?.[colId] || '';
+      const isValidated = showFeedback && validation[rowId]?.[colId] !== undefined;
+      const isCorrect = validation[rowId]?.[colId];
+
+      return (
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={userValue}
+            onChange={(e) => handleInputChange(rowId, colId, e.target.value)}
+            disabled={showFeedback}
+            className={`flex-1 rounded border px-2 py-1 text-sm ${
+              isValidated
+                ? isCorrect
+                  ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                  : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                : 'border-border bg-background'
+            }`}
+            placeholder="Type your answer..."
+          />
+          {isValidated && (
+            isCorrect ? (
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+            ) : (
+              <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+            )
+          )}
+        </div>
+      );
+    }
+
+    // Display mode: render cell content normally
     if (typeof cell === 'string') {
       return <div className="whitespace-pre-wrap">{cell}</div>;
     }
@@ -336,19 +419,88 @@ export function ComparisonTable({
                 >
                   {row.label}
                 </td>
-                {input.columns.map((column) => (
-                  <td
-                    key={column.id}
-                    className="border-b border-border p-3 text-sm"
-                  >
-                    {renderCellContent(row.cells[column.id] || '')}
-                  </td>
-                ))}
+                {input.columns.map((column) => {
+                  const isBlank = row.blanks?.includes(column.id);
+                  return (
+                    <td
+                      key={column.id}
+                      className="border-b border-border p-3 text-sm"
+                    >
+                      {renderCellContent(row.cells[column.id] || '', row.id, column.id, isBlank)}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Analysis mode: Check button */}
+      {isAnalysisMode && !showFeedback && (
+        <div className="border-t border-border bg-muted/30 px-4 py-3">
+          <Button onClick={handleCheckAnswers} size="sm">
+            Check Answers
+          </Button>
+        </div>
+      )}
+
+      {/* Analysis mode: Decision prompt */}
+      {isAnalysisMode && input.decisionPrompt && showFeedback && (
+        <div className="border-t border-border bg-background px-4 py-4">
+          <div className="mb-3 font-medium">{input.decisionPrompt}</div>
+          <div className="space-y-2">
+            {input.decisionOptions?.map((option) => {
+              const isSelected = selectedDecision === option.id;
+              const showExplanation = showDecisionFeedback && isSelected;
+              const isCorrectOption = option.correct;
+
+              return (
+                <div key={option.id}>
+                  <button
+                    onClick={() => {
+                      setSelectedDecision(option.id);
+                      setShowDecisionFeedback(true);
+                    }}
+                    disabled={showDecisionFeedback}
+                    className={`w-full rounded border px-3 py-2 text-left text-sm transition-colors ${
+                      showDecisionFeedback
+                        ? isCorrectOption
+                          ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                          : isSelected
+                          ? 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                          : 'border-border bg-muted/20'
+                        : isSelected
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-background hover:bg-muted/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {showDecisionFeedback && isCorrectOption && (
+                        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      )}
+                      {showDecisionFeedback && !isCorrectOption && isSelected && (
+                        <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                      )}
+                      <span>{option.text}</span>
+                    </div>
+                  </button>
+                  {showExplanation && (
+                    <div className="mt-2 ml-6 text-sm text-muted-foreground">
+                      {option.explanation}
+                    </div>
+                  )}
+                  {showDecisionFeedback && isCorrectOption && !isSelected && (
+                    <div className="mt-2 ml-6 text-sm text-muted-foreground">
+                      ✓ Correct answer: {option.explanation}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

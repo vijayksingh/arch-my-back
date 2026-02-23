@@ -14,9 +14,10 @@ import {
   type Edge,
   type Node,
 } from '@xyflow/react';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { baseNodeTypes, archEdgeTypes } from '@/registry/flowNodeTypes';
 import { validateArchConnection } from '@/lib/connectionRules';
+import type { BuildPaletteComponent } from '@/types/walkthrough';
 
 function CanvasEffects({ highlightedNodeIds, nodesCount }: { highlightedNodeIds: string[], nodesCount: number }) {
   const { fitView } = useReactFlow();
@@ -49,6 +50,7 @@ interface CanvasPanelProps {
   nodesConnectable?: boolean;
   onNodeDragStop?: (e: React.MouseEvent, node: Node) => void;
   onConnect?: (connection: Connection) => void;
+  onNodeAdd?: (node: Node) => void; // For build mode: add node from palette
 }
 
 export function CanvasPanel({
@@ -59,8 +61,11 @@ export function CanvasPanel({
   nodesDraggable = false,
   nodesConnectable = false,
   onNodeDragStop,
-  onConnect
+  onConnect,
+  onNodeAdd
 }: CanvasPanelProps) {
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+
   // Derive display nodes and edges from props using useMemo
   const displayNodes = useMemo(() =>
     nodes.map(node => ({
@@ -90,31 +95,112 @@ export function CanvasPanel({
   );
 
   return (
-    <div className="h-full w-full bg-transparent">
+    <div className="h-full w-full bg-transparent" ref={reactFlowWrapper}>
       <ReactFlowProvider>
-        <ReactFlow
-          nodes={displayNodes}
-          edges={displayEdges}
-          nodeTypes={baseNodeTypes}
-          edgeTypes={archEdgeTypes}
-          connectionMode={ConnectionMode.Loose}
-          fitView
-          minZoom={0.1}
-          maxZoom={4}
-          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        <CanvasPanelInner
+          displayNodes={displayNodes}
+          displayEdges={displayEdges}
           nodesDraggable={nodesDraggable}
           nodesConnectable={nodesConnectable}
-          elementsSelectable={nodesDraggable || nodesConnectable}
           onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
-          isValidConnection={handleIsValidConnection}
-        >
-          <Background />
-          <Controls />
-          <MiniMap />
-          <CanvasEffects highlightedNodeIds={highlightedNodeIds} nodesCount={displayNodes.length} />
-        </ReactFlow>
+          onNodeAdd={onNodeAdd}
+          handleIsValidConnection={handleIsValidConnection}
+          highlightedNodeIds={highlightedNodeIds}
+          reactFlowWrapper={reactFlowWrapper}
+        />
       </ReactFlowProvider>
     </div>
+  );
+}
+
+interface CanvasPanelInnerProps {
+  displayNodes: Node[];
+  displayEdges: Edge[];
+  nodesDraggable: boolean;
+  nodesConnectable: boolean;
+  onNodeDragStop?: (e: React.MouseEvent, node: Node) => void;
+  onConnect?: (connection: Connection) => void;
+  onNodeAdd?: (node: Node) => void;
+  handleIsValidConnection: (connection: Connection | Edge) => boolean;
+  highlightedNodeIds: string[];
+  reactFlowWrapper: React.RefObject<HTMLDivElement>;
+}
+
+function CanvasPanelInner({
+  displayNodes,
+  displayEdges,
+  nodesDraggable,
+  nodesConnectable,
+  onNodeDragStop,
+  onConnect,
+  onNodeAdd,
+  handleIsValidConnection,
+  highlightedNodeIds,
+  reactFlowWrapper
+}: CanvasPanelInnerProps) {
+  const { screenToFlowPosition } = useReactFlow();
+
+  // Handle drop from palette
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      const componentData = event.dataTransfer.getData('application/reactflow');
+      if (!componentData || !onNodeAdd) return;
+
+      const component: BuildPaletteComponent = JSON.parse(componentData);
+
+      // Get position on canvas where the component was dropped
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+
+      // Create new node
+      const newNode: Node = {
+        id: `${component.componentType}-${Date.now()}`,
+        type: component.componentType,
+        position,
+        data: {
+          label: component.label,
+        },
+      };
+
+      onNodeAdd(newNode);
+    },
+    [screenToFlowPosition, onNodeAdd]
+  );
+
+  return (
+    <ReactFlow
+      nodes={displayNodes}
+      edges={displayEdges}
+      nodeTypes={baseNodeTypes}
+      edgeTypes={archEdgeTypes}
+      connectionMode={ConnectionMode.Loose}
+      fitView
+      minZoom={0.1}
+      maxZoom={4}
+      defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+      nodesDraggable={nodesDraggable}
+      nodesConnectable={nodesConnectable}
+      elementsSelectable={nodesDraggable || nodesConnectable}
+      onNodeDragStop={onNodeDragStop}
+      onConnect={onConnect}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      isValidConnection={handleIsValidConnection}
+    >
+      <Background />
+      <Controls />
+      <MiniMap />
+      <CanvasEffects highlightedNodeIds={highlightedNodeIds} nodesCount={displayNodes.length} />
+    </ReactFlow>
   );
 }
