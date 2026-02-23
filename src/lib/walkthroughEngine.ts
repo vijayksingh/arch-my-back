@@ -8,7 +8,7 @@
  * - Progress tracking
  */
 
-import type { Node, Edge } from '@xyflow/react';
+import type { Node, Edge, Connection } from '@xyflow/react';
 import type {
   WalkthroughStep,
   CanvasOperation,
@@ -27,6 +27,7 @@ export interface WalkthroughState {
   highlightedNodeIds: string[];
   animatedEdgeIds: string[];
   quizAnswers: Record<string, string[]>; // stepId -> selected option IDs
+  userEdgeIds: string[]; // IDs of edges created by user (for distinct styling)
 }
 
 export class WalkthroughEngine {
@@ -44,8 +45,12 @@ export class WalkthroughEngine {
       highlightedNodeIds: [],
       animatedEdgeIds: [],
       quizAnswers: {},
+      userEdgeIds: [],
       ...initialState,
     };
+
+    // Apply canvas operations for step 0 to initialize canvas state
+    this.applyCanvasOperations(this.steps[0]?.canvasOperations ?? []);
   }
 
   getCurrentStep(): WalkthroughStep | undefined {
@@ -53,7 +58,17 @@ export class WalkthroughEngine {
   }
 
   getState(): WalkthroughState {
-    return { ...this.state };
+    return {
+      ...this.state,
+      canvasNodes: this.state.canvasNodes.map(n => ({ ...n, data: { ...n.data } })),
+      canvasEdges: this.state.canvasEdges.map(e => ({ ...e })),
+      highlightedNodeIds: [...this.state.highlightedNodeIds],
+      animatedEdgeIds: [...this.state.animatedEdgeIds],
+      completedStepIds: [...this.state.completedStepIds],
+      completedActionStepIds: [...this.state.completedActionStepIds],
+      userEdgeIds: [...this.state.userEdgeIds],
+      quizAnswers: { ...this.state.quizAnswers },
+    };
   }
 
   getProgress(): { current: number; total: number; percentage: number } {
@@ -90,13 +105,13 @@ export class WalkthroughEngine {
    */
   goToStep(index: number): WalkthroughState {
     if (index < 0 || index >= this.steps.length) {
-      return this.state;
+      return this.getState();
     }
 
     this.state.currentStepIndex = index;
     this.rebuildCanvasState();
 
-    return { ...this.state };
+    return this.getState();
   }
 
   /**
@@ -104,7 +119,7 @@ export class WalkthroughEngine {
    */
   next(): WalkthroughState {
     if (!this.canGoNext()) {
-      return this.state;
+      return this.getState();
     }
 
     const currentStep = this.getCurrentStep();
@@ -120,7 +135,7 @@ export class WalkthroughEngine {
       this.applyCanvasOperations(newStep.canvasOperations);
     }
 
-    return { ...this.state };
+    return this.getState();
   }
 
   /**
@@ -128,7 +143,7 @@ export class WalkthroughEngine {
    */
   previous(): WalkthroughState {
     if (!this.canGoPrevious()) {
-      return this.state;
+      return this.getState();
     }
 
     this.state.currentStepIndex--;
@@ -136,7 +151,7 @@ export class WalkthroughEngine {
     // Rebuild canvas state from scratch up to current step
     this.rebuildCanvasState();
 
-    return { ...this.state };
+    return this.getState();
   }
 
   /**
@@ -148,22 +163,14 @@ export class WalkthroughEngine {
       return { correct: false };
     }
 
-    // Find quiz widget in widgets array
-    const quizWidget = step.widgets.find(w => w.type === 'quiz') as QuizWidgetConfig | undefined;
-    if (!quizWidget) {
-      return { correct: false };
-    }
-
     this.state.quizAnswers[stepId] = selectedOptionIds;
 
-    // Check if all selected options are correct
-    const correctOptionIds = quizWidget.options.filter(opt => opt.correct).map(opt => opt.id);
-    const correct =
-      selectedOptionIds.length === correctOptionIds.length &&
-      selectedOptionIds.every(id => correctOptionIds.includes(id));
+    const { correct } = this.checkQuizAnswer(step, selectedOptionIds);
 
-    // Return explanation from first selected option
-    const firstSelected = quizWidget.options.find(opt => opt.id === selectedOptionIds[0]);
+    // Find quiz widget to get explanation
+    const quizWidget = step.widgets.find(w => w.type === 'quiz') as QuizWidgetConfig | undefined;
+    const firstSelected = quizWidget?.options.find(opt => opt.id === selectedOptionIds[0]);
+
     return {
       correct,
       explanation: firstSelected?.explanation,
@@ -177,6 +184,35 @@ export class WalkthroughEngine {
     if (!this.state.completedActionStepIds.includes(stepId)) {
       this.state.completedActionStepIds.push(stepId);
     }
+  }
+
+  /**
+   * Add a user-created edge to the canvas
+   */
+  addUserEdge(connection: Connection): void {
+    if (!connection.source || !connection.target) return;
+
+    const edgeId = `user-edge-${connection.source}-${connection.target}`;
+
+    // Check if edge already exists
+    const edgeExists = this.state.canvasEdges.some(e => e.id === edgeId);
+    if (edgeExists) return;
+
+    const newEdge: Edge = {
+      id: edgeId,
+      source: connection.source,
+      target: connection.target,
+      sourceHandle: connection.sourceHandle,
+      targetHandle: connection.targetHandle,
+      // Mark as user-created for distinct styling
+      style: {
+        strokeDasharray: '5,5',
+        opacity: 0.6,
+      },
+    };
+
+    this.state.canvasEdges.push(newEdge);
+    this.state.userEdgeIds.push(edgeId);
   }
 
   /**
@@ -213,10 +249,22 @@ export class WalkthroughEngine {
           }
           break;
         case 'animate-flow':
-          // AnimateFlowOperation uses path (array of node IDs), not edgeIds
-          // For now, we'll just store the path in highlightedNodeIds
-          if (op.path) {
-            this.state.highlightedNodeIds = [...op.path];
+          // AnimateFlowOperation uses path (array of node IDs)
+          // Compute which edges connect consecutive nodes in the path
+          if (op.path && op.path.length > 1) {
+            const edgeIds: string[] = [];
+            for (let i = 0; i < op.path.length - 1; i++) {
+              const sourceId = op.path[i];
+              const targetId = op.path[i + 1];
+              // Find edge connecting these two nodes
+              const edge = this.state.canvasEdges.find(
+                e => e.source === sourceId && e.target === targetId
+              );
+              if (edge) {
+                edgeIds.push(edge.id);
+              }
+            }
+            this.state.animatedEdgeIds = edgeIds;
           }
           break;
         case 'remove-highlight':
@@ -237,6 +285,11 @@ export class WalkthroughEngine {
    * Rebuild canvas state by replaying all operations up to current step
    */
   private rebuildCanvasState(): void {
+    // Save user-created edges before clearing
+    const userEdges = this.state.canvasEdges.filter(edge =>
+      this.state.userEdgeIds.includes(edge.id)
+    );
+
     this.state.canvasNodes = [];
     this.state.canvasEdges = [];
     this.state.highlightedNodeIds = [];
@@ -248,26 +301,55 @@ export class WalkthroughEngine {
         this.applyCanvasOperations(step.canvasOperations);
       }
     }
+
+    // Restore user edges whose source and target nodes still exist
+    const nodeIds = new Set(this.state.canvasNodes.map(n => n.id));
+    const restoredUserEdgeIds: string[] = [];
+
+    for (const userEdge of userEdges) {
+      if (nodeIds.has(userEdge.source) && nodeIds.has(userEdge.target)) {
+        this.state.canvasEdges.push(userEdge);
+        restoredUserEdgeIds.push(userEdge.id);
+      }
+    }
+
+    // Clean up userEdgeIds - keep only those that were restored
+    this.state.userEdgeIds = restoredUserEdgeIds;
   }
 
-  private isQuizCorrect(step: WalkthroughStep): boolean {
-    if (!step.widgets) return false;
-
+  /**
+   * Check quiz answer correctness for a given step and selected options
+   * @returns Object with correct flag and array of correct option IDs
+   */
+  private checkQuizAnswer(
+    step: WalkthroughStep,
+    selectedOptionIds: string[]
+  ): { correct: boolean; correctOptionIds: string[] } {
     // Find quiz widget in widgets array
-    const quizWidget = step.widgets.find(w => w.type === 'quiz') as QuizWidgetConfig | undefined;
-    if (!quizWidget) return false;
-
-    const selectedOptionIds = this.state.quizAnswers[step.id];
-    if (!selectedOptionIds || selectedOptionIds.length === 0) return false;
+    const quizWidget = step.widgets?.find(w => w.type === 'quiz') as QuizWidgetConfig | undefined;
+    if (!quizWidget) {
+      return { correct: false, correctOptionIds: [] };
+    }
 
     // Get all correct option IDs
     const correctOptionIds = quizWidget.options.filter(opt => opt.correct).map(opt => opt.id);
 
     // Check if all selected options are correct
-    return (
+    const correct =
       selectedOptionIds.length === correctOptionIds.length &&
-      selectedOptionIds.every(id => correctOptionIds.includes(id))
-    );
+      selectedOptionIds.every(id => correctOptionIds.includes(id));
+
+    return { correct, correctOptionIds };
+  }
+
+  private isQuizCorrect(step: WalkthroughStep): boolean {
+    if (!step.widgets) return false;
+
+    const selectedOptionIds = this.state.quizAnswers[step.id];
+    if (!selectedOptionIds || selectedOptionIds.length === 0) return false;
+
+    const { correct } = this.checkQuizAnswer(step, selectedOptionIds);
+    return correct;
   }
 
   private isActionComplete(step: WalkthroughStep): boolean {

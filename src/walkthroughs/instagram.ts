@@ -137,7 +137,7 @@ Before we dive into solutions, consider the challenges you'll face...
             type: 'archComponent',
             position: { x: 100, y: 100 },
             data: {
-              componentType: 'external_api',
+              componentType: 'client_mobile',
               label: 'Mobile User',
               config: {},
             },
@@ -1264,7 +1264,7 @@ Instagram achieves **95% cache hit rate**:
             type: 'archComponent',
             position: { x: 800, y: 100 },
             data: {
-              componentType: 'external_api',
+              componentType: 'cdn',
               label: 'CloudFront CDN',
               config: { description: '400+ edge locations' },
             },

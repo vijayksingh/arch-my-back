@@ -7,18 +7,34 @@ import { z } from 'zod';
 
 // Valid component types from the registry
 export const ComponentTypeEnum = z.enum([
+  'client_browser',
+  'client_mobile',
   'load_balancer',
   'api_gateway',
   'cdn',
+  'dns',
   'app_server',
   'worker',
   'serverless',
   'postgres',
   'object_storage',
+  'mysql',
+  'mongodb',
+  'cassandra',
+  'dynamodb',
   'redis',
+  'elasticsearch',
+  'data_warehouse',
+  'ml_model',
+  'vector_db',
+  'logging',
+  'metrics',
   'kafka',
   'websocket',
+  'message_queue',
   'external_api',
+  'payment_gateway',
+  'auth_provider',
 ]).describe('Type of architectural component from the registry');
 
 // Component schema

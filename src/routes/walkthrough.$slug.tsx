@@ -47,7 +47,7 @@ function WalkthroughPage() {
   return (
     <div className="h-screen">
       <WalkthroughViewer
-        steps={walkthrough.steps}
+        walkthrough={walkthrough}
         onComplete={handleComplete}
       />
     </div>

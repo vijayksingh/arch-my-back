@@ -23,7 +23,7 @@ export const uberDispatchTemplate: DesignTemplate = {
       type: 'archComponent',
       position: { x: 50, y: 50 },
       data: {
-        componentType: 'app_server',
+        componentType: 'client_mobile',
         label: 'Rider App',
         config: { runtime: 'mobile', replicas: 1 },
       },
@@ -33,7 +33,7 @@ export const uberDispatchTemplate: DesignTemplate = {
       type: 'archComponent',
       position: { x: 350, y: 50 },
       data: {
-        componentType: 'app_server',
+        componentType: 'client_mobile',
         label: 'Driver App',
         config: { runtime: 'mobile', replicas: 1 },
       },

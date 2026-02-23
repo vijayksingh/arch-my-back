@@ -1,6 +1,52 @@
 import type { ComponentTypeConfig } from '@/types';
 
 export const componentTypes: ComponentTypeConfig[] = [
+  // --- Clients ---
+  {
+    key: 'client_browser',
+    label: 'Web Browser',
+    category: 'Clients',
+    icon: 'Monitor',
+    description: 'Web browser / SPA client',
+    defaultConfig: { framework: 'React' },
+    configFields: [
+      { key: 'framework', label: 'Framework', type: 'select', options: ['React', 'Vue', 'Angular', 'Vanilla'], defaultValue: 'React' },
+      { key: 'hosting', label: 'Hosting', type: 'select', options: ['CDN', 'Static', 'SSR'], defaultValue: 'CDN' },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        framework: { type: 'string', enum: ['React', 'Vue', 'Angular', 'Vanilla'], default: 'React', description: 'Frontend framework' },
+        hosting: { type: 'string', enum: ['CDN', 'Static', 'SSR'], default: 'CDN', description: 'Hosting strategy' },
+        bundle_size: { type: 'string', default: '500KB', description: 'Initial bundle size' },
+      },
+      required: ['framework', 'hosting'],
+    },
+    primaryFields: ['framework', 'hosting'],
+  },
+  {
+    key: 'client_mobile',
+    label: 'Mobile App',
+    category: 'Clients',
+    icon: 'Smartphone',
+    description: 'Mobile app (iOS/Android)',
+    defaultConfig: { platform: 'iOS/Android' },
+    configFields: [
+      { key: 'platform', label: 'Platform', type: 'select', options: ['iOS', 'Android', 'iOS/Android'], defaultValue: 'iOS/Android' },
+      { key: 'framework', label: 'Framework', type: 'select', options: ['Native', 'React Native', 'Flutter'], defaultValue: 'React Native' },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        platform: { type: 'string', enum: ['iOS', 'Android', 'iOS/Android'], default: 'iOS/Android', description: 'Target platform' },
+        framework: { type: 'string', enum: ['Native', 'React Native', 'Flutter'], default: 'React Native', description: 'Development framework' },
+        min_version: { type: 'string', default: 'iOS 14 / Android 10', description: 'Minimum OS version' },
+      },
+      required: ['platform', 'framework'],
+    },
+    primaryFields: ['platform', 'framework'],
+  },
+
   // --- Traffic ---
   {
     key: 'load_balancer',
@@ -68,6 +114,28 @@ export const componentTypes: ComponentTypeConfig[] = [
       required: ['cache_ttl'],
     },
     primaryFields: ['cache_ttl', 'origin_protocol'],
+  },
+  {
+    key: 'dns',
+    label: 'DNS',
+    category: 'Traffic',
+    icon: 'Globe2',
+    description: 'DNS resolver for domain name resolution',
+    defaultConfig: { provider: 'Route53', ttl: 300 },
+    configFields: [
+      { key: 'provider', label: 'Provider', type: 'select', options: ['Route53', 'CloudFlare', 'Custom'], defaultValue: 'Route53' },
+      { key: 'ttl', label: 'TTL (s)', type: 'number', defaultValue: 300 },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        provider: { type: 'string', enum: ['Route53', 'CloudFlare', 'Custom'], default: 'Route53', description: 'DNS provider' },
+        ttl: { type: 'integer', minimum: 60, maximum: 86400, default: 300, description: 'DNS record TTL in seconds' },
+        geolocation: { type: 'boolean', default: false, description: 'Enable geo-based routing' },
+      },
+      required: ['provider', 'ttl'],
+    },
+    primaryFields: ['provider', 'ttl'],
   },
 
   // --- Compute ---
@@ -150,11 +218,11 @@ export const componentTypes: ComponentTypeConfig[] = [
     primaryFields: ['runtime', 'memory', 'timeout'],
   },
 
-  // --- Storage ---
+  // --- Databases ---
   {
     key: 'postgres',
     label: 'PostgreSQL',
-    category: 'Storage',
+    category: 'Databases',
     icon: 'Database',
     description: 'Relational database with ACID transactions',
     defaultConfig: { storage: '100GB', replicas: 1, mode: 'single' },
@@ -180,7 +248,7 @@ export const componentTypes: ComponentTypeConfig[] = [
   {
     key: 'object_storage',
     label: 'Object Storage',
-    category: 'Storage',
+    category: 'Databases',
     icon: 'HardDrive',
     description: 'S3-compatible object/blob storage',
     defaultConfig: { versioning: false },
@@ -199,6 +267,98 @@ export const componentTypes: ComponentTypeConfig[] = [
       required: ['versioning'],
     },
     primaryFields: ['storage_class', 'versioning'],
+  },
+  {
+    key: 'mysql',
+    label: 'MySQL',
+    category: 'Databases',
+    icon: 'Database',
+    description: 'MySQL relational database',
+    defaultConfig: { storage: '100GB', replicas: 1 },
+    configFields: [
+      { key: 'storage', label: 'Storage', type: 'select', options: ['10GB', '50GB', '100GB', '500GB', '1TB'], defaultValue: '100GB' },
+      { key: 'replicas', label: 'Replicas', type: 'number', defaultValue: 1 },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        storage: { type: 'string', enum: ['10GB', '50GB', '100GB', '500GB', '1TB'], default: '100GB', description: 'Storage capacity' },
+        replicas: { type: 'integer', minimum: 1, maximum: 10, default: 1, description: 'Number of replicas' },
+        engine_version: { type: 'string', default: '8.0', description: 'MySQL engine version' },
+        connection_pool_size: { type: 'integer', minimum: 10, maximum: 1000, default: 100, description: 'Maximum connection pool size' },
+      },
+      required: ['storage', 'replicas'],
+    },
+    primaryFields: ['replicas', 'storage'],
+  },
+  {
+    key: 'mongodb',
+    label: 'MongoDB',
+    category: 'Databases',
+    icon: 'Database',
+    description: 'MongoDB document store',
+    defaultConfig: { storage: '100GB', shards: 1 },
+    configFields: [
+      { key: 'storage', label: 'Storage', type: 'select', options: ['10GB', '50GB', '100GB', '500GB', '1TB'], defaultValue: '100GB' },
+      { key: 'shards', label: 'Shards', type: 'number', defaultValue: 1 },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        storage: { type: 'string', enum: ['10GB', '50GB', '100GB', '500GB', '1TB'], default: '100GB', description: 'Storage capacity' },
+        shards: { type: 'integer', minimum: 1, maximum: 50, default: 1, description: 'Number of shards' },
+        replicas_per_shard: { type: 'integer', minimum: 1, maximum: 7, default: 3, description: 'Replicas per shard' },
+        engine_version: { type: 'string', default: '7.0', description: 'MongoDB engine version' },
+      },
+      required: ['storage', 'shards'],
+    },
+    primaryFields: ['shards', 'storage'],
+  },
+  {
+    key: 'cassandra',
+    label: 'Cassandra',
+    category: 'Databases',
+    icon: 'Database',
+    description: 'Cassandra wide-column store',
+    defaultConfig: { nodes: 3, replication_factor: 3 },
+    configFields: [
+      { key: 'nodes', label: 'Nodes', type: 'number', defaultValue: 3 },
+      { key: 'replication_factor', label: 'Replication Factor', type: 'number', defaultValue: 3 },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        nodes: { type: 'integer', minimum: 1, maximum: 100, default: 3, description: 'Number of nodes in cluster' },
+        replication_factor: { type: 'integer', minimum: 1, maximum: 5, default: 3, description: 'Data replication factor' },
+        consistency_level: { type: 'string', enum: ['ONE', 'QUORUM', 'ALL'], default: 'QUORUM', description: 'Read/write consistency level' },
+        storage_per_node: { type: 'string', enum: ['100GB', '500GB', '1TB', '2TB'], default: '500GB', description: 'Storage per node' },
+      },
+      required: ['nodes', 'replication_factor'],
+    },
+    primaryFields: ['nodes', 'replication_factor'],
+  },
+  {
+    key: 'dynamodb',
+    label: 'DynamoDB',
+    category: 'Databases',
+    icon: 'Database',
+    description: 'DynamoDB key-value store',
+    defaultConfig: { capacity_mode: 'on-demand' },
+    configFields: [
+      { key: 'capacity_mode', label: 'Capacity Mode', type: 'select', options: ['on-demand', 'provisioned'], defaultValue: 'on-demand' },
+      { key: 'read_capacity', label: 'Read Capacity', type: 'number', defaultValue: 5 },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        capacity_mode: { type: 'string', enum: ['on-demand', 'provisioned'], default: 'on-demand', description: 'Capacity mode' },
+        read_capacity: { type: 'integer', minimum: 1, maximum: 40000, default: 5, description: 'Read capacity units (provisioned mode)' },
+        write_capacity: { type: 'integer', minimum: 1, maximum: 40000, default: 5, description: 'Write capacity units (provisioned mode)' },
+        stream_enabled: { type: 'boolean', default: false, description: 'Enable DynamoDB Streams' },
+      },
+      required: ['capacity_mode'],
+    },
+    primaryFields: ['capacity_mode', 'read_capacity'],
   },
 
   // --- Caching ---
@@ -225,6 +385,150 @@ export const componentTypes: ComponentTypeConfig[] = [
       required: ['memory', 'ttl'],
     },
     primaryFields: ['memory', 'eviction_policy'],
+  },
+
+  // --- Search & Analytics ---
+  {
+    key: 'elasticsearch',
+    label: 'Elasticsearch',
+    category: 'Search & Analytics',
+    icon: 'Search',
+    description: 'Elasticsearch full-text search engine',
+    defaultConfig: { nodes: 3, storage: '500GB' },
+    configFields: [
+      { key: 'nodes', label: 'Nodes', type: 'number', defaultValue: 3 },
+      { key: 'storage', label: 'Storage', type: 'select', options: ['100GB', '500GB', '1TB', '5TB'], defaultValue: '500GB' },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        nodes: { type: 'integer', minimum: 1, maximum: 50, default: 3, description: 'Number of cluster nodes' },
+        storage: { type: 'string', enum: ['100GB', '500GB', '1TB', '5TB'], default: '500GB', description: 'Total storage capacity' },
+        shards: { type: 'integer', minimum: 1, maximum: 100, default: 5, description: 'Number of primary shards' },
+        replicas: { type: 'integer', minimum: 0, maximum: 5, default: 1, description: 'Number of replicas per shard' },
+      },
+      required: ['nodes', 'storage'],
+    },
+    primaryFields: ['nodes', 'storage'],
+  },
+  {
+    key: 'data_warehouse',
+    label: 'Data Warehouse',
+    category: 'Search & Analytics',
+    icon: 'Warehouse',
+    description: 'Data warehouse / OLAP system',
+    defaultConfig: { storage: '1TB', compute: 'Medium' },
+    configFields: [
+      { key: 'storage', label: 'Storage', type: 'select', options: ['500GB', '1TB', '5TB', '10TB'], defaultValue: '1TB' },
+      { key: 'compute', label: 'Compute', type: 'select', options: ['Small', 'Medium', 'Large', 'X-Large'], defaultValue: 'Medium' },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        storage: { type: 'string', enum: ['500GB', '1TB', '5TB', '10TB'], default: '1TB', description: 'Storage capacity' },
+        compute: { type: 'string', enum: ['Small', 'Medium', 'Large', 'X-Large'], default: 'Medium', description: 'Compute cluster size' },
+        warehouse_type: { type: 'string', enum: ['Snowflake', 'Redshift', 'BigQuery'], default: 'Snowflake', description: 'Warehouse platform' },
+        auto_suspend: { type: 'boolean', default: true, description: 'Auto-suspend when idle' },
+      },
+      required: ['storage', 'compute'],
+    },
+    primaryFields: ['compute', 'storage'],
+  },
+
+  // --- ML / AI ---
+  {
+    key: 'ml_model',
+    label: 'ML Model',
+    category: 'ML / AI',
+    icon: 'Brain',
+    description: 'ML model serving endpoint',
+    defaultConfig: { framework: 'PyTorch', accelerator: 'GPU' },
+    configFields: [
+      { key: 'framework', label: 'Framework', type: 'select', options: ['PyTorch', 'TensorFlow', 'ONNX', 'Custom'], defaultValue: 'PyTorch' },
+      { key: 'accelerator', label: 'Accelerator', type: 'select', options: ['CPU', 'GPU', 'TPU'], defaultValue: 'GPU' },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        framework: { type: 'string', enum: ['PyTorch', 'TensorFlow', 'ONNX', 'Custom'], default: 'PyTorch', description: 'ML framework' },
+        accelerator: { type: 'string', enum: ['CPU', 'GPU', 'TPU'], default: 'GPU', description: 'Hardware accelerator' },
+        replicas: { type: 'integer', minimum: 1, maximum: 20, default: 2, description: 'Number of model instances' },
+        batch_size: { type: 'integer', minimum: 1, maximum: 128, default: 8, description: 'Inference batch size' },
+      },
+      required: ['framework', 'accelerator'],
+    },
+    primaryFields: ['framework', 'accelerator'],
+  },
+  {
+    key: 'vector_db',
+    label: 'Vector Database',
+    category: 'ML / AI',
+    icon: 'Waypoints',
+    description: 'Vector database for embeddings',
+    defaultConfig: { dimensions: 1536, index_type: 'HNSW' },
+    configFields: [
+      { key: 'dimensions', label: 'Dimensions', type: 'number', defaultValue: 1536 },
+      { key: 'index_type', label: 'Index Type', type: 'select', options: ['HNSW', 'IVF', 'Flat'], defaultValue: 'HNSW' },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        dimensions: { type: 'integer', minimum: 128, maximum: 4096, default: 1536, description: 'Vector dimensions' },
+        index_type: { type: 'string', enum: ['HNSW', 'IVF', 'Flat'], default: 'HNSW', description: 'Indexing algorithm' },
+        similarity_metric: { type: 'string', enum: ['cosine', 'euclidean', 'dot'], default: 'cosine', description: 'Similarity metric' },
+        storage: { type: 'string', enum: ['10GB', '50GB', '100GB', '500GB'], default: '100GB', description: 'Storage capacity' },
+      },
+      required: ['dimensions', 'index_type'],
+    },
+    primaryFields: ['dimensions', 'index_type'],
+  },
+
+  // --- Observability ---
+  {
+    key: 'logging',
+    label: 'Logging',
+    category: 'Observability',
+    icon: 'FileText',
+    description: 'Centralized logging (ELK, Datadog)',
+    defaultConfig: { retention: '30d', storage: '500GB' },
+    configFields: [
+      { key: 'retention', label: 'Retention', type: 'select', options: ['7d', '30d', '90d', '1y'], defaultValue: '30d' },
+      { key: 'storage', label: 'Storage', type: 'select', options: ['100GB', '500GB', '1TB', '5TB'], defaultValue: '500GB' },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        retention: { type: 'string', enum: ['7d', '30d', '90d', '1y'], default: '30d', description: 'Log retention period' },
+        storage: { type: 'string', enum: ['100GB', '500GB', '1TB', '5TB'], default: '500GB', description: 'Storage capacity' },
+        ingestion_rate: { type: 'string', default: '1GB/day', description: 'Expected log ingestion rate' },
+        provider: { type: 'string', enum: ['ELK', 'Datadog', 'CloudWatch', 'Custom'], default: 'ELK', description: 'Logging provider' },
+      },
+      required: ['retention', 'storage'],
+    },
+    primaryFields: ['retention', 'storage'],
+  },
+  {
+    key: 'metrics',
+    label: 'Metrics',
+    category: 'Observability',
+    icon: 'Activity',
+    description: 'Metrics & monitoring (Prometheus, Grafana)',
+    defaultConfig: { scrape_interval: 15, retention: '30d' },
+    configFields: [
+      { key: 'scrape_interval', label: 'Scrape Interval (s)', type: 'number', defaultValue: 15 },
+      { key: 'retention', label: 'Retention', type: 'select', options: ['7d', '30d', '90d', '1y'], defaultValue: '30d' },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        scrape_interval: { type: 'integer', minimum: 5, maximum: 300, default: 15, description: 'Metrics scrape interval in seconds' },
+        retention: { type: 'string', enum: ['7d', '30d', '90d', '1y'], default: '30d', description: 'Metrics retention period' },
+        storage: { type: 'string', enum: ['50GB', '100GB', '500GB', '1TB'], default: '100GB', description: 'Storage capacity' },
+        provider: { type: 'string', enum: ['Prometheus', 'Datadog', 'CloudWatch', 'Custom'], default: 'Prometheus', description: 'Metrics provider' },
+      },
+      required: ['scrape_interval', 'retention'],
+    },
+    primaryFields: ['scrape_interval', 'retention'],
   },
 
   // --- Messaging ---
@@ -275,6 +579,29 @@ export const componentTypes: ComponentTypeConfig[] = [
     },
     primaryFields: ['max_connections', 'heartbeat_interval'],
   },
+  {
+    key: 'message_queue',
+    label: 'Message Queue',
+    category: 'Messaging',
+    icon: 'Inbox',
+    description: 'General message queue (RabbitMQ, SQS)',
+    defaultConfig: { queue_type: 'RabbitMQ', max_size: 10000 },
+    configFields: [
+      { key: 'queue_type', label: 'Queue Type', type: 'select', options: ['RabbitMQ', 'SQS', 'Azure Queue'], defaultValue: 'RabbitMQ' },
+      { key: 'max_size', label: 'Max Size', type: 'number', defaultValue: 10000 },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        queue_type: { type: 'string', enum: ['RabbitMQ', 'SQS', 'Azure Queue'], default: 'RabbitMQ', description: 'Queue implementation' },
+        max_size: { type: 'integer', minimum: 100, maximum: 1000000, default: 10000, description: 'Maximum queue size' },
+        retention: { type: 'string', enum: ['1h', '6h', '1d', '7d'], default: '1d', description: 'Message retention period' },
+        delivery_mode: { type: 'string', enum: ['at-least-once', 'at-most-once', 'exactly-once'], default: 'at-least-once', description: 'Delivery guarantee' },
+      },
+      required: ['queue_type', 'max_size'],
+    },
+    primaryFields: ['queue_type', 'max_size'],
+  },
 
   // --- External ---
   {
@@ -300,6 +627,52 @@ export const componentTypes: ComponentTypeConfig[] = [
       required: ['base_url', 'timeout'],
     },
     primaryFields: ['base_url', 'auth_type'],
+  },
+  {
+    key: 'payment_gateway',
+    label: 'Payment Gateway',
+    category: 'External',
+    icon: 'CreditCard',
+    description: 'Payment processor (Stripe, PayPal)',
+    defaultConfig: { provider: 'Stripe' },
+    configFields: [
+      { key: 'provider', label: 'Provider', type: 'select', options: ['Stripe', 'PayPal', 'Square', 'Braintree'], defaultValue: 'Stripe' },
+      { key: 'mode', label: 'Mode', type: 'select', options: ['test', 'live'], defaultValue: 'test' },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        provider: { type: 'string', enum: ['Stripe', 'PayPal', 'Square', 'Braintree'], default: 'Stripe', description: 'Payment provider' },
+        mode: { type: 'string', enum: ['test', 'live'], default: 'test', description: 'API mode' },
+        currencies: { type: 'array', items: { type: 'string' }, default: ['USD'], description: 'Supported currencies' },
+        webhook_enabled: { type: 'boolean', default: true, description: 'Enable payment webhooks' },
+      },
+      required: ['provider', 'mode'],
+    },
+    primaryFields: ['provider', 'mode'],
+  },
+  {
+    key: 'auth_provider',
+    label: 'Auth Provider',
+    category: 'External',
+    icon: 'Shield',
+    description: 'Auth/identity provider (OAuth, Auth0)',
+    defaultConfig: { provider: 'Auth0', protocol: 'OAuth2' },
+    configFields: [
+      { key: 'provider', label: 'Provider', type: 'select', options: ['Auth0', 'Okta', 'Firebase', 'Cognito'], defaultValue: 'Auth0' },
+      { key: 'protocol', label: 'Protocol', type: 'select', options: ['OAuth2', 'SAML', 'OpenID'], defaultValue: 'OAuth2' },
+    ],
+    configSchema: {
+      type: 'object',
+      properties: {
+        provider: { type: 'string', enum: ['Auth0', 'Okta', 'Firebase', 'Cognito'], default: 'Auth0', description: 'Identity provider' },
+        protocol: { type: 'string', enum: ['OAuth2', 'SAML', 'OpenID'], default: 'OAuth2', description: 'Authentication protocol' },
+        mfa_enabled: { type: 'boolean', default: false, description: 'Enable multi-factor authentication' },
+        session_timeout: { type: 'integer', minimum: 300, maximum: 86400, default: 3600, description: 'Session timeout in seconds' },
+      },
+      required: ['provider', 'protocol'],
+    },
+    primaryFields: ['provider', 'protocol'],
   },
 ];
 

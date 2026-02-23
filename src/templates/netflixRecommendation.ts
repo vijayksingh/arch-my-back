@@ -30,7 +30,7 @@ export const netflixRecommendationTemplate: DesignTemplate = {
       type: 'archComponent',
       position: { x: 50, y: 50 },
       data: {
-        componentType: 'external_api',
+        componentType: 'client_browser',
         label: 'Web Client',
         config: { base_url: 'https://www.netflix.com', timeout: 5000 },
       },
@@ -40,7 +40,7 @@ export const netflixRecommendationTemplate: DesignTemplate = {
       type: 'archComponent',
       position: { x: 250, y: 50 },
       data: {
-        componentType: 'external_api',
+        componentType: 'client_mobile',
         label: 'Mobile App',
         config: { base_url: 'https://api.netflix.com', timeout: 5000 },
       },
@@ -50,7 +50,7 @@ export const netflixRecommendationTemplate: DesignTemplate = {
       type: 'archComponent',
       position: { x: 450, y: 50 },
       data: {
-        componentType: 'external_api',
+        componentType: 'client_mobile',
         label: 'Smart TV',
         config: { base_url: 'https://api.netflix.com', timeout: 5000 },
       },

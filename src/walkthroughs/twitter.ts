@@ -136,7 +136,7 @@ Before we dive into solutions, put yourself in the architect's seat. How would Y
             type: 'archComponent',
             position: { x: 100, y: 100 },
             data: {
-              componentType: 'external_api',
+              componentType: 'client_browser',
               label: 'User',
               config: {},
             },

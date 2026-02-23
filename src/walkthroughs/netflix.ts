@@ -123,7 +123,7 @@ Before we dive into solutions, put yourself in the architect's seat. How would Y
             type: 'archComponent',
             position: { x: 100, y: 100 },
             data: {
-              componentType: 'external_api',
+              componentType: 'client_browser',
               label: 'User',
               config: {},
             },
@@ -145,11 +145,7 @@ Before we dive into solutions, put yourself in the architect's seat. How would Y
           highlight: true,
         },
       ],
-      userAction: {
-        type: 'click-node',
-        nodeId: 'server-simple',
-      },
-      nextCondition: 'action-complete',
+      nextCondition: 'click-next',
     },
 
     {
@@ -202,11 +198,7 @@ Take the quiz below—there are no wrong answers, but your choice will shape how
           multiSelect: false,
         },
       ],
-      userAction: {
-        type: 'answer-quiz',
-        correctAnswerIds: ['scale', 'personalization', 'cold-start', 'freshness'],
-      },
-      nextCondition: 'quiz-correct',
+      nextCondition: 'click-next',
     },
 
     // ========== PHASE 2: NAIVE APPROACH (15 min) ==========
@@ -644,11 +636,6 @@ Each strategy runs independently as a **candidate generator**, producing ~500 ca
           },
         },
       ],
-      userAction: {
-        type: 'click-node',
-        nodeId: 'redis-cache',
-      },
-      nextCondition: 'action-complete',
       widgets: [
         {
           type: 'quiz',

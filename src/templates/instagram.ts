@@ -21,7 +21,7 @@ export const instagramTemplate: DesignTemplate = {
       type: 'archComponent',
       position: { x: 50, y: 50 },
       data: {
-        componentType: 'client',
+        componentType: 'client_mobile',
         label: 'Mobile App',
         config: {},
       },
@@ -31,7 +31,7 @@ export const instagramTemplate: DesignTemplate = {
       type: 'archComponent',
       position: { x: 250, y: 50 },
       data: {
-        componentType: 'client',
+        componentType: 'client_browser',
         label: 'Web Client',
         config: {},
       },

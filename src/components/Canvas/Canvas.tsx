@@ -9,36 +9,17 @@ import {
   BackgroundVariant,
   useReactFlow,
 } from '@xyflow/react';
-import type { EdgeTypes, Node, NodeTypes, XYPosition, Connection, Edge } from '@xyflow/react';
+import type { Node, XYPosition, Connection, Edge } from '@xyflow/react';
 import type { CanvasNode, CanvasShapeKind } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useWidgetStore } from '@/widgets/store/widgetStore';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { categoryColors } from '@/registry/categoryThemes';
+import { designNodeTypes, archEdgeTypes } from '@/registry/flowNodeTypes';
 import { cn } from '@/lib/utils';
-import { isConnectionValid } from '@/lib/connectionRules';
-import ArchNodeComponent from './ArchNode';
-import ArchEdge from './ArchEdge';
-import ShapeNode from './ShapeNode';
-import SectionBadgeNode from './SectionBadgeNode';
-import CollapsibleGroupNode from './CollapsibleGroupNode';
+import { validateArchConnection } from '@/lib/connectionRules';
 import { SelectionActionBar } from './SelectionActionBar';
-import WidgetNode from '@/widgets/canvas/WidgetNode';
-
-const nodeTypes: NodeTypes = {
-  archComponent: ArchNodeComponent,
-  shapeRect: ShapeNode,
-  shapeCircle: ShapeNode,
-  shapeText: ShapeNode,
-  sectionBadge: SectionBadgeNode,
-  collapsibleGroup: CollapsibleGroupNode,
-  widgetNode: WidgetNode as any,
-};
-
-const edgeTypes: EdgeTypes = {
-  archEdge: ArchEdge,
-};
 
 const DRAG_DATA_TYPE = 'application/archcomponent';
 const WIDGET_DRAG_DATA_TYPE = 'application/widget';
@@ -245,21 +226,7 @@ export default function Canvas() {
 
   const isValidConnection = useCallback(
     (connection: Connection | Edge) => {
-      // Get source and target nodes to determine their types
-      const sourceNode = nodes.find((n) => n.id === connection.source);
-      const targetNode = nodes.find((n) => n.id === connection.target);
-
-      // Only validate arch component connections (not shapes, badges, etc.)
-      if (sourceNode?.type === 'archComponent' && targetNode?.type === 'archComponent') {
-        const sourceType = sourceNode.data.componentType;
-        const targetType = targetNode.data.componentType;
-
-        const validation = isConnectionValid(sourceType, targetType);
-        return validation.valid;
-      }
-
-      // Allow all other connection types (shapes, badges, etc.)
-      return true;
+      return validateArchConnection(nodes, connection).valid;
     },
     [nodes]
   );
@@ -302,8 +269,8 @@ export default function Canvas() {
         onSelectionChange={onSelectionChange}
         onDragOver={onDragOver}
         onDrop={onDrop}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
+        nodeTypes={designNodeTypes}
+        edgeTypes={archEdgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
         snapToGrid
         snapGrid={[20, 20]}

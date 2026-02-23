@@ -2,10 +2,6 @@
  * CanvasPanel - Right side of walkthrough with interactive canvas
  */
 
-import ArchEdge from '@/components/Canvas/ArchEdge';
-import ArchNode from '@/components/Canvas/ArchNode';
-import SectionBadgeNode from '@/components/Canvas/SectionBadgeNode';
-import ShapeNode from '@/components/Canvas/ShapeNode';
 import {
   Background,
   ConnectionMode,
@@ -19,20 +15,8 @@ import {
   type Node,
 } from '@xyflow/react';
 import { useCallback, useEffect, useMemo } from 'react';
-import { isConnectionValid } from '@/lib/connectionRules';
-
-const nodeTypes = {
-  archComponent: ArchNode,
-  shapeRect: ShapeNode,
-  shapeCircle: ShapeNode,
-  shapeText: ShapeNode,
-  sectionBadge: SectionBadgeNode,
-};
-
-const edgeTypes = {
-  archEdge: ArchEdge,
-  default: ArchEdge,
-};
+import { baseNodeTypes, archEdgeTypes } from '@/registry/flowNodeTypes';
+import { validateArchConnection } from '@/lib/connectionRules';
 
 function CanvasEffects({ highlightedNodeIds, nodesCount }: { highlightedNodeIds: string[], nodesCount: number }) {
   const { fitView } = useReactFlow();
@@ -100,26 +84,7 @@ export function CanvasPanel({
   // Validate connections in walkthrough mode
   const handleIsValidConnection = useCallback(
     (connection: Connection | Edge) => {
-      // Prevent self-loops
-      if (connection.source === connection.target) {
-        return false;
-      }
-
-      // Get source and target nodes to determine their types
-      const sourceNode = nodes.find((n) => n.id === connection.source);
-      const targetNode = nodes.find((n) => n.id === connection.target);
-
-      // Only validate arch component connections (not shapes, badges, etc.)
-      if (sourceNode?.type === 'archComponent' && targetNode?.type === 'archComponent') {
-        const sourceType = sourceNode.data.componentType as string;
-        const targetType = targetNode.data.componentType as string;
-
-        const validation = isConnectionValid(sourceType, targetType);
-        return validation.valid;
-      }
-
-      // Allow all other connection types (shapes, badges, etc.)
-      return true;
+      return validateArchConnection(nodes, connection).valid;
     },
     [nodes]
   );
@@ -130,8 +95,8 @@ export function CanvasPanel({
         <ReactFlow
           nodes={displayNodes}
           edges={displayEdges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
+          nodeTypes={baseNodeTypes}
+          edgeTypes={archEdgeTypes}
           connectionMode={ConnectionMode.Loose}
           fitView
           minZoom={0.1}

@@ -8,6 +8,7 @@ import { categoryGlows, categoryAccentTokens } from '@/registry/categoryThemes';
 
 function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
   const [isHovered, setIsHovered] = useState(false);
+  const isHighlighted = data.highlighted ?? false;
   const typeDef = componentTypeMap.get(data.componentType);
   const IconComponent = getIconByName(typeDef?.icon ?? '');
   const glowColor = typeDef ? categoryGlows[typeDef.category] : categoryGlows.External;
@@ -28,11 +29,13 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
     : isHovered
       ? 'var(--node-border-hover)'
       : 'var(--node-border)';
-  const boxShadow = selected
-    ? `var(--node-selected-shadow), 0 0 14px ${glowColor}`
-    : isHovered
-      ? `var(--node-hover-shadow), 0 0 10px ${glowColor}`
-      : 'var(--node-shadow)';
+  const boxShadow = isHighlighted
+    ? `var(--node-selected-shadow), 0 0 16px 4px ${glowColor}`
+    : selected
+      ? `var(--node-selected-shadow), 0 0 14px ${glowColor}`
+      : isHovered
+        ? `var(--node-hover-shadow), 0 0 10px ${glowColor}`
+        : 'var(--node-shadow)';
   const transform = selected
     ? 'scale(var(--node-selected-scale))'
     : isHovered
@@ -61,7 +64,7 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
         style={{
           backgroundColor: 'var(--node-handle)',
           borderColor: 'var(--node-handle-border)',
-          opacity: isHovered || selected ? 1 : 0,
+          opacity: isHovered || selected ? 1 : 0.3,
         }}
       />
 
@@ -104,7 +107,7 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
         style={{
           backgroundColor: 'var(--node-handle)',
           borderColor: 'var(--node-handle-border)',
-          opacity: isHovered || selected ? 1 : 0,
+          opacity: isHovered || selected ? 1 : 0.3,
         }}
       />
     </div>

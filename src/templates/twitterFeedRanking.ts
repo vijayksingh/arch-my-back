@@ -526,7 +526,7 @@ export const twitterFeedRankingTemplate: DesignTemplate = {
       type: 'archComponent',
       position: { x: 50, y: 50 },
       data: {
-        componentType: 'external_api',
+        componentType: 'client_browser',
         label: 'User Device',
         config: {},
       },
@@ -674,7 +674,7 @@ export const twitterFeedRankingTemplate: DesignTemplate = {
       type: 'archComponent',
       position: { x: 1050, y: 100 },
       data: {
-        componentType: 'graph_db',
+        componentType: 'cassandra',
         label: 'User Graph DB',
         config: {},
       },

@@ -14,12 +14,16 @@ import type { CanvasTool, ComponentCategory } from '@/types';
 import { ComponentCard } from './ComponentCard';
 
 const categoryOrder: ComponentCategory[] = [
+  'Clients',
   'Traffic',
   'Compute',
-  'Storage',
-  'Messaging',
+  'Databases',
   'Caching',
+  'Search & Analytics',
+  'ML / AI',
+  'Observability',
   'External',
+  'Messaging',
 ];
 
 const railItems: { id: RailSection; label: string; icon: LucideIcon }[] = [

@@ -10,7 +10,7 @@ export const iotPipelineTemplate: DesignTemplate = {
       type: 'archComponent',
       position: { x: 50, y: 50 },
       data: {
-        componentType: 'external_api',
+        componentType: 'client_mobile',
         label: 'IoT Devices',
         config: {},
       },

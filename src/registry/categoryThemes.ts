@@ -10,12 +10,16 @@ import type { ComponentCategory } from '@/types';
  * Use with: `hsl(var(${token}))`
  */
 export const categoryAccentTokens: Record<ComponentCategory, string> = {
+  Clients: '--category-clients-accent',
   Traffic: '--category-traffic-accent',
   Compute: '--category-compute-accent',
-  Storage: '--category-storage-accent',
-  Messaging: '--category-messaging-accent',
+  Databases: '--category-databases-accent',
   Caching: '--category-caching-accent',
+  'Search & Analytics': '--category-search-accent',
+  'ML / AI': '--category-ml-accent',
+  Observability: '--category-observability-accent',
   External: '--category-external-accent',
+  Messaging: '--category-messaging-accent',
 };
 
 /**
@@ -23,12 +27,16 @@ export const categoryAccentTokens: Record<ComponentCategory, string> = {
  * Use directly as: `var(${glow})`
  */
 export const categoryGlows: Record<ComponentCategory, string> = {
+  Clients: 'var(--glow-clients)',
   Traffic: 'var(--glow-traffic)',
   Compute: 'var(--glow-compute)',
-  Storage: 'var(--glow-storage)',
-  Messaging: 'var(--glow-messaging)',
+  Databases: 'var(--glow-databases)',
   Caching: 'var(--glow-caching)',
+  'Search & Analytics': 'var(--glow-search)',
+  'ML / AI': 'var(--glow-ml)',
+  Observability: 'var(--glow-observability)',
   External: 'var(--glow-external)',
+  Messaging: 'var(--glow-messaging)',
 };
 
 /**
@@ -36,12 +44,16 @@ export const categoryGlows: Record<ComponentCategory, string> = {
  * Use directly in styles or minimap colors.
  */
 export const categoryColors: Record<ComponentCategory, string> = {
+  Clients: 'hsl(var(--category-clients-accent))',
   Traffic: 'hsl(var(--category-traffic-accent))',
   Compute: 'hsl(var(--category-compute-accent))',
-  Storage: 'hsl(var(--category-storage-accent))',
-  Messaging: 'hsl(var(--category-messaging-accent))',
+  Databases: 'hsl(var(--category-databases-accent))',
   Caching: 'hsl(var(--category-caching-accent))',
+  'Search & Analytics': 'hsl(var(--category-search-accent))',
+  'ML / AI': 'hsl(var(--category-ml-accent))',
+  Observability: 'hsl(var(--category-observability-accent))',
   External: 'hsl(var(--category-external-accent))',
+  Messaging: 'hsl(var(--category-messaging-accent))',
 };
 
 /**

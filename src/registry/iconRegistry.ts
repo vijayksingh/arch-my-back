@@ -3,6 +3,7 @@ import {
   Scale,
   Router,
   Globe,
+  Globe2,
   Server,
   Cog,
   Zap,
@@ -13,6 +14,17 @@ import {
   Plug,
   ExternalLink,
   Box,
+  Monitor,
+  Smartphone,
+  Search,
+  Warehouse,
+  Brain,
+  Waypoints,
+  FileText,
+  Activity,
+  Inbox,
+  CreditCard,
+  Shield,
 } from 'lucide-react';
 
 /**
@@ -23,6 +35,7 @@ export const iconMap: Record<string, LucideIcon> = {
   Scale,
   Router,
   Globe,
+  Globe2,
   Server,
   Cog,
   Zap,
@@ -32,6 +45,17 @@ export const iconMap: Record<string, LucideIcon> = {
   ArrowRightLeft,
   Plug,
   ExternalLink,
+  Monitor,
+  Smartphone,
+  Search,
+  Warehouse,
+  Brain,
+  Waypoints,
+  FileText,
+  Activity,
+  Inbox,
+  CreditCard,
+  Shield,
 };
 
 /**

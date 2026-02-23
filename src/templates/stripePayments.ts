@@ -38,7 +38,7 @@ export const stripePaymentsTemplate: DesignTemplate = {
       type: 'archComponent',
       position: { x: 50, y: 50 },
       data: {
-        componentType: 'app_server',
+        componentType: 'client_browser',
         label: 'Web Client',
         config: {
           description: 'E-commerce website with Stripe.js integration',
@@ -50,7 +50,7 @@ export const stripePaymentsTemplate: DesignTemplate = {
       type: 'archComponent',
       position: { x: 50, y: 200 },
       data: {
-        componentType: 'app_server',
+        componentType: 'client_mobile',
         label: 'Mobile App',
         config: {
           description: 'iOS/Android with Stripe mobile SDK',

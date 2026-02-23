@@ -61,7 +61,7 @@ describe('Sidebar', () => {
     // Assert: Component category names are visible
     expect(screen.getByText('Traffic')).toBeInTheDocument();
     expect(screen.getByText('Compute')).toBeInTheDocument();
-    expect(screen.getByText('Storage')).toBeInTheDocument();
+    expect(screen.getByText('Databases')).toBeInTheDocument();
   });
 
   it('filters components when user types in search', async () => {

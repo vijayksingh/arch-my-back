@@ -21,6 +21,7 @@ import type {
 } from '@/types';
 import type { CanvasSection } from '@/types/design';
 import { componentTypeMap } from '@/registry/componentTypes';
+import { validateArchConnection } from '@/lib/connectionRules';
 
 let sectionIdCounter = 0;
 
@@ -174,6 +175,20 @@ export const useCanvasStore = create<CanvasStore>()(
   },
 
   onConnect: (connection: Connection) => {
+    const nodes = get().nodes;
+    const validation = validateArchConnection(nodes, connection);
+
+    if (!validation.valid) {
+      // Block the connection - show warning in console
+      console.warn(`Connection blocked: ${validation.warning || 'Invalid connection'}`);
+      return;
+    }
+
+    if (validation.warning) {
+      // Allow connection but show warning
+      console.warn(`Connection warning: ${validation.warning}`);
+    }
+
     const newEdge: ArchEdge = {
       ...connection,
       id: `edge_${connection.source}_${connection.target}`,

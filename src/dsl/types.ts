@@ -51,15 +51,34 @@ export interface ComponentDecl {
 }
 
 export type ComponentType =
-  | 'cdn'
-  | 'waf'
+  | 'client_browser'
+  | 'client_mobile'
+  | 'load_balancer'
   | 'api_gateway'
+  | 'cdn'
+  | 'dns'
   | 'app_server'
   | 'worker'
+  | 'serverless'
   | 'postgres'
-  | 'cache'
   | 'object_storage'
-  | 'event_stream';
+  | 'mysql'
+  | 'mongodb'
+  | 'cassandra'
+  | 'dynamodb'
+  | 'redis'
+  | 'elasticsearch'
+  | 'data_warehouse'
+  | 'ml_model'
+  | 'vector_db'
+  | 'logging'
+  | 'metrics'
+  | 'kafka'
+  | 'websocket'
+  | 'message_queue'
+  | 'external_api'
+  | 'payment_gateway'
+  | 'auth_provider';
 
 export interface PropertyBlock {
   type: 'PropertyBlock';

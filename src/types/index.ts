@@ -3,12 +3,16 @@ import type { Node, Edge } from '@xyflow/react';
 // --- Component Registry Types ---
 
 export type ComponentCategory =
+  | 'Clients'
   | 'Traffic'
   | 'Compute'
-  | 'Storage'
-  | 'Messaging'
+  | 'Databases'
   | 'Caching'
-  | 'External';
+  | 'Search & Analytics'
+  | 'ML / AI'
+  | 'Observability'
+  | 'External'
+  | 'Messaging';
 
 export interface ComponentTypeConfig {
   key: string;
