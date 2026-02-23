@@ -27,7 +27,6 @@ import { useDroppable } from '@dnd-kit/core';
 interface FolderCardProps {
   folder: Doc<'folders'>;
   designCount?: number;
-  isDropTarget?: boolean;
 }
 
 export function FolderCard({ folder, designCount = 0 }: FolderCardProps) {
@@ -105,20 +104,20 @@ export function FolderCard({ folder, designCount = 0 }: FolderCardProps) {
         onClick={handleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`group relative flex flex-col items-start border-2 border-dashed p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${
+        className={`group relative flex flex-col items-start border-2 border-dashed p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${
           isOver
-            ? 'border-primary bg-primary/5 scale-[1.02]'
-            : 'border-border hover:border-accent/50'
+            ? 'border-primary bg-primary/[0.04] scale-[1.02] shadow-lg'
+            : 'border-border hover:border-border/60'
         }`}
       >
-        <div className="mb-3 flex w-full items-start justify-between gap-3">
+        <div className="flex w-full items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
             {/* Large folder icon with warm accent background */}
-            <div className="flex-shrink-0 rounded-lg bg-warning-muted p-2">
-              <FolderIcon className="h-8 w-8 text-warning" />
+            <div className="flex-shrink-0 rounded-xl bg-warning-muted p-2.5">
+              <FolderIcon className="h-7 w-7 text-warning" />
             </div>
 
-            <div className="flex-1 min-w-0 pt-1">
+            <div className="flex-1 min-w-0 pt-0.5">
               {isRenaming ? (
                 <Input
                   ref={inputRef}
@@ -128,16 +127,16 @@ export function FolderCard({ folder, designCount = 0 }: FolderCardProps) {
                   onBlur={handleSaveRename}
                   onKeyDown={handleRenameKeyDown}
                   onClick={(e) => e.stopPropagation()}
-                  className="h-7 text-sm font-medium"
+                  className="h-8 text-sm font-semibold"
                 />
               ) : (
-                <h3 className="text-sm font-medium text-foreground truncate">
+                <h3 className="text-sm font-semibold text-foreground truncate mb-2">
                   {folder.title}
                 </h3>
               )}
 
               {/* Design count badge */}
-              <div className="mt-1.5 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+              <div className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                 {designCount} {designCount === 1 ? 'design' : 'designs'}
               </div>
             </div>
@@ -148,7 +147,7 @@ export function FolderCard({ folder, designCount = 0 }: FolderCardProps) {
             <DropdownMenuTrigger asChild>
               <button
                 onClick={(e) => e.stopPropagation()}
-                className="rounded p-1 opacity-0 transition-all hover:bg-accent/10 group-hover:opacity-100 focus:opacity-100"
+                className="rounded-lg p-1.5 opacity-0 transition-all hover:bg-accent group-hover:opacity-100 focus:opacity-100"
               >
                 <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
               </button>

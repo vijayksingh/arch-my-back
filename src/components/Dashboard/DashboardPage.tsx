@@ -21,6 +21,7 @@ import { WalkthroughGrid } from './WalkthroughGrid';
 import { TemplateGallery } from './TemplateGallery';
 import { useAIGeneration } from './hooks/useAIGeneration';
 import { useDashboardDragDrop } from './hooks/useDashboardDragDrop';
+import { DashboardDndProvider } from './DashboardDndContext';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -112,7 +113,8 @@ export function DashboardPage() {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
+      <DashboardDndProvider overedFolderId={overedFolderId}>
+        <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
         {/* Header */}
         <DashboardHeader
           onCreateDesign={handleCreateDesign}
@@ -156,7 +158,6 @@ export function DashboardPage() {
                   <FolderGrid
                     folders={folders}
                     folderDesignCounts={folderDesignCounts}
-                    overedFolderId={overedFolderId}
                   />
                 )}
               </>
@@ -208,7 +209,7 @@ export function DashboardPage() {
           </div>
         </div>
 
-      {/* Folder creation dialog */}
+        {/* Folder creation dialog */}
       <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
         <DialogContent>
           <DialogHeader>
@@ -243,9 +244,10 @@ export function DashboardPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+        </div>
+      </DashboardDndProvider>
 
-    {/* Drag Overlay - shows ghost card during drag */}
+      {/* Drag Overlay - shows ghost card during drag */}
     <DragOverlay>
       {activeDesign && (
         <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-lg opacity-90">

@@ -1,16 +1,15 @@
 import { FolderCard } from './FolderCard';
-import type { Doc, Id } from '../../../convex/_generated/dataModel';
+import type { Doc } from '../../../convex/_generated/dataModel';
 
 interface FolderGridProps {
   folders: Doc<'folders'>[];
   folderDesignCounts: Map<string, number>;
-  overedFolderId: Id<'folders'> | null;
 }
 
 /**
  * Grid of folder cards with drag-and-drop support
  */
-export function FolderGrid({ folders, folderDesignCounts, overedFolderId }: FolderGridProps) {
+export function FolderGrid({ folders, folderDesignCounts }: FolderGridProps) {
   if (folders.length === 0) {
     return null;
   }
@@ -24,7 +23,6 @@ export function FolderGrid({ folders, folderDesignCounts, overedFolderId }: Fold
             key={folder._id}
             folder={folder}
             designCount={folderDesignCounts.get(folder._id) || 0}
-            isDropTarget={overedFolderId === folder._id}
           />
         ))}
       </div>
