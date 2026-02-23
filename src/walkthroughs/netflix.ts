@@ -121,7 +121,6 @@ Before we dive into solutions, put yourself in the architect's seat. How would Y
           node: {
             id: 'user-simple',
             type: 'archComponent',
-            position: { x: 100, y: 100 },
             data: {
               componentType: 'client_browser',
               label: 'User',
@@ -135,7 +134,6 @@ Before we dive into solutions, put yourself in the architect's seat. How would Y
           node: {
             id: 'server-simple',
             type: 'archComponent',
-            position: { x: 400, y: 100 },
             data: {
               componentType: 'app_server',
               label: 'Server',
@@ -143,6 +141,16 @@ Before we dive into solutions, put yourself in the architect's seat. How would Y
             },
           },
           highlight: true,
+        },
+        {
+          type: 'add-edge',
+          edge: {
+            id: 'e-user-to-server',
+            source: 'user-simple',
+            target: 'server-simple',
+            type: 'archEdge',
+            data: { label: 'Request' },
+          },
         },
       ],
       nextCondition: 'click-next',
@@ -312,6 +320,24 @@ def recommend_items(user_id, user_item_matrix, n=10):
         },
         {
           type: 'quiz',
+          mode: 'predict-output',
+          question: 'Predict the cosine similarity score between Alice and Bob given their ratings:',
+          code: `import numpy as np
+from scipy.spatial.distance import cosine
+
+# User ratings: [Stranger Things, The Crown, Breaking Bad, Ozark]
+alice = np.array([5, 4, 5, 3])
+bob = np.array([5, 4, 0, 2])
+
+similarity = 1 - cosine(alice, bob)
+print(f"{similarity:.2f}")`,
+          language: 'python',
+          inputs: 'Alice: [5, 4, 5, 3], Bob: [5, 4, 0, 2]',
+          expectedOutput: '0.95',
+          tolerance: 'whitespace',
+        },
+        {
+          type: 'quiz',
           question: 'What is the time complexity of finding similar users for ONE user?',
           options: [
             {
@@ -352,7 +378,6 @@ def recommend_items(user_id, user_item_matrix, n=10):
           node: {
             id: 'users-db',
             type: 'archComponent',
-            position: { x: 50, y: 300 },
             data: {
               componentType: 'postgres',
               label: 'Users DB',
@@ -365,7 +390,6 @@ def recommend_items(user_id, user_item_matrix, n=10):
           node: {
             id: 'simple-recommender',
             type: 'archComponent',
-            position: { x: 300, y: 200 },
             data: {
               componentType: 'app_server',
               label: 'Collaborative Filtering Engine',
@@ -378,7 +402,6 @@ def recommend_items(user_id, user_item_matrix, n=10):
           node: {
             id: 'shows-db',
             type: 'archComponent',
-            position: { x: 550, y: 300 },
             data: {
               componentType: 'postgres',
               label: 'Shows DB',
@@ -468,7 +491,7 @@ We need to **pre-compute** and **cache** results. But this creates new trade-off
         {
           type: 'add-edge',
           edge: {
-            id: 'e1',
+            id: 'e1-2',
             source: 'user-simple',
             target: 'simple-recommender',
             type: 'archEdge',
@@ -478,7 +501,7 @@ We need to **pre-compute** and **cache** results. But this creates new trade-off
         {
           type: 'add-edge',
           edge: {
-            id: 'e2',
+            id: 'e2-2',
             source: 'simple-recommender',
             target: 'users-db',
             type: 'archEdge',
@@ -488,7 +511,7 @@ We need to **pre-compute** and **cache** results. But this creates new trade-off
         {
           type: 'add-edge',
           edge: {
-            id: 'e3',
+            id: 'e3-2',
             source: 'simple-recommender',
             target: 'shows-db',
             type: 'archEdge',
@@ -497,6 +520,64 @@ We need to **pre-compute** and **cache** results. But this creates new trade-off
         },
       ],
       widgets: [
+        {
+          type: 'scale-explorer',
+          title: 'Netflix Scale: User Growth Impact',
+          parameter: {
+            name: 'Number of Users',
+            min: 1000,
+            max: 200000000,
+            unit: 'users',
+            scale: 'log',
+          },
+          metrics: [
+            {
+              name: 'Full Matrix Computation Time',
+              unit: 'ms',
+              compute: 'n * n * 0.001',
+              thresholds: {
+                warning: 60000,
+                critical: 600000,
+              },
+            },
+            {
+              name: 'User-Item Matrix Memory',
+              unit: 'GB',
+              compute: '(n * 1000 * 8) / (1024 * 1024 * 1024)',
+              thresholds: {
+                warning: 32,
+                critical: 128,
+              },
+            },
+            {
+              name: 'Recommendation Latency',
+              unit: 'ms',
+              compute: 'n * 0.01',
+              thresholds: {
+                warning: 100,
+                critical: 1000,
+              },
+            },
+          ],
+          insights: [
+            {
+              triggerValue: 100000,
+              message: 'Starting to slow: computation taking minutes instead of seconds',
+            },
+            {
+              triggerValue: 1000000,
+              message: 'Memory exceeds single server capacity (>100GB) - need distributed storage',
+            },
+            {
+              triggerValue: 10000000,
+              message: 'Latency unacceptable for real-time (>100s per request) - must pre-compute',
+            },
+            {
+              triggerValue: 100000000,
+              message: 'Completely infeasible: would take days per request - caching is mandatory',
+            },
+          ],
+        },
         {
           type: 'quiz',
           question: 'How would YOU fix this performance problem? Think about the trade-offs.',
@@ -627,7 +708,6 @@ Each strategy runs independently as a **candidate generator**, producing ~500 ca
           node: {
             id: 'redis-cache',
             type: 'archComponent',
-            position: { x: 300, y: 400 },
             data: {
               componentType: 'redis',
               label: 'Redis Cache',
@@ -745,7 +825,7 @@ Let's add a content-based model to our architecture...
         {
           type: 'add-edge',
           edge: {
-            id: 'e1',
+            id: 'e1-3',
             source: 'user-simple',
             target: 'simple-recommender',
             type: 'archEdge',
@@ -769,7 +849,6 @@ Let's add a content-based model to our architecture...
           node: {
             id: 'content-model',
             type: 'archComponent',
-            position: { x: 100, y: 500 },
             data: {
               componentType: 'serverless',
               label: 'Content-Based Model',
@@ -866,7 +945,6 @@ Let's add these components...
           node: {
             id: 's3-features',
             type: 'archComponent',
-            position: { x: 50, y: 650 },
             data: {
               componentType: 'object_storage',
               label: 'S3 Feature Store',
@@ -879,7 +957,6 @@ Let's add these components...
           node: {
             id: 'spark-training',
             type: 'archComponent',
-            position: { x: 300, y: 600 },
             data: {
               componentType: 'worker',
               label: 'Apache Spark - Training',
@@ -985,7 +1062,6 @@ Let's rebuild our architecture with microservices...
           node: {
             id: 'api-gateway',
             type: 'archComponent',
-            position: { x: 250, y: 150 },
             data: {
               componentType: 'api_gateway',
               label: 'API Gateway',
@@ -998,7 +1074,6 @@ Let's rebuild our architecture with microservices...
           node: {
             id: 'recommendation-svc',
             type: 'archComponent',
-            position: { x: 100, y: 250 },
             data: {
               componentType: 'app_server',
               label: 'Recommendation Service',
@@ -1011,7 +1086,6 @@ Let's rebuild our architecture with microservices...
           node: {
             id: 'ranking-svc',
             type: 'archComponent',
-            position: { x: 300, y: 250 },
             data: {
               componentType: 'app_server',
               label: 'Ranking Service',
@@ -1024,7 +1098,6 @@ Let's rebuild our architecture with microservices...
           node: {
             id: 'personalization-svc',
             type: 'archComponent',
-            position: { x: 500, y: 250 },
             data: {
               componentType: 'app_server',
               label: 'Personalization Service',
@@ -1077,16 +1150,43 @@ Let's rebuild our architecture with microservices...
         {
           type: 'timeline',
           title: 'Recommendation Request Flow',
+          interactive: true,
           events: [
+            {
+              label: 'User opens Netflix app',
+              description: 'User opens Netflix app on their device',
+              nodeIds: ['user-simple'],
+              predictPrompt: 'Where does the first request go?',
+              predictOptions: [
+                { text: 'Recommendation Service', correct: false },
+                { text: 'Content Database', correct: false },
+                { text: 'API Gateway', correct: true },
+                { text: 'Redis Cache', correct: false },
+              ],
+            },
             {
               label: '1. Candidate Generation',
               description: 'Recommendation Service generates 1000s of candidates using multiple strategies (collaborative filtering, content-based, trending)',
               nodeIds: ['recommendation-svc'],
+              predictPrompt: 'How many candidate recommendations are generated?',
+              predictOptions: [
+                { text: '~50 candidates (final count)', correct: false },
+                { text: '~1,000 candidates', correct: true },
+                { text: '~10,000 candidates', correct: false },
+                { text: 'All shows in catalog', correct: false },
+              ],
             },
             {
               label: '2. Ranking',
               description: 'Ranking Service scores candidates using ML models (predicted watch time, completion rate)',
               nodeIds: ['ranking-svc'],
+              predictPrompt: 'What happens after ranking?',
+              predictOptions: [
+                { text: 'Return top 50 immediately to user', correct: false },
+                { text: 'Apply personalization layer', correct: true },
+                { text: 'Cache the results', correct: false },
+                { text: 'Run A/B test assignment', correct: false },
+              ],
             },
             {
               label: '3. Personalization',
@@ -1226,7 +1326,6 @@ Let's add Kafka and stream processing...
           node: {
             id: 'kafka',
             type: 'archComponent',
-            position: { x: 300, y: 400 },
             data: {
               componentType: 'kafka',
               label: 'Kafka - Event Stream',
@@ -1239,7 +1338,6 @@ Let's add Kafka and stream processing...
           node: {
             id: 'flink',
             type: 'archComponent',
-            position: { x: 150, y: 550 },
             data: {
               componentType: 'worker',
               label: 'Apache Flink - Stream Processing',
@@ -1252,7 +1350,6 @@ Let's add Kafka and stream processing...
           node: {
             id: 'rdg',
             type: 'archComponent',
-            position: { x: 450, y: 550 },
             data: {
               componentType: 'worker',
               label: 'Real-Time Distributed Graph',
@@ -1457,7 +1554,6 @@ This is what powers recommendations for 200M+ users!
           node: {
             id: 'cassandra',
             type: 'archComponent',
-            position: { x: 300, y: 700 },
             data: {
               componentType: 'object_storage',
               label: 'Cassandra - KVDAL',
@@ -1470,7 +1566,6 @@ This is what powers recommendations for 200M+ users!
           node: {
             id: 'ml-foundation',
             type: 'archComponent',
-            position: { x: 500, y: 850 },
             data: {
               componentType: 'serverless',
               label: 'Multi-Task Foundation Model',
@@ -1559,6 +1654,14 @@ This is what powers recommendations for 200M+ users!
           type: 'tradeoffs',
           title: 'Database Selection for Real-Time Graph',
           decision: 'Which database should power the real-time distributed graph?',
+          mode: 'decision',
+          scenario: 'Netflix has 200M users, 15K titles, and needs to handle 5M+ graph writes/second from real-time events (plays, pauses, ratings). The graph has billions of nodes and edges.',
+          constraints: [
+            'Must handle 5M+ writes/second with sub-second latency',
+            'Must scale to billions of nodes and edges',
+            'Must support multi-region deployment for global availability',
+            'Must maintain data for real-time personalization queries',
+          ],
           options: [
             {
               label: 'PostgreSQL',
@@ -1574,6 +1677,7 @@ This is what powers recommendations for 200M+ users!
                 'Joins are expensive at scale',
                 'Single-region deployment',
               ],
+              consequence: 'Database becomes the bottleneck immediately. Write queue backs up, events are dropped, recommendations become stale. System cannot scale beyond 1M users.',
             },
             {
               label: 'Neo4j (Graph DB)',
@@ -1589,6 +1693,7 @@ This is what powers recommendations for 200M+ users!
                 'Harder to scale horizontally',
                 'Young ecosystem compared to Cassandra',
               ],
+              consequence: 'Better than PostgreSQL but still insufficient. Graph queries are fast but write throughput caps at ~100K writes/sec. Would need 50+ shards to handle 5M writes/sec, making operations complex.',
             },
             {
               label: 'Cassandra + KVDAL',
@@ -1604,6 +1709,8 @@ This is what powers recommendations for 200M+ users!
                 'Complex operational model',
                 'No joins (denormalize everything)',
               ],
+              consequence: 'Handles write throughput effortlessly. Linear scaling means adding nodes increases capacity proportionally. Multi-region deployment provides global low latency. Trade-off: must build custom graph abstraction layer (KVDAL) on top.',
+              recommended: true,
             },
           ],
         },
@@ -1629,12 +1736,14 @@ You're a Netflix engineer. Product wants to add a new ranking signal:
 
 ## Your Task
 
-Think through how you would implement this:
+Build the architecture for the watch time prediction pipeline. Drag components from the palette and connect them to show how events flow from user actions to model predictions.
 
-1. **Data Collection**: What events do you need?
-2. **Feature Engineering**: What features would help predict watch time?
-3. **Model Training**: What ML algorithm would you use?
-4. **Integration**: How does this fit into the existing architecture?
+## Requirements
+
+1. **Data Collection**: Capture user viewing events
+2. **Feature Engineering**: Process raw events into features
+3. **Model Training**: Train the watch time prediction model
+4. **Integration**: Deploy model predictions to ranking service
 
 ## Discussion Points
 
@@ -1642,7 +1751,7 @@ Think through how you would implement this:
 - How would you A/B test it against the current ranking?
 - What are the risks? (e.g., filter bubble, showing only long content)
 
-Take 10-15 minutes to think through your approach. When ready, click "Next" to see Netflix's solution.
+Build your architecture below, then click "Next" to see Netflix's solution.
       `,
       canvasOperations: [
         {
@@ -1652,6 +1761,101 @@ Take 10-15 minutes to think through your approach. When ready, click "Next" to s
           color: '#f59e0b',
         },
       ],
+      canvasBuildMode: true,
+      buildConfig: {
+        palette: [
+          {
+            id: 'api-gateway-component',
+            label: 'API Gateway',
+            componentType: 'api_gateway',
+            description: 'Routes requests and handles authentication',
+          },
+          {
+            id: 'recommendation-service-component',
+            label: 'Recommendation Service',
+            componentType: 'app_server',
+            description: 'Generates candidate recommendations',
+          },
+          {
+            id: 'user-profile-db-component',
+            label: 'User Profile DB',
+            componentType: 'postgres',
+            description: 'Stores user viewing history and preferences',
+          },
+          {
+            id: 'content-catalog-component',
+            label: 'Content Catalog',
+            componentType: 'postgres',
+            description: 'Shows metadata and availability',
+          },
+          {
+            id: 'ml-model-component',
+            label: 'ML Model (Watch Time)',
+            componentType: 'serverless',
+            description: 'Predicts watch time for user-show pairs',
+          },
+          {
+            id: 'cache-component',
+            label: 'Cache (Redis)',
+            componentType: 'redis',
+            description: 'Caches pre-computed predictions',
+          },
+          {
+            id: 'kafka-component',
+            label: 'Kafka Event Stream',
+            componentType: 'kafka',
+            description: 'Streams user viewing events in real-time',
+          },
+          {
+            id: 'feature-store-component',
+            label: 'Feature Store (S3)',
+            componentType: 'object_storage',
+            description: 'Stores computed features for ML training',
+          },
+          {
+            id: 'spark-component',
+            label: 'Apache Spark',
+            componentType: 'worker',
+            description: 'Batch processes events and trains models',
+          },
+        ],
+        initialNodes: ['api-gateway', 'recommendation-svc', 'ranking-svc'],
+        validationRules: [
+          {
+            type: 'must-connect',
+            params: { source: 'api-gateway', target: 'recommendation-svc' },
+            feedback: 'API Gateway must connect to Recommendation Service to route requests',
+          },
+          {
+            type: 'must-exist',
+            params: { nodeId: 'cache-component' },
+            feedback: 'You need a cache layer to store pre-computed predictions for fast serving',
+          },
+          {
+            type: 'must-connect',
+            params: { source: 'recommendation-svc', target: 'ml-model-component' },
+            feedback: 'Recommendation Service must connect to ML Model to get watch time predictions',
+          },
+          {
+            type: 'must-exist',
+            params: { nodeId: 'kafka-component' },
+            feedback: 'Kafka is needed to stream user events for real-time model updates',
+          },
+          {
+            type: 'must-connect',
+            params: { source: 'kafka-component', target: 'spark-component' },
+            feedback: 'Kafka events must flow to Spark for feature engineering and model training',
+          },
+        ],
+        successMessage:
+          'Excellent! You\'ve built a complete ML pipeline: events → Kafka → Spark (feature engineering) → ML Model → Cache → Recommendation Service. This architecture handles both training (offline) and inference (online).',
+        hints: [
+          'Start with the data flow: where do viewing events come from?',
+          'Think about offline training vs online inference - they need different paths',
+          'Pre-computed predictions need to be cached for fast serving',
+          'Feature engineering happens in batch processing (Spark)',
+        ],
+      },
       widgets: [
         {
           type: 'quiz',
@@ -1904,14 +2108,23 @@ Every change to recommendations is **A/B tested**:
           type: 'comparison-table',
           title: 'A/B Test Results: Watch Time Model',
           columns: ['Metric', 'Control', 'Treatment', 'Change', 'P-value', 'Decision'],
+          mode: 'analysis',
           rows: [
             {
               label: 'Stream Starts',
-              values: ['100 starts/user', '103 starts/user', '+3%', '<0.001', '✅ Significant'],
+              values: ['100 starts/user', '103 starts/user', '+3%', '<0.001', ''],
+              blanks: [4],
+              acceptableAnswers: {
+                4: ['✅ Significant', 'Significant', '✅ Ship', 'Ship'],
+              },
             },
             {
               label: 'Hours Watched',
-              values: ['50 hrs/user', '52.5 hrs/user', '+5%', '<0.001', '✅ Significant'],
+              values: ['50 hrs/user', '52.5 hrs/user', '', '<0.001', '✅ Significant'],
+              blanks: [2],
+              acceptableAnswers: {
+                2: ['+5%', '5%', '+5', '5'],
+              },
             },
             {
               label: 'Genre Diversity',
@@ -1919,7 +2132,43 @@ Every change to recommendations is **A/B tested**:
             },
             {
               label: '7-Day Retention',
-              values: ['85%', '85.2%', '+0.2%', '0.12', '➖ Not significant'],
+              values: ['85%', '', '+0.2%', '0.12', '➖ Not significant'],
+              blanks: [1],
+              acceptableAnswers: {
+                1: ['85.2%', '85.2'],
+              },
+            },
+          ],
+          decisionPrompt:
+            'Based on this A/B test data, which algorithm variant would you ship to production?',
+          decisionOptions: [
+            {
+              id: 'ship-control',
+              text: 'Keep Control (current ranking with predicted rating)',
+              correct: false,
+              explanation:
+                'Too conservative! The treatment shows +3% stream starts and +5% hours watched with strong statistical significance (p < 0.001). The 2% diversity decline is small and can be addressed separately. Keeping control means missing significant engagement gains.',
+            },
+            {
+              id: 'ship-treatment',
+              text: 'Ship Treatment (watch time prediction model)',
+              correct: false,
+              explanation:
+                'Close, but incomplete! The treatment performs better on engagement metrics (+5% hours watched), but you should also add diversity as a ranking signal to mitigate the -2% genre diversity decline. Simply shipping without addressing diversity risks long-term filter bubble effects.',
+            },
+            {
+              id: 'ship-with-monitoring',
+              text: 'Ship Treatment but add diversity as ranking signal and monitor long-term retention',
+              correct: true,
+              explanation:
+                'Exactly! This is Netflix\'s approach: ship for immediate engagement gains (+5% hours watched, statistically significant), but add diversity boost to ranking to counteract the -2% genre diversity decline. Monitor 30-day and 90-day retention to ensure no long-term churn. Balance short-term engagement with long-term health.',
+            },
+            {
+              id: 'extend-test',
+              text: 'Extend test for another month to gather more retention data',
+              correct: false,
+              explanation:
+                'Unnecessary delay! With 10M users and p < 0.001, statistical significance is already strong. The retention metric shows no significant impact (p = 0.12), so more data won\'t change the conclusion. Better to ship with monitoring than delay for marginal data.',
             },
           ],
         },
