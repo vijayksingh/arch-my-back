@@ -10,11 +10,15 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  applyNodeChanges,
+  applyEdgeChanges,
   type Connection,
   type Edge,
   type Node,
+  type NodeChange,
+  type EdgeChange,
 } from '@xyflow/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { baseNodeTypes, archEdgeTypes } from '@/registry/flowNodeTypes';
 import { validateArchConnection } from '@/lib/connectionRules';
 import type { BuildPaletteComponent } from '@/types/walkthrough';
@@ -43,24 +47,19 @@ const TIER_Y: Record<number, number> = {
   4: 600,
 };
 
-function CanvasEffects({ highlightedNodeIds, stepId }: { highlightedNodeIds: string[], stepId: string }) {
+function CanvasEffects({ stepId }: { stepId: string }) {
   const { fitView } = useReactFlow();
 
+  // Fit view on step navigation only
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (highlightedNodeIds.length > 0) {
-        fitView({
-          nodes: highlightedNodeIds.map(id => ({ id })),
-          duration: 800,
-          padding: 0.3,
-        }).catch(() => { });
-      } else {
-        fitView({ duration: 800, padding: 0.1 }).catch(() => { });
-      }
+      fitView({ duration: 800, padding: 0.2 }).catch(() => {});
     }, 100);
-
     return () => clearTimeout(timeout);
-  }, [highlightedNodeIds, stepId, fitView]);
+  }, [stepId, fitView]);
+
+  // Note: Highlighted nodes already get styling via data.highlighted
+  // No need to zoom the viewport to them — that causes aggressive jumps
 
   return null;
 }
@@ -73,7 +72,6 @@ interface CanvasPanelProps {
   animatedEdgeIds?: string[];
   nodesDraggable?: boolean;
   nodesConnectable?: boolean;
-  onNodeDragStop?: (e: React.MouseEvent, node: Node) => void;
   onConnect?: (connection: Connection) => void;
   onNodeAdd?: (node: Node) => void; // For build mode: add node from palette
 }
@@ -86,11 +84,9 @@ export function CanvasPanel({
   animatedEdgeIds = [],
   nodesDraggable = false,
   nodesConnectable = false,
-  onNodeDragStop,
   onConnect,
   onNodeAdd
 }: CanvasPanelProps) {
-  const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   // Derive display nodes and edges from props using useMemo
   const displayNodes = useMemo(() =>
@@ -121,7 +117,7 @@ export function CanvasPanel({
   );
 
   return (
-    <div className="h-full w-full bg-transparent" ref={reactFlowWrapper}>
+    <div className="h-full w-full bg-transparent">
       <ReactFlowProvider>
         <CanvasPanelInner
           displayNodes={displayNodes}
@@ -129,12 +125,9 @@ export function CanvasPanel({
           stepId={stepId}
           nodesDraggable={nodesDraggable}
           nodesConnectable={nodesConnectable}
-          onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
           onNodeAdd={onNodeAdd}
           handleIsValidConnection={handleIsValidConnection}
-          highlightedNodeIds={highlightedNodeIds}
-          reactFlowWrapper={reactFlowWrapper}
         />
       </ReactFlowProvider>
     </div>
@@ -147,12 +140,9 @@ interface CanvasPanelInnerProps {
   stepId: string;
   nodesDraggable: boolean;
   nodesConnectable: boolean;
-  onNodeDragStop?: (e: React.MouseEvent, node: Node) => void;
   onConnect?: (connection: Connection) => void;
   onNodeAdd?: (node: Node) => void;
   handleIsValidConnection: (connection: Connection | Edge) => boolean;
-  highlightedNodeIds: string[];
-  reactFlowWrapper: React.RefObject<HTMLDivElement | null>;
 }
 
 function CanvasPanelInner({
@@ -161,25 +151,50 @@ function CanvasPanelInner({
   stepId,
   nodesDraggable,
   nodesConnectable,
-  onNodeDragStop,
   onConnect,
   onNodeAdd,
-  handleIsValidConnection,
-  highlightedNodeIds
+  handleIsValidConnection
 }: CanvasPanelInnerProps) {
-  const { screenToFlowPosition } = useReactFlow();
   const [newlyAddedNodeId, setNewlyAddedNodeId] = useState<string | null>(null);
 
-  // Enrich nodes with isNewlyAdded flag
+  // Local state for ReactFlow controlled mode
+  const [localNodes, setLocalNodes] = useState<Node[]>(displayNodes);
+  const [localEdges, setLocalEdges] = useState<Edge[]>(displayEdges);
+
+  // Sync from parent when displayNodes actually change (new step, new node added)
+  useEffect(() => {
+    setLocalNodes(displayNodes);
+  }, [displayNodes]);
+
+  useEffect(() => {
+    setLocalEdges(displayEdges);
+  }, [displayEdges]);
+
+  // Handle ReactFlow node changes (drag, select, etc.)
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    setLocalNodes(nds => applyNodeChanges(changes, nds));
+  }, []);
+
+  // Handle ReactFlow edge changes
+  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
+    setLocalEdges(eds => applyEdgeChanges(changes, eds));
+  }, []);
+
+  // Enrich nodes with isNewlyAdded flag and highlighted status
   const enrichedNodes = useMemo(() =>
-    displayNodes.map(n => ({
-      ...n,
-      data: {
-        ...n.data,
-        isNewlyAdded: n.id === newlyAddedNodeId,
-      },
-    })),
-    [displayNodes, newlyAddedNodeId]
+    localNodes.map(n => {
+      // Get highlighted status from displayNodes (which has it set by parent)
+      const displayNode = displayNodes.find(dn => dn.id === n.id);
+      return {
+        ...n,
+        data: {
+          ...n.data,
+          isNewlyAdded: n.id === newlyAddedNodeId,
+          highlighted: displayNode?.data?.highlighted ?? false,
+        },
+      };
+    }),
+    [localNodes, newlyAddedNodeId, displayNodes]
   );
 
   // Handle drop from palette
@@ -238,13 +253,15 @@ function CanvasPanelInner({
       setNewlyAddedNodeId(newNode.id);
       setTimeout(() => setNewlyAddedNodeId(null), 2000);
     },
-    [screenToFlowPosition, onNodeAdd, displayNodes]
+    [onNodeAdd, displayNodes]
   );
 
   return (
     <ReactFlow
       nodes={enrichedNodes}
-      edges={displayEdges}
+      edges={localEdges}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
       nodeTypes={baseNodeTypes}
       edgeTypes={archEdgeTypes}
       connectionMode={ConnectionMode.Loose}
@@ -254,16 +271,15 @@ function CanvasPanelInner({
       nodesDraggable={nodesDraggable}
       nodesConnectable={nodesConnectable}
       elementsSelectable={nodesDraggable || nodesConnectable}
-      onNodeDragStop={onNodeDragStop}
       onConnect={onConnect}
       onDragOver={onDragOver}
       onDrop={onDrop}
       isValidConnection={handleIsValidConnection}
     >
       <Background />
-      <Controls />
+      <Controls position="bottom-right" />
       <MiniMap position="bottom-left" pannable zoomable />
-      <CanvasEffects highlightedNodeIds={highlightedNodeIds} stepId={stepId} />
+      <CanvasEffects stepId={stepId} />
     </ReactFlow>
   );
 }
