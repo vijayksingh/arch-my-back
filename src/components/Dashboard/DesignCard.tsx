@@ -109,7 +109,7 @@ export function DesignListItem({ design }: DesignCardProps) {
     <>
       <div
         ref={setNodeRef}
-        className={`group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-all hover:-translate-y-0.5 hover:border-border/60 hover:shadow-[0_6px_16px_rgba(0,0,0,0.16)] cursor-pointer ${
+        className={`group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-border/60 hover:shadow-md cursor-pointer ${
           isDragging ? 'opacity-40' : ''
         }`}
       >
@@ -301,7 +301,7 @@ export function DesignCard({ design }: DesignCardProps) {
     <>
       <div
         ref={setNodeRef}
-        className={`group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-all duration-150 ease-out hover:-translate-y-0.5 hover:border-border/80 hover:shadow-[0_6px_16px_rgba(0,0,0,0.16)] cursor-pointer ${
+        className={`group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:border-border/80 hover:shadow-md cursor-pointer ${
           isDragging ? 'opacity-40' : ''
         }`}
       >

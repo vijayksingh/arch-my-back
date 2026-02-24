@@ -60,7 +60,7 @@ function WalkthroughCard({ walkthrough }: WalkthroughCardProps) {
   return (
     <button
       onClick={() => navigate({ to: '/walkthrough/$slug', params: { slug: walkthrough.slug } })}
-      className="group relative overflow-hidden rounded-lg border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_6px_16px_rgba(0,0,0,0.16)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+      className="group relative overflow-hidden rounded-lg border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
     >
       {/* Gradient background on hover */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
