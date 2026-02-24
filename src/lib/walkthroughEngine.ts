@@ -242,6 +242,20 @@ export class WalkthroughEngine {
   }
 
   /**
+   * Apply solution nodes and edges to the canvas
+   */
+  applySolution(nodes: any[], edges: Edge[]): void {
+    // Add default position if missing (ELK will override later)
+    const nodesWithPositions = nodes.map(node => ({
+      ...node,
+      position: node.position ?? { x: 0, y: 0 }
+    })) as Node[];
+
+    this.state.canvasNodes = nodesWithPositions;
+    this.state.canvasEdges = edges;
+  }
+
+  /**
    * Mark build mode as validated for a step
    */
   setBuildModeValidated(stepId: string, validated: boolean): void {

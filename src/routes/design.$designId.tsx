@@ -7,7 +7,7 @@ import Canvas from '@/components/Canvas';
 import { ConfigPanel } from '@/components/ConfigPanel';
 import { DocumentPanel } from '@/components/DocumentPanel';
 import { CommandPalette } from '@/components/CommandPalette';
-import { DesignHeader } from '@/components/DesignHeader';
+import { EditorActionsBar } from '@/components/EditorActionsBar';
 import { cn } from '@/lib/utils';
 import { useEditorStore, type CanvasTool } from '@/stores/editorStore';
 import { useCurrentDesign } from '@/hooks/useCurrentDesign';
@@ -44,6 +44,7 @@ function DesignEditorPage() {
   const dslEditorVisible = useEditorStore((s) => s.dslEditorVisible);
 
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
+  const [designName, setDesignName] = useState('Untitled Design');
   const closePalette = useCallback(() => setCmdPaletteOpen(false), []);
 
   const isLoading = designLoading || syncLoading;
@@ -115,12 +116,9 @@ function DesignEditorPage() {
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
-      {/* Top toolbar */}
-      <Toolbar />
+      {/* Top toolbar with breadcrumbs */}
+      <Toolbar designId={designId as any} />
       <CommandPalette open={cmdPaletteOpen} onClose={closePalette} />
-
-      {/* Breadcrumb header */}
-      <DesignHeader designId={designId as any} />
 
       {/* Main content area below toolbar */}
       <div className="relative flex flex-1 overflow-hidden">
@@ -178,6 +176,9 @@ function DesignEditorPage() {
           </div>
         )}
       </div>
+
+      {/* Bottom actions bar */}
+      <EditorActionsBar designName={designName} onDesignNameChange={setDesignName} />
     </div>
   );
 }

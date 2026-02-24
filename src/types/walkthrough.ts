@@ -1,4 +1,5 @@
 import type { CanvasNode, ArchEdge } from './index';
+import type { Edge } from '@xyflow/react';
 
 /**
  * Interactive Walkthrough System
@@ -257,12 +258,27 @@ export interface BuildValidationRule {
   feedback: string; // shown when rule fails
 }
 
+export interface BuildStepSolution {
+  // Correct final state (positions optional - will be computed by ELK)
+  nodes: WalkthroughNodeDef[];
+  edges: Edge[];
+
+  // Architectural explanation (WHY this is correct)
+  explanation: {
+    title: string;          // e.g., "The Cache-First Pattern"
+    reasoning: string[];    // Bullet points explaining key decisions
+    commonMistakes: string[]; // What learners typically get wrong
+    keyInsight: string;     // One-sentence core principle
+  };
+}
+
 export interface BuildConfig {
   palette: BuildPaletteComponent[];
   initialNodes?: string[]; // pre-placed node IDs (existing from canvas operations)
   validationRules: BuildValidationRule[];
   successMessage: string;
   hints: string[]; // progressive hints if learner is stuck
+  solution?: BuildStepSolution; // Optional - enables "Show Answer" feature
 }
 
 // --- Walkthrough Step ---

@@ -16,6 +16,7 @@ export function WalkthroughCanvas() {
     timelineHighlightedNodes,
     handleNodeAdd,
     handleBuildValidationSuccess,
+    handleApplySolution,
   } = useWalkthroughContext();
 
   if (!currentStep) return null;
@@ -53,6 +54,8 @@ export function WalkthroughCanvas() {
               nodes={state.canvasNodes}
               edges={state.canvasEdges}
               onValidationSuccess={handleBuildValidationSuccess}
+              solution={currentStep.buildConfig.solution}
+              onApplySolution={handleApplySolution}
             />
           </AnimatePresence>
         </>

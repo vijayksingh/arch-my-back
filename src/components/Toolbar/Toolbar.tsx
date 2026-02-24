@@ -1,78 +1,78 @@
-import { useState, useCallback } from 'react';
-import { Download, Trash2, BookOpen, Rocket, Moon, Sun, LogOut, User, Braces, Undo2, Redo2, LayoutGrid, Loader2 } from 'lucide-react';
-import { useStore } from 'zustand';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { Rocket, LogOut, User, Home, ChevronRight } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { useQuery as useConvexQuery, useMutation } from 'convex/react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { WorkspaceModeTabs } from '@/components/WorkspaceModeTabs';
-import { TemplateBrowser } from '@/components/TemplateBrowser/TemplateBrowser';
-import { useCanvasStore } from '@/stores/canvasStore';
-import { useEditorStore } from '@/stores/editorStore';
-import { useThemeStore } from '@/stores/themeStore';
-import { exportCanvasAsPng, exportCanvasAsSvg } from '@/lib/exportImage';
+import { ShareButton } from '@/components/ShareButton';
 import { useAuthActions, useQuery } from '@/lib/auth';
 import { api } from '../../../convex/_generated/api';
+import type { Id } from '../../../convex/_generated/dataModel';
 
-export function Toolbar() {
-  const [designName, setDesignName] = useState('Untitled Design');
-  const [isEditing, setIsEditing] = useState(false);
-  const [isLayoutRunning, setIsLayoutRunning] = useState(false);
-  const [templateBrowserOpen, setTemplateBrowserOpen] = useState(false);
+interface ToolbarProps {
+  designId?: Id<'newDesigns'>;
+}
 
-  const nodes = useCanvasStore((s) => s.nodes);
-  const clearCanvas = useCanvasStore((s) => s.clearCanvas);
-  const autoLayout = useCanvasStore((s) => s.autoLayout);
-  const theme = useThemeStore((s) => s.theme);
-  const toggleTheme = useThemeStore((s) => s.toggleTheme);
-  const dslEditorVisible = useEditorStore((s) => s.dslEditorVisible);
-  const toggleDslEditor = useEditorStore((s) => s.toggleDslEditor);
+export function Toolbar({ designId }: ToolbarProps = {}) {
+  const navigate = useNavigate();
+  const [isBreadcrumbEditing, setIsBreadcrumbEditing] = useState(false);
+  const [breadcrumbEditValue, setBreadcrumbEditValue] = useState('');
+  const breadcrumbInputRef = useRef<HTMLInputElement>(null);
 
   const { signOut } = useAuthActions();
   const user = useQuery(api.users.getCurrentUser);
 
-  const { undo, redo, pastStates, futureStates } = useStore(
-    useCanvasStore.temporal,
-    (state) => state,
+  // Breadcrumb navigation state (only when designId is provided)
+  const design = useConvexQuery(
+    api.newDesigns.get,
+    designId ? { designId } : 'skip'
+  );
+  const updateTitle = useMutation(api.newDesigns.update);
+  const folder = useConvexQuery(
+    api.folders.list,
+    design?.folderId ? {} : 'skip'
   );
 
-  const handleOpenTemplateBrowser = useCallback(() => {
-    setTemplateBrowserOpen(true);
-  }, []);
+  const currentFolder = folder?.find((f) => f._id === design?.folderId);
 
-  const handleExportPng = useCallback(() => {
-    exportCanvasAsPng('react-flow-canvas', `${designName}.png`);
-  }, [designName]);
-
-  const handleExportSvg = useCallback(() => {
-    exportCanvasAsSvg('react-flow-canvas', `${designName}.svg`);
-  }, [designName]);
-
-  const handleClear = useCallback(() => {
-    if (window.confirm('Clear the entire canvas? This cannot be undone.')) {
-      clearCanvas();
-      setDesignName('Untitled Design');
+  // Focus input when entering breadcrumb edit mode
+  useEffect(() => {
+    if (isBreadcrumbEditing && breadcrumbInputRef.current) {
+      breadcrumbInputRef.current.focus();
+      breadcrumbInputRef.current.select();
     }
-  }, [clearCanvas]);
+  }, [isBreadcrumbEditing]);
 
-  const handleAutoLayout = useCallback(async () => {
-    setIsLayoutRunning(true);
-    try {
-      await autoLayout();
-    } finally {
-      setIsLayoutRunning(false);
+  const handleStartBreadcrumbEdit = useCallback(() => {
+    if (design) {
+      setBreadcrumbEditValue(design.title);
+      setIsBreadcrumbEditing(true);
     }
-  }, [autoLayout]);
+  }, [design]);
 
-  const preloadLayout = useCallback(() => {
-    void import('@/services/layoutService');
-  }, []);
+  const handleSaveBreadcrumbEdit = useCallback(async () => {
+    if (!design || !designId || !breadcrumbEditValue.trim()) {
+      setIsBreadcrumbEditing(false);
+      return;
+    }
 
-  const hasEnoughNodes = nodes.length >= 2;
+    if (breadcrumbEditValue.trim() !== design.title) {
+      try {
+        await updateTitle({ designId, title: breadcrumbEditValue.trim() });
+      } catch (error) {
+        console.error('Failed to update title:', error);
+      }
+    }
+
+    setIsBreadcrumbEditing(false);
+  }, [design, designId, breadcrumbEditValue, updateTitle]);
+
+  const handleBreadcrumbKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveBreadcrumbEdit();
+    } else if (e.key === 'Escape') {
+      setIsBreadcrumbEditing(false);
+    }
+  }, [handleSaveBreadcrumbEdit]);
 
   return (
     <header className="flex h-14 w-full shrink-0 items-center border-b border-border/80 bg-card px-4 backdrop-blur-xl">
@@ -89,143 +89,66 @@ export function Toolbar() {
         </div>
       </div>
 
-      {/* Center: design name + workspace mode */}
+      {/* Center: breadcrumbs (when designId provided) */}
       <div className="flex flex-1 items-center justify-center gap-3">
-        {isEditing ? (
-          <Input
-            value={designName}
-            onChange={(e) => setDesignName(e.target.value)}
-            onBlur={() => setIsEditing(false)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') setIsEditing(false);
-            }}
-            name="designName"
-            autoComplete="off"
-            autoFocus
-            className="h-8 w-72 border-border/60 bg-background/70 text-center text-sm font-medium shadow-none"
-          />
-        ) : (
-          <Button
-            variant="ghost"
-            onClick={() => setIsEditing(true)}
-            className="h-8 px-3 text-sm font-medium text-foreground/85 hover:text-foreground"
-          >
-            {designName}
-          </Button>
+        {designId && design && (
+          // Breadcrumb navigation for designs
+          <div className="flex items-center gap-2 text-sm">
+            {/* Home link */}
+            <button
+              onClick={() => navigate({ to: '/' })}
+              className="flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Home className="h-4 w-4" />
+              <span>Home</span>
+            </button>
+
+            {/* Folder breadcrumb (if in folder) */}
+            {currentFolder && (
+              <>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <button
+                  onClick={() =>
+                    navigate({
+                      to: '/folder/$folderId',
+                      params: { folderId: currentFolder._id },
+                    })
+                  }
+                  className="text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {currentFolder.title}
+                </button>
+              </>
+            )}
+
+            {/* Design title (editable) */}
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            {isBreadcrumbEditing ? (
+              <input
+                ref={breadcrumbInputRef}
+                type="text"
+                value={breadcrumbEditValue}
+                onChange={(e) => setBreadcrumbEditValue(e.target.value)}
+                onBlur={handleSaveBreadcrumbEdit}
+                onKeyDown={handleBreadcrumbKeyDown}
+                className="rounded border border-accent bg-background px-2 py-1 text-foreground outline-none focus:ring-2 focus:ring-accent"
+              />
+            ) : (
+              <button
+                onClick={handleStartBreadcrumbEdit}
+                className="rounded px-2 py-1 font-medium text-foreground transition-colors hover:bg-accent/10"
+              >
+                {design.title}
+              </button>
+            )}
+          </div>
         )}
-        <WorkspaceModeTabs />
       </div>
 
-      {/* Right: actions */}
+      {/* Right: share and auth */}
       <div className="flex w-[310px] shrink-0 items-center justify-end gap-2">
-        <div className="flex items-center gap-1 rounded-xl border border-border/75 bg-background/65 p-1 shadow-sm">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => undo()}
-            title="Undo (Cmd+Z)"
-            aria-label="Undo (Cmd+Z)"
-            disabled={pastStates.length === 0}
-            className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <Undo2 className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => redo()}
-            title="Redo (Cmd+Shift+Z)"
-            aria-label="Redo (Cmd+Shift+Z)"
-            disabled={futureStates.length === 0}
-            className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <Redo2 className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleDslEditor}
-            title={dslEditorVisible ? 'Hide DSL Editor' : 'Show DSL Editor'}
-            aria-label={dslEditorVisible ? 'Hide DSL Editor' : 'Show DSL Editor'}
-            className={`h-8 w-8 rounded-md ${dslEditorVisible ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            <Braces className="h-3.5 w-3.5" />
-          </Button>
-          {hasEnoughNodes && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleAutoLayout}
-              onMouseEnter={preloadLayout}
-              disabled={isLayoutRunning}
-              title="Auto Layout"
-              aria-label="Auto Layout"
-              className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLayoutRunning ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <LayoutGrid className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
-          >
-            {theme === 'dark' ? (
-              <Sun className="h-3.5 w-3.5" />
-            ) : (
-              <Moon className="h-3.5 w-3.5" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleOpenTemplateBrowser}
-            title="Browse Templates"
-            aria-label="Browse Templates"
-            className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
-          >
-            <BookOpen className="h-3.5 w-3.5" />
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                title="Export"
-                aria-label="Export"
-                className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
-              >
-                <Download className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleExportPng}>
-                Export as PNG
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportSvg}>
-                Export as SVG
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleClear}
-            title="Clear Canvas"
-            aria-label="Clear Canvas"
-            className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-        {/* Note: Autosave to Convex happens automatically via useDesignSync */}
+        {/* Share button (when designId provided) */}
+        {designId && <ShareButton designId={designId} />}
 
         {/* Auth button */}
         {user && (
@@ -255,11 +178,6 @@ export function Toolbar() {
           </div>
         )}
       </div>
-
-      <TemplateBrowser
-        open={templateBrowserOpen}
-        onOpenChange={setTemplateBrowserOpen}
-      />
     </header>
   );
 }

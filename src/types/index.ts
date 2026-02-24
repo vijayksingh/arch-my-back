@@ -38,10 +38,18 @@ export interface ConfigField {
 
 // --- Canvas Node/Edge Types ---
 
+export interface NodeContext {
+  purpose?: string; // What this component does
+  problemSolved?: string; // Why it exists / what problem it solves
+  walkthroughContext?: string; // How it fits into this walkthrough step
+  relatedConcepts?: string[]; // Links or related topics
+}
+
 export interface ArchNodeData {
   componentType: ComponentTypeKey; // key from registry
   label: string;
   config: Record<string, unknown>;
+  context?: NodeContext; // Optional rich context for walkthrough mode
   [key: string]: unknown;
 }
 

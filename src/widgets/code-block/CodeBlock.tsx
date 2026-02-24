@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { WidgetProps } from '../types';
 import { Button } from '@/components/ui/button';
-import { Play, Copy, Share2, AlertCircle } from 'lucide-react';
+import { Play, Copy, Share2, AlertCircle, Info, Lightbulb } from 'lucide-react';
 import { EditorView, basicSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { EditorState } from '@codemirror/state';
@@ -20,6 +20,14 @@ export interface CodeBlockInput {
   code: string;
   runtime?: CodeRuntime;
   dependencies?: string[];
+  /** Brief statement explaining what this code demonstrates and why it matters */
+  purpose?: string;
+  /** What problem this code solves or what concept it illustrates */
+  context?: string;
+  /** Step-by-step breakdown or key insights after the code */
+  explanation?: string;
+  /** Important patterns or takeaways the learner should notice */
+  keyTakeaways?: string[];
 }
 
 /**
@@ -339,10 +347,59 @@ export function CodeBlock({
         </div>
       </div>
 
+      {/* Purpose Statement */}
+      {input.purpose && (
+        <div className="border-b border-border bg-muted/10 px-4 py-3">
+          <div className="flex items-start gap-2">
+            <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            <div className="text-sm text-foreground">{input.purpose}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Context Section */}
+      {input.context && (
+        <div className="border-b border-border bg-muted/5 px-4 py-3">
+          <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Context
+          </div>
+          <div className="text-sm leading-relaxed text-foreground">{input.context}</div>
+        </div>
+      )}
+
       {/* Editor */}
       <div className="flex-1 overflow-auto">
         <div ref={editorRef} className="h-full" />
       </div>
+
+      {/* Explanation Section */}
+      {input.explanation && (
+        <div className="border-t border-border bg-muted/5 px-4 py-3">
+          <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Explanation
+          </div>
+          <div className="text-sm leading-relaxed text-foreground">{input.explanation}</div>
+        </div>
+      )}
+
+      {/* Key Takeaways */}
+      {input.keyTakeaways && input.keyTakeaways.length > 0 && (
+        <div className="border-t border-border bg-accent/5 px-4 py-3">
+          <div className="mb-2 flex items-center gap-2">
+            <Lightbulb className="h-4 w-4 text-accent" />
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Key Takeaways
+            </div>
+          </div>
+          <ul className="space-y-1.5 pl-6">
+            {input.keyTakeaways.map((takeaway, index) => (
+              <li key={index} className="text-sm leading-relaxed text-foreground list-disc">
+                {takeaway}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Output/Error Console */}
       {config.showOutput !== false && (output || error) && (

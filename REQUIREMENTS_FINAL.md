@@ -70,6 +70,11 @@
 - ✅ Selection action bar
 - ✅ Comprehensive test suite (Vitest + Testing Library)
 - ✅ Shape nodes and section badges
+- ✅ Reorganized editor layout (Feb 2026)
+  - Top toolbar: Branding + breadcrumb navigation + share + user menu
+  - Bottom actions bar: Workspace mode tabs + editor actions (undo/redo, DSL, layout, theme, templates, export, clear)
+  - Removed DesignHeader component (merged into Toolbar)
+  - Clearer information hierarchy and reduced visual clutter
 
 ### 🚧 In Progress
 

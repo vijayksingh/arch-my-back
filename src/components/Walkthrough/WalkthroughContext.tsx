@@ -6,7 +6,7 @@ import { createContext, useContext, useState, useCallback, type ReactNode } from
 import { useNavigate } from '@tanstack/react-router';
 import { WalkthroughEngine, type WalkthroughStep } from '@/lib/walkthroughEngine';
 import type { Walkthrough } from '@/types/walkthrough';
-import type { Node } from '@xyflow/react';
+import type { Node, Edge } from '@xyflow/react';
 
 interface WalkthroughContextValue {
   // Core data
@@ -25,6 +25,8 @@ interface WalkthroughContextValue {
   setShowLearningGoals: (show: boolean) => void;
   timelineHighlightedNodes: string[];
   setTimelineHighlightedNodes: (nodes: string[]) => void;
+  isLeftPanelCollapsed: boolean;
+  setIsLeftPanelCollapsed: (collapsed: boolean) => void;
 
   // Navigation handlers
   handleBack: () => void;
@@ -35,6 +37,7 @@ interface WalkthroughContextValue {
   handleQuizAnswer: (selectedOptionIds: string[]) => void;
   handleNodeAdd: (node: Node) => void;
   handleBuildValidationSuccess: () => void;
+  handleApplySolution: (nodes: any[], edges: Edge[]) => void;
 }
 
 const WalkthroughContext = createContext<WalkthroughContextValue | null>(null);
@@ -59,6 +62,7 @@ export function WalkthroughProvider({ walkthrough, onComplete, children }: Walkt
   const [state, setState] = useState(() => engine.getState());
   const [showLearningGoals, setShowLearningGoals] = useState(false);
   const [timelineHighlightedNodes, setTimelineHighlightedNodes] = useState<string[]>([]);
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
 
   const currentStep = engine.getCurrentStep() ?? null;
   const progress = engine.getProgress();
@@ -100,6 +104,18 @@ export function WalkthroughProvider({ walkthrough, onComplete, children }: Walkt
     setState(engine.getState());
   }, [engine, currentStep]);
 
+  const handleApplySolution = useCallback((nodes: any[], edges: Edge[]) => {
+    // Apply solution nodes and edges to the canvas
+    engine.applySolution(nodes, edges);
+    setState(engine.getState());
+
+    // Auto-validate after applying solution
+    if (currentStep) {
+      engine.setBuildModeValidated(currentStep.id, true);
+      setState(engine.getState());
+    }
+  }, [engine, currentStep]);
+
   const value: WalkthroughContextValue = {
     walkthrough,
     engine,
@@ -112,12 +128,15 @@ export function WalkthroughProvider({ walkthrough, onComplete, children }: Walkt
     setShowLearningGoals,
     timelineHighlightedNodes,
     setTimelineHighlightedNodes,
+    isLeftPanelCollapsed,
+    setIsLeftPanelCollapsed,
     handleBack,
     handleNext,
     handlePrevious,
     handleQuizAnswer,
     handleNodeAdd,
     handleBuildValidationSuccess,
+    handleApplySolution,
   };
 
   return (

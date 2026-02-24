@@ -138,6 +138,12 @@ Before we dive into solutions, put yourself in the architect's seat. How would Y
               componentType: 'app_server',
               label: 'Server',
               config: {},
+              context: {
+                purpose: 'Handles user requests and serves personalized content recommendations',
+                problemSolved: 'Centralizes recommendation logic and data access, preventing each client from needing to implement complex filtering',
+                walkthroughContext: 'In this step, the server acts as a simple genre filter, but it will evolve to handle sophisticated ML-based recommendations',
+                relatedConcepts: ['API Gateway', 'Load Balancing', 'Stateless Services'],
+              },
             },
           },
           highlight: true,
@@ -1855,6 +1861,123 @@ Build your architecture below, then click "Next" to see Netflix's solution.
           'Pre-computed predictions need to be cached for fast serving',
           'Feature engineering happens in batch processing (Spark)',
         ],
+        solution: {
+          nodes: [
+            {
+              id: 'api-gateway',
+              type: 'archComponent',
+              data: {
+                componentType: 'api_gateway',
+                label: 'API Gateway',
+                config: {},
+              },
+            },
+            {
+              id: 'recommendation-svc',
+              type: 'archComponent',
+              data: {
+                componentType: 'app_server',
+                label: 'Recommendation Service',
+                config: {},
+              },
+            },
+            {
+              id: 'cache-component',
+              type: 'archComponent',
+              data: {
+                componentType: 'redis',
+                label: 'Cache (Redis)',
+                config: {},
+              },
+            },
+            {
+              id: 'ml-model-component',
+              type: 'archComponent',
+              data: {
+                componentType: 'serverless',
+                label: 'ML Model (Watch Time)',
+                config: {},
+              },
+            },
+            {
+              id: 'kafka-component',
+              type: 'archComponent',
+              data: {
+                componentType: 'kafka',
+                label: 'Kafka Event Stream',
+                config: {},
+              },
+            },
+            {
+              id: 'spark-component',
+              type: 'archComponent',
+              data: {
+                componentType: 'worker',
+                label: 'Apache Spark',
+                config: {},
+              },
+            },
+            {
+              id: 'feature-store-component',
+              type: 'archComponent',
+              data: {
+                componentType: 'object_storage',
+                label: 'Feature Store (S3)',
+                config: {},
+              },
+            },
+          ],
+          edges: [
+            {
+              id: 'e-gateway-rec',
+              source: 'api-gateway',
+              target: 'recommendation-svc',
+            },
+            {
+              id: 'e-rec-cache',
+              source: 'recommendation-svc',
+              target: 'cache-component',
+            },
+            {
+              id: 'e-rec-ml',
+              source: 'recommendation-svc',
+              target: 'ml-model-component',
+            },
+            {
+              id: 'e-kafka-spark',
+              source: 'kafka-component',
+              target: 'spark-component',
+            },
+            {
+              id: 'e-spark-features',
+              source: 'spark-component',
+              target: 'feature-store-component',
+            },
+            {
+              id: 'e-features-ml',
+              source: 'feature-store-component',
+              target: 'ml-model-component',
+            },
+          ],
+          explanation: {
+            title: 'The Lambda Architecture Pattern for ML Pipelines',
+            reasoning: [
+              'API Gateway routes ALL requests to Recommendation Service - central entry point for request routing, auth, and rate limiting',
+              'Cache Layer sits between Recommendation Service and ML Model - enables sub-millisecond responses for pre-computed predictions, reducing inference costs by 90%',
+              'Kafka Event Stream captures ALL user viewing events in real-time - creates immutable event log for both batch and real-time processing',
+              'Spark batch processes Kafka events → Feature Store → ML Model - handles offline training pipeline with feature engineering at scale',
+              'Separate online inference (cache → ML model) and offline training (Kafka → Spark) paths - allows independent scaling and optimization',
+            ],
+            commonMistakes: [
+              'Connecting users directly to database without cache - causes database overload at scale, no sub-millisecond response times',
+              'Skipping Kafka event stream - loses ability to replay events, no real-time data pipeline, can\'t train models on historical data',
+              'Not separating training and inference paths - mixing batch processing with online serving creates latency issues and resource contention',
+              'Missing Feature Store - forces recomputation of features for every training run, inconsistent features between training and serving',
+            ],
+            keyInsight:
+              'ML systems require TWO separate data paths: fast online inference (cache-first) for serving predictions, and slow offline training (batch processing) for learning from historical events. Lambda architecture handles both.',
+          },
+        },
       },
       widgets: [
         {

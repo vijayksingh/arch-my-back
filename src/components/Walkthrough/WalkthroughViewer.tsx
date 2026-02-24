@@ -7,7 +7,8 @@
  * - Compound component pattern with shared context
  */
 
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Walkthrough } from '@/types/walkthrough';
 import { WalkthroughProvider, useWalkthroughContext } from './WalkthroughContext';
 import { WalkthroughHeader } from './WalkthroughHeader';
@@ -32,7 +33,7 @@ export function WalkthroughViewer({ walkthrough, onComplete }: WalkthroughViewer
 }
 
 function WalkthroughViewerLayout() {
-  const { currentStep, walkthrough } = useWalkthroughContext();
+  const { currentStep, walkthrough, isLeftPanelCollapsed, setIsLeftPanelCollapsed } = useWalkthroughContext();
 
   // Show completion screen when no current step
   if (!currentStep) {
@@ -46,15 +47,38 @@ function WalkthroughViewerLayout() {
 
       {/* Main Content: Left Panel + Right Panel */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* Left Panel: Step Content */}
-        <div className="flex h-full w-[min(42rem,42vw)] min-w-0 flex-col border-r ui-border-ghost bg-background">
-          <WalkthroughStepHeader />
-          <WalkthroughLearningGoals />
-          <AnimatePresence mode="wait">
-            <WalkthroughStepContent />
-          </AnimatePresence>
-          <WalkthroughNavigation />
-        </div>
+        {/* Left Panel: Step Content (collapsible) */}
+        <motion.div
+          className="relative flex h-full min-w-0 flex-col border-r ui-border-ghost bg-background"
+          initial={false}
+          animate={{
+            width: isLeftPanelCollapsed ? '0px' : 'min(42rem, 42vw)',
+            minWidth: isLeftPanelCollapsed ? '0px' : 'auto',
+          }}
+          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        >
+          <div className="flex h-full w-[min(42rem,42vw)] min-w-0 flex-col">
+            <WalkthroughStepHeader />
+            <WalkthroughLearningGoals />
+            <AnimatePresence mode="wait">
+              <WalkthroughStepContent />
+            </AnimatePresence>
+            <WalkthroughNavigation />
+          </div>
+
+          {/* Toggle Button */}
+          <button
+            onClick={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
+            className="absolute -right-3 top-4 z-10 flex h-6 w-6 items-center justify-center rounded-md border ui-border-ghost bg-background shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+            aria-label={isLeftPanelCollapsed ? 'Expand panel' : 'Collapse panel'}
+          >
+            {isLeftPanelCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </button>
+        </motion.div>
 
         {/* Right Panel: Canvas */}
         <WalkthroughCanvas />

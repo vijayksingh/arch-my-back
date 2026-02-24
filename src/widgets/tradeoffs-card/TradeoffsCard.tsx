@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import type { WidgetProps } from '../types';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Download, ThumbsUp, ThumbsDown, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, ThumbsUp, ThumbsDown, CheckCircle2, Lightbulb, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { BrainstormMode } from './BrainstormMode';
+import { ComparisonTable } from './ComparisonTable';
 
 /**
  * Alternative option with pros/cons
@@ -13,8 +15,28 @@ export interface Alternative {
   description?: string;
   pros: string[];
   cons: string[];
-  consequence?: string; // What happens if this option is chosen (for decision mode)
-  recommended?: boolean; // Whether this is the recommended option (for decision mode)
+
+  // Decision mode fields
+  consequence?: string; // What happens if this option is chosen
+  consequenceType?: 'good' | 'bad' | 'neutral'; // Tone of consequence
+  recommended?: boolean; // Is this the recommended choice?
+  whenToUse?: string; // Context: "Use this when..."
+  whenToAvoid?: string; // Context: "Avoid this when..."
+
+  // Visual elements
+  icon?: string; // Optional icon identifier
+  complexity?: 'low' | 'medium' | 'high'; // Implementation complexity
+  cost?: 'low' | 'medium' | 'high'; // Operational cost
+}
+
+/**
+ * Brainstorm prompt for guided thinking
+ */
+export interface BrainstormPrompt {
+  id: string;
+  question: string;
+  placeholder: string;
+  hint?: string; // Optional hint if learner is stuck
 }
 
 /**
@@ -27,9 +49,23 @@ export interface TradeoffsCardInput {
   cons: string[];
   decision?: string;
   alternatives?: Alternative[];
-  mode?: 'display' | 'decision'; // New: decision mode for interactive learning
-  scenario?: string; // Context for decision mode
-  constraints?: string[]; // Requirements/constraints for decision mode
+
+  // Mode selection
+  mode?: 'display' | 'decision' | 'brainstorm';
+
+  // Decision mode fields
+  scenario?: string; // Rich scenario description
+  constraints?: string[]; // Explicit constraints
+  stakeholders?: string[]; // Who cares about this decision?
+  successMetrics?: string[]; // What does success look like?
+
+  // Brainstorm mode fields
+  brainstormPrompts?: BrainstormPrompt[];
+
+  // Educational framing
+  keyInsight?: string; // One-sentence takeaway
+  commonPattern?: string; // e.g., "Cache-First Pattern"
+  realWorldExample?: string; // e.g., "Netflix uses this for..."
 }
 
 /**
@@ -38,6 +74,10 @@ export interface TradeoffsCardInput {
 export interface TradeoffsCardOutput {
   selectedAlternative?: string;
   exportedADR?: string;
+  matchesRecommended?: boolean;
+  brainstormAnswers?: Record<string, string>;
+  timeSpent?: number;
+  timestamp?: number;
 }
 
 /**
@@ -63,6 +103,10 @@ export function TradeoffsCard({
   );
   const [selectedAlternative, setSelectedAlternative] = useState<string | undefined>();
   const [decisionMade, setDecisionMade] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+  const [brainstormAnswers, setBrainstormAnswers] = useState<Record<string, string>>({});
+  const [brainstormComplete, setBrainstormComplete] = useState(false);
+  const [startTime] = useState<number>(Date.now());
 
   if (!input) {
     return (
@@ -99,9 +143,20 @@ export function TradeoffsCard({
   const handleDecisionSelect = (id: string) => {
     setSelectedAlternative(id);
     setDecisionMade(true);
+
+    const selectedAlt = input?.alternatives?.find((a) => a.id === id);
     onOutput?.({
       selectedAlternative: id,
+      matchesRecommended: selectedAlt?.recommended,
+      brainstormAnswers: Object.keys(brainstormAnswers).length > 0 ? brainstormAnswers : undefined,
+      timeSpent: Date.now() - startTime,
+      timestamp: Date.now(),
     });
+  };
+
+  const handleBrainstormComplete = (answers: Record<string, string>) => {
+    setBrainstormAnswers(answers);
+    setBrainstormComplete(true);
   };
 
   const exportToADR = () => {
@@ -183,8 +238,32 @@ export function TradeoffsCard({
   const consCount = input.cons.length;
   const balance = prosCount - consCount;
 
-  // Decision mode rendering
-  if (mode === 'decision' && input.alternatives) {
+  // Brainstorm mode rendering
+  if (mode === 'brainstorm' && input.brainstormPrompts && input.scenario) {
+    if (!brainstormComplete) {
+      return (
+        <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-background">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-2">
+            <div className="text-sm font-medium">{config.name || 'Brainstorm Exercise'}</div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-auto p-4">
+            <BrainstormMode
+              scenario={input.scenario}
+              prompts={input.brainstormPrompts}
+              onComplete={handleBrainstormComplete}
+            />
+          </div>
+        </div>
+      );
+    }
+    // After brainstorm, fall through to decision mode
+  }
+
+  // Decision mode rendering (also used after brainstorm)
+  if ((mode === 'decision' || (mode === 'brainstorm' && brainstormComplete)) && input.alternatives) {
     const selectedAlt = input.alternatives.find((a) => a.id === selectedAlternative);
     const recommendedAlt = input.alternatives.find((a) => a.recommended);
 
@@ -214,7 +293,7 @@ export function TradeoffsCard({
           {input.constraints && input.constraints.length > 0 && (
             <div className="mb-4 rounded-lg bg-amber-50/50 p-3 dark:bg-amber-950/20">
               <div className="mb-2 text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">
-                Constraints
+                ⚠️ Constraints
               </div>
               <ul className="space-y-1">
                 {input.constraints.map((constraint, i) => (
@@ -227,15 +306,36 @@ export function TradeoffsCard({
             </div>
           )}
 
+          {/* Success Metrics */}
+          {input.successMetrics && input.successMetrics.length > 0 && (
+            <div className="mb-4 rounded-lg bg-green-50/50 p-3 dark:bg-green-950/20">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase text-green-700 dark:text-green-300">
+                <Target className="h-3.5 w-3.5" />
+                Success Metrics
+              </div>
+              <ul className="space-y-1">
+                {input.successMetrics.map((metric, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-green-900 dark:text-green-100">
+                    <span className="mt-0.5">•</span>
+                    <span>{metric}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Decision not made yet - show option cards */}
           {!decisionMade && (
             <div className="space-y-2">
               <div className="mb-3 text-sm font-semibold text-muted-foreground">
-                Choose your approach:
+                💭 What would you do?
               </div>
-              {input.alternatives.map((alt) => (
+              {input.alternatives.map((alt, index) => (
                 <motion.button
                   key={alt.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1, duration: 0.3, ease: 'easeOut' }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleDecisionSelect(alt.id)}
@@ -270,32 +370,54 @@ export function TradeoffsCard({
                 {/* Consequence */}
                 {selectedAlt.consequence && (
                   <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    transition={{ delay: 0.2, duration: 0.4 }}
-                    className="rounded-lg bg-purple-50/50 p-3 dark:bg-purple-950/20"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.3 }}
+                    className={`rounded-lg p-3 ${
+                      selectedAlt.consequenceType === 'good'
+                        ? 'bg-green-50/50 dark:bg-green-950/20'
+                        : selectedAlt.consequenceType === 'bad'
+                          ? 'bg-red-50/50 dark:bg-red-950/20'
+                          : 'bg-purple-50/50 dark:bg-purple-950/20'
+                    }`}
                   >
-                    <div className="mb-1 text-xs font-semibold uppercase text-purple-700 dark:text-purple-300">
-                      What happens
+                    <div
+                      className={`mb-1 text-xs font-semibold uppercase ${
+                        selectedAlt.consequenceType === 'good'
+                          ? 'text-green-700 dark:text-green-300'
+                          : selectedAlt.consequenceType === 'bad'
+                            ? 'text-red-700 dark:text-red-300'
+                            : 'text-purple-700 dark:text-purple-300'
+                      }`}
+                    >
+                      📊 What Happens
                     </div>
-                    <div className="text-sm text-purple-900 dark:text-purple-100">
+                    <div
+                      className={`text-sm ${
+                        selectedAlt.consequenceType === 'good'
+                          ? 'text-green-900 dark:text-green-100'
+                          : selectedAlt.consequenceType === 'bad'
+                            ? 'text-red-900 dark:text-red-100'
+                            : 'text-purple-900 dark:text-purple-100'
+                      }`}
+                    >
                       {selectedAlt.consequence}
                     </div>
                   </motion.div>
                 )}
 
-                {/* Show better choice if not recommended */}
+                {/* Show recommended choice if user didn't pick it */}
                 {!selectedAlt.recommended && recommendedAlt && (
                   <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    transition={{ delay: 0.4, duration: 0.4 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4, duration: 0.3 }}
                     className="rounded-lg border-2 border-green-500/50 bg-green-50/50 p-3 dark:bg-green-950/20"
                   >
                     <div className="mb-2 flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                       <div className="text-xs font-semibold uppercase text-green-700 dark:text-green-300">
-                        The better choice
+                        ✅ The Better Choice
                       </div>
                     </div>
                     <div className="font-medium text-green-900 dark:text-green-100">
@@ -309,72 +431,46 @@ export function TradeoffsCard({
                   </motion.div>
                 )}
 
-                {/* Full comparison table */}
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  transition={{ delay: 0.6, duration: 0.4 }}
-                  className="space-y-2"
-                >
-                  <div className="text-sm font-semibold text-muted-foreground">
-                    Full Comparison
-                  </div>
-                  {input.alternatives.map((alt) => {
-                    const isRecommended = alt.recommended;
-                    const isSelected = alt.id === selectedAlternative;
-
-                    return (
-                      <div
-                        key={alt.id}
-                        className={`overflow-hidden rounded-lg border-2 ${
-                          isRecommended
-                            ? 'border-green-500/50 bg-green-50/30 dark:bg-green-950/10'
-                            : 'border-border bg-muted/20'
-                        }`}
-                      >
-                        <div className="p-3">
-                          <div className="mb-2 flex items-center justify-between">
-                            <div className="font-medium">{alt.name}</div>
-                            <div className="flex items-center gap-2">
-                              {isSelected && (
-                                <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
-                                  Your choice
-                                </span>
-                              )}
-                              {isRecommended && (
-                                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-                              )}
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <div className="mb-1 text-xs font-semibold text-success">Pros</div>
-                              <ul className="space-y-1">
-                                {alt.pros.map((pro, i) => (
-                                  <li key={i} className="flex items-start gap-1 text-xs">
-                                    <span className="text-success">✓</span>
-                                    <span>{pro}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                            <div>
-                              <div className="mb-1 text-xs font-semibold text-error">Cons</div>
-                              <ul className="space-y-1">
-                                {alt.cons.map((con, i) => (
-                                  <li key={i} className="flex items-start gap-1 text-xs">
-                                    <span className="text-error">✗</span>
-                                    <span>{con}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
+                {/* Key Insight */}
+                {input.keyInsight && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.5, duration: 0.2 }}
+                    className="rounded-lg bg-gradient-to-br from-amber-50 to-yellow-50 p-3 dark:from-amber-950/30 dark:to-yellow-950/30"
+                  >
+                    <div className="mb-1 flex items-center gap-2">
+                      <Lightbulb className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      <div className="text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">
+                        💡 Key Insight
                       </div>
-                    );
-                  })}
-                </motion.div>
+                    </div>
+                    <div className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                      {input.keyInsight}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Toggle comparison button */}
+                {!showComparison && (
+                  <div className="flex justify-center pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowComparison(true)}
+                    >
+                      See Full Comparison
+                    </Button>
+                  </div>
+                )}
+
+                {/* Full comparison table */}
+                {showComparison && (
+                  <ComparisonTable
+                    alternatives={input.alternatives}
+                    selectedId={selectedAlternative}
+                  />
+                )}
               </motion.div>
             </AnimatePresence>
           )}
@@ -483,13 +579,53 @@ export function TradeoffsCard({
           </div>
         </div>
 
-        {/* Decision */}
+        {/* Decision with badge */}
         {input.decision && (
-          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/30">
-            <div className="mb-1 text-xs font-semibold uppercase text-blue-700 dark:text-blue-300">
-              Decision
+          <div className="mb-4 rounded-lg border-2 border-green-500/50 bg-green-50 p-3 dark:border-green-700 dark:bg-green-950/30">
+            <div className="mb-2 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <div className="text-xs font-semibold uppercase text-green-700 dark:text-green-300">
+                ✓ Chosen Approach
+              </div>
             </div>
-            <div className="text-sm text-blue-900 dark:text-blue-100">{input.decision}</div>
+            <div className="text-sm font-medium text-green-900 dark:text-green-100">
+              {input.decision}
+            </div>
+          </div>
+        )}
+
+        {/* Key Insight (Display Mode) */}
+        {input.keyInsight && (
+          <div className="mb-4 rounded-lg bg-gradient-to-br from-amber-50 to-yellow-50 p-3 dark:from-amber-950/30 dark:to-yellow-950/30">
+            <div className="mb-1 flex items-center gap-2">
+              <Lightbulb className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <div className="text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">
+                Why This Works
+              </div>
+            </div>
+            <div className="text-sm text-amber-900 dark:text-amber-100">{input.keyInsight}</div>
+          </div>
+        )}
+
+        {/* When to Use (Display Mode) */}
+        {(input.commonPattern || input.realWorldExample) && (
+          <div className="mb-4 space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+            {input.commonPattern && (
+              <div>
+                <div className="mb-1 text-xs font-semibold text-muted-foreground">
+                  Pattern
+                </div>
+                <div className="text-sm">{input.commonPattern}</div>
+              </div>
+            )}
+            {input.realWorldExample && (
+              <div>
+                <div className="mb-1 text-xs font-semibold text-muted-foreground">
+                  Real-World Example
+                </div>
+                <div className="text-sm">{input.realWorldExample}</div>
+              </div>
+            )}
           </div>
         )}
 

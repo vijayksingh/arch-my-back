@@ -7,11 +7,15 @@ import { getIconByName } from '@/registry/iconRegistry';
 import { categoryGlows, categoryAccentTokens } from '@/registry/categoryThemes';
 import { ARCH_NODE } from '@/constants';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Info } from 'lucide-react';
 
 function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const isHighlighted = data.highlighted ?? false;
   const isNewlyAdded = data.isNewlyAdded ?? false;
+  const hasContext = Boolean(data.context);
   const typeDef = componentTypeMap.get(data.componentType);
   const IconComponent = getIconByName(typeDef?.icon ?? '');
   const glowColor = typeDef ? categoryGlows[typeDef.category] : categoryGlows.External;
@@ -45,7 +49,7 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
       ? 'translateY(-1px) scale(1.01)'
       : 'scale(1)';
 
-  return (
+  const nodeContent = (
     <div
       className={cn(
         "relative flex flex-col items-center justify-center gap-2.5 rounded-xl border px-4 py-3 transition-all duration-160",
@@ -73,6 +77,26 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
           opacity: isHovered || selected ? 1 : 0.3,
         }}
       />
+
+      {/* Context Info Icon */}
+      {hasContext && (
+        <div className="absolute -top-1 -right-1">
+          <div
+            className="flex h-4 w-4 items-center justify-center rounded-full border transition-all duration-200"
+            style={{
+              backgroundColor: 'var(--node-surface)',
+              borderColor: accentBorderColor,
+              opacity: isHovered || isPopoverOpen ? 1 : 0.6,
+            }}
+          >
+            <Info
+              size={10}
+              strokeWidth={2.5}
+              style={{ color: accentColor }}
+            />
+          </div>
+        </div>
+      )}
 
       <div
         className="flex h-9 w-9 items-center justify-center rounded-lg"
@@ -117,6 +141,143 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
         }}
       />
     </div>
+  );
+
+  if (!hasContext) {
+    return nodeContent;
+  }
+
+  return (
+    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+      <PopoverTrigger asChild>
+        {nodeContent}
+      </PopoverTrigger>
+      <PopoverContent
+        side="right"
+        align="start"
+        className="w-80 p-0"
+        style={{
+          backgroundColor: 'var(--surface-bg)',
+          borderColor: 'var(--ui-border-ghost)',
+          boxShadow: 'var(--panel-shadow)',
+        }}
+      >
+        <div className="flex flex-col gap-3 p-4">
+          {/* Header */}
+          <div className="flex items-center gap-2">
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-md"
+              style={{
+                backgroundColor: 'var(--node-icon-surface)',
+                border: `1px solid ${accentBorderColor}`,
+              }}
+            >
+              <IconComponent
+                size={14}
+                strokeWidth={2.1}
+                style={{ color: accentColor }}
+              />
+            </div>
+            <div className="flex flex-col">
+              <span
+                className="text-sm font-semibold leading-tight"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {data.label}
+              </span>
+              {typeDef && (
+                <span
+                  className="text-[10px] font-medium uppercase tracking-wider"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  {typeDef.label}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Context Sections */}
+          <div className="flex flex-col gap-3">
+            {data.context?.purpose && (
+              <div className="flex flex-col gap-1">
+                <span
+                  className="text-[10px] font-semibold uppercase tracking-wider"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
+                  Purpose
+                </span>
+                <p
+                  className="text-xs leading-relaxed"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  {data.context.purpose}
+                </p>
+              </div>
+            )}
+
+            {data.context?.problemSolved && (
+              <div className="flex flex-col gap-1">
+                <span
+                  className="text-[10px] font-semibold uppercase tracking-wider"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
+                  Problem Solved
+                </span>
+                <p
+                  className="text-xs leading-relaxed"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  {data.context.problemSolved}
+                </p>
+              </div>
+            )}
+
+            {data.context?.walkthroughContext && (
+              <div className="flex flex-col gap-1">
+                <span
+                  className="text-[10px] font-semibold uppercase tracking-wider"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
+                  Context in Walkthrough
+                </span>
+                <p
+                  className="text-xs leading-relaxed"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  {data.context.walkthroughContext}
+                </p>
+              </div>
+            )}
+
+            {data.context?.relatedConcepts && data.context.relatedConcepts.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <span
+                  className="text-[10px] font-semibold uppercase tracking-wider"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
+                  Related Concepts
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {data.context.relatedConcepts.map((concept, idx) => (
+                    <span
+                      key={idx}
+                      className="rounded px-2 py-0.5 text-[10px] font-medium"
+                      style={{
+                        backgroundColor: `hsl(var(${accentToken}) / 0.1)`,
+                        color: accentColor,
+                        border: `1px solid ${accentBorderColor}`,
+                      }}
+                    >
+                      {concept}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

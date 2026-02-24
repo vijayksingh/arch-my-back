@@ -5,11 +5,12 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, XCircle, Lightbulb, AlertCircle, ChevronDown } from 'lucide-react';
+import { CheckCircle2, XCircle, Lightbulb, AlertCircle, ChevronDown, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { BuildValidationRule } from '@/types/walkthrough';
+import type { BuildValidationRule, BuildStepSolution, WalkthroughNodeDef } from '@/types/walkthrough';
 import type { Node, Edge } from '@xyflow/react';
 import { cn } from '@/lib/utils';
+import { SolutionPanel } from './SolutionPanel';
 
 interface ValidationResult {
   rule: BuildValidationRule;
@@ -23,6 +24,8 @@ interface BuildValidatorProps {
   nodes: Node[];
   edges: Edge[];
   onValidationSuccess: () => void;
+  solution?: BuildStepSolution;
+  onApplySolution?: (nodes: WalkthroughNodeDef[], edges: Edge[]) => void;
 }
 
 export function BuildValidator({
@@ -32,12 +35,22 @@ export function BuildValidator({
   nodes,
   edges,
   onValidationSuccess,
+  solution,
+  onApplySolution,
 }: BuildValidatorProps) {
   const [validationResults, setValidationResults] = useState<ValidationResult[]>([]);
   const [showHints, setShowHints] = useState(false);
   const [currentHintIndex, setCurrentHintIndex] = useState(0);
   const [hasValidated, setHasValidated] = useState(false);
   const [minimized, setMinimized] = useState(false);
+
+  // Solution panel state
+  const [showSolution, setShowSolution] = useState(false);
+  const [solutionApplied, setSolutionApplied] = useState(false);
+
+  // Trigger condition state
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [previousFailedRules, setPreviousFailedRules] = useState<Set<string>>(new Set());
 
   const validateArchitecture = (): boolean => {
     const results: ValidationResult[] = [];
@@ -53,6 +66,20 @@ export function BuildValidator({
     const allPassed = results.every((r) => r.passed);
     if (allPassed) {
       onValidationSuccess();
+    } else {
+      // Track failed attempts for "Show Answer" trigger
+      const failedRuleIds = results.filter(r => !r.passed).map(r => r.rule.feedback);
+      const currentFailedSet = new Set(failedRuleIds);
+
+      // Check if user made progress (fewer failed rules)
+      const madeProgress = currentFailedSet.size < previousFailedRules.size;
+
+      if (madeProgress) {
+        setFailedAttempts(1); // Reset counter on progress
+      } else {
+        setFailedAttempts(prev => prev + 1);
+      }
+      setPreviousFailedRules(currentFailedSet);
     }
 
     return allPassed;
@@ -69,7 +96,34 @@ export function BuildValidator({
     setShowHints(true);
   };
 
+  const handleApplySolution = (explanation: string) => {
+    if (solution && onApplySolution) {
+      // Apply the solution to the canvas
+      onApplySolution(solution.nodes, solution.edges);
+      setSolutionApplied(true);
+      setShowSolution(false);
+
+      // Track that solution was used (could log explanation for analytics)
+      console.log('Solution applied with explanation:', explanation);
+    }
+  };
+
+  const handleTryManually = () => {
+    // Close solution panel, learner will try to fix manually
+    setShowSolution(false);
+    // Could add visual hints here in future (ghost outlines, etc.)
+  };
+
   const allPassed = validationResults.length > 0 && validationResults.every((r) => r.passed);
+
+  // Determine if "Show Answer" button should appear
+  const allHintsUsed = showHints && currentHintIndex >= hints.length - 1;
+  const validatedAfterFinalHint = allHintsUsed && hasValidated;
+  const shouldShowSolutionButton =
+    solution &&
+    !allPassed &&
+    !solutionApplied &&
+    (failedAttempts >= 3 || validatedAfterFinalHint);
 
   // If minimized, show compact floating button
   if (minimized) {
@@ -191,6 +245,37 @@ export function BuildValidator({
           )}
         </AnimatePresence>
 
+        {/* Show Answer Section */}
+        <AnimatePresence>
+          {shouldShowSolutionButton && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden border-b border-border"
+            >
+              <div className="bg-primary/5 p-4">
+                <div className="flex items-start gap-3">
+                  <Eye className="h-5 w-5 shrink-0 text-primary mt-0.5" />
+                  <div className="flex-1">
+                    <div className="text-sm text-muted-foreground mb-2">
+                      Still stuck? See the complete solution with architectural explanation →
+                    </div>
+                    <Button
+                      onClick={() => setShowSolution(true)}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <Eye className="h-4 w-4" />
+                      Show Answer
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Action Buttons */}
         <div className="p-4 flex items-center gap-3">
           {hints.length > 0 && !allPassed && (
@@ -224,6 +309,20 @@ export function BuildValidator({
           )}
         </div>
       </div>
+
+      {/* Solution Panel Modal */}
+      <AnimatePresence>
+        {showSolution && solution && (
+          <SolutionPanel
+            solution={solution}
+            currentNodes={nodes}
+            currentEdges={edges}
+            onApply={handleApplySolution}
+            onTryManually={handleTryManually}
+            onClose={() => setShowSolution(false)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
