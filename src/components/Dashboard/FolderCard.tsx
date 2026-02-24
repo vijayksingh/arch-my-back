@@ -104,10 +104,10 @@ export function FolderCard({ folder, designCount = 0 }: FolderCardProps) {
         onClick={handleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`group relative flex flex-col items-start border-2 border-dashed p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${
+        className={`group relative flex flex-col items-start border-2 border-dashed p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.14)] cursor-pointer ${
           isOver
-            ? 'border-primary bg-primary/[0.04] scale-[1.02] shadow-lg'
-            : 'border-border hover:border-border/60'
+            ? 'border-primary bg-primary/[0.08] scale-[1.02] shadow-[0_6px_16px_rgba(0,0,0,0.16)]'
+            : 'border-border bg-elevation-1 hover:border-border/60 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
         }`}
       >
         <div className="flex w-full items-start justify-between gap-3">

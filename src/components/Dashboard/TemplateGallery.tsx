@@ -76,7 +76,7 @@ export function TemplateGallery({ compact = false, maxVisible }: TemplateGallery
           <button
             key={template.slug}
             onClick={() => handleTemplateClick(template)}
-            className="group shrink-0 w-56 rounded-lg border border-border bg-card p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+            className="group shrink-0 w-56 rounded-lg border border-border bg-card p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_6px_16px_rgba(0,0,0,0.16)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
           >
             <div className="flex items-start justify-between gap-2 mb-1.5">
               <h3 className="font-medium text-sm leading-snug flex-1 line-clamp-2">
