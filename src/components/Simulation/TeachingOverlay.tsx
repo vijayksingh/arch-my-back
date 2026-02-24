@@ -23,10 +23,8 @@ const TeachingOverlayComponent = () => {
   }, [acknowledgeLesson]);
 
   const handleFixAndResume = useCallback(() => {
-    // Recover from first active failure, then acknowledge and start
-    if (activeFailures.length > 0) {
-      recoverFromFailure(activeFailures[0].id);
-    }
+    // Recover from ALL active failures, then acknowledge and start
+    activeFailures.forEach(f => recoverFromFailure(f.id));
     acknowledgeLesson();
     start();
   }, [activeFailures, recoverFromFailure, acknowledgeLesson, start]);
@@ -38,7 +36,15 @@ const TeachingOverlayComponent = () => {
 
   // Broken state (failure detected, not yet teaching)
   if (isBroken && !isTeaching && activeFailures.length > 0) {
-    const failure = activeFailures[0];
+    // Show summary of all failures if multiple, or specific message for single failure
+    const failureMessage = activeFailures.length === 1
+      ? activeFailures[0].message
+      : `${activeFailures.length} failures detected: ${activeFailures.map(f => f.type.replace(/_/g, ' ')).join(', ')}`;
+    const highestSeverity = activeFailures.reduce((max, f) =>
+      f.severity === 'critical' ? 'critical' : (f.severity === 'error' && max !== 'critical' ? 'error' : max),
+      activeFailures[0].severity
+    );
+
     return (
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-full max-w-lg px-4 animate-in slide-in-from-bottom-4 duration-300">
         <div className="rounded-lg border border-[hsl(var(--ui-border-accent-soft))] bg-[hsl(var(--surface-bg-elevated))] shadow-lg backdrop-blur-sm">
@@ -51,20 +57,20 @@ const TeachingOverlayComponent = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base font-semibold text-[hsl(var(--text-primary))]">
-                    System Failure Detected
+                    {activeFailures.length === 1 ? 'System Failure Detected' : `${activeFailures.length} System Failures Detected`}
                   </h3>
                   <p className="mt-1 text-sm text-[hsl(var(--text-secondary))]">
-                    {failure.message}
+                    {failureMessage}
                   </p>
                 </div>
               </div>
               <span className={cn(
                 "shrink-0 px-2 py-1 text-xs font-medium rounded-md",
-                failure.severity === 'critical' && "bg-red-500/10 text-red-500",
-                failure.severity === 'error' && "bg-orange-500/10 text-orange-500",
-                failure.severity === 'warning' && "bg-yellow-500/10 text-yellow-500"
+                highestSeverity === 'critical' && "bg-red-500/10 text-red-500",
+                highestSeverity === 'error' && "bg-orange-500/10 text-orange-500",
+                highestSeverity === 'warning' && "bg-yellow-500/10 text-yellow-500"
               )}>
-                {failure.severity}
+                {highestSeverity}
               </span>
             </div>
 

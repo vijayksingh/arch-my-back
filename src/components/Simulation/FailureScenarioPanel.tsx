@@ -1,69 +1,63 @@
 import { memo, useState } from 'react';
-import { Flame, TrendingUp, Unplug, ChevronDown, ChevronUp, Zap, RotateCcw } from 'lucide-react';
+import {
+  Flame,
+  TrendingUp,
+  Unplug,
+  ChevronUp,
+  Zap,
+  RotateCcw,
+  Timer,
+  HardDrive,
+  Database,
+  Layers,
+  CloudOff,
+  ServerOff,
+  type LucideIcon
+} from 'lucide-react';
 import { useSimulationStore } from '@/stores/simulationStore';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { cn } from '@/lib/utils';
 import type { FailureScenario } from '@/types/simulation';
+import { SCENARIO_LIBRARY, type ScenarioDefinition } from '@/lib/simulation/failureScenarioLibrary';
 import { NODE_TYPE } from '@/constants';
 
 // ============================================================================
-// Preset Failure Scenarios
+// Icon Mapping
 // ============================================================================
 
-interface PresetScenario {
-  label: string;
-  description: string;
-  icon: typeof Flame;
-  createScenario: (nodeId: string) => FailureScenario;
-}
+const ICON_MAP: Record<string, LucideIcon> = {
+  flame: Flame,
+  'trending-up': TrendingUp,
+  unplug: Unplug,
+  timer: Timer,
+  'memory-stick': HardDrive,
+  database: Database,
+  layers: Layers,
+  'cloud-off': CloudOff,
+  'server-crash': ServerOff,
+  zap: Zap,
+};
 
-const PRESET_SCENARIOS: PresetScenario[] = [
-  {
-    label: 'Kill Database',
-    description: 'Crashes the primary database node',
-    icon: Flame,
-    createScenario: (nodeId: string): FailureScenario => ({
-      id: `db-crash-${Date.now()}`,
-      type: 'cascading_failure',
-      severity: 'critical',
-      affectedNodeIds: [],
-      rootCauseNodeId: nodeId,
-      detectedAt: 0,
-      message: `Database node ${nodeId} has crashed. All dependent services will experience failures.`,
-      suggestedPattern: 'Add read replicas and implement circuit breakers to handle database failures gracefully.',
-    }),
-  },
-  {
-    label: 'Traffic Spike',
-    description: 'Overwhelm a service with 10x normal load',
-    icon: TrendingUp,
-    createScenario: (nodeId: string): FailureScenario => ({
-      id: `traffic-spike-${Date.now()}`,
-      type: 'bottleneck',
-      severity: 'error',
-      affectedNodeIds: [],
-      rootCauseNodeId: nodeId,
-      detectedAt: 0,
-      message: `Service ${nodeId} is experiencing a massive traffic spike. Queue is filling rapidly.`,
-      suggestedPattern: 'Consider auto-scaling, rate limiting, or adding a load balancer to distribute traffic.',
-    }),
-  },
-  {
-    label: 'Network Partition',
-    description: 'Isolate a service from its dependencies',
-    icon: Unplug,
-    createScenario: (nodeId: string): FailureScenario => ({
-      id: `net-partition-${Date.now()}`,
-      type: 'timeout',
-      severity: 'error',
-      affectedNodeIds: [],
-      rootCauseNodeId: nodeId,
-      detectedAt: 0,
-      message: `Network partition detected. ${nodeId} cannot reach its downstream dependencies.`,
-      suggestedPattern: 'Implement retry with exponential backoff and circuit breaker pattern.',
-    }),
-  },
-];
+// ============================================================================
+// Difficulty Badge Component
+// ============================================================================
+
+function DifficultyBadge({ difficulty }: { difficulty: ScenarioDefinition['difficulty'] }) {
+  const colors = {
+    beginner: { bg: 'hsl(142 71% 45% / 0.15)', text: 'hsl(142 71% 45%)' },
+    intermediate: { bg: 'hsl(45 93% 47% / 0.15)', text: 'hsl(45 93% 47%)' },
+    advanced: { bg: 'hsl(0 84% 60% / 0.15)', text: 'hsl(0 84% 60%)' },
+  };
+  const c = colors[difficulty];
+  return (
+    <span
+      className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase"
+      style={{ backgroundColor: c.bg, color: c.text }}
+    >
+      {difficulty.slice(0, 3)}
+    </span>
+  );
+}
 
 // ============================================================================
 // Component
@@ -72,6 +66,8 @@ const PRESET_SCENARIOS: PresetScenario[] = [
 function FailureScenarioPanelComponent() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [expandedScenarioId, setExpandedScenarioId] = useState<string | null>(null);
 
   // Simulation state
   const isInitialized = useSimulationStore((s) => s.isInitialized);
@@ -90,11 +86,10 @@ function FailureScenarioPanelComponent() {
   // Auto-select first node if none selected
   const targetNodeId = selectedNodeId || archNodes[0]?.id || null;
 
-  const handleTriggerFailure = (preset: PresetScenario) => {
-    if (!targetNodeId) return;
-    const scenario = preset.createScenario(targetNodeId);
-    actions.triggerFailure(scenario);
-  };
+  // Filter scenarios by category
+  const filteredScenarios = activeCategory === 'all'
+    ? SCENARIO_LIBRARY
+    : SCENARIO_LIBRARY.filter(s => s.category === activeCategory);
 
   const handleRecover = (scenarioId: string) => {
     actions.recoverFromFailure(scenarioId);
@@ -146,7 +141,7 @@ function FailureScenarioPanelComponent() {
   // Expanded state: full panel
   return (
     <div
-      className="absolute right-4 top-4 z-40 w-64 rounded-lg border shadow-xl"
+      className="absolute right-4 top-4 z-40 w-72 rounded-lg border shadow-xl"
       style={{
         borderColor: 'hsl(var(--border))',
         backgroundColor: 'hsl(var(--card))',
@@ -205,6 +200,24 @@ function FailureScenarioPanelComponent() {
           </div>
         )}
 
+        {/* Category Filter Pills */}
+        <div className="flex flex-wrap gap-1">
+          {['all', 'availability', 'performance', 'resilience', 'scalability'].map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors capitalize",
+                activeCategory === cat
+                  ? "bg-primary/20 text-primary"
+                  : "text-muted-foreground hover:bg-accent/10"
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
         {/* Trigger Failure Section */}
         <div className="flex flex-col gap-2">
           <h3
@@ -213,33 +226,84 @@ function FailureScenarioPanelComponent() {
           >
             Trigger Failure
           </h3>
-          {PRESET_SCENARIOS.map((preset) => {
-            const Icon = preset.icon;
+          {filteredScenarios.map((scenario) => {
+            const Icon = ICON_MAP[scenario.icon] || Zap;
+            const isExpanded = expandedScenarioId === scenario.id;
+
             return (
-              <button
-                key={preset.label}
-                onClick={() => handleTriggerFailure(preset)}
-                disabled={!targetNodeId}
-                className={cn(
-                  "flex flex-col gap-1 rounded-lg border p-2.5 text-left transition-all",
-                  "hover:border-destructive/50 hover:bg-destructive/5",
-                  "disabled:cursor-not-allowed disabled:opacity-40"
-                )}
+              <div
+                key={scenario.id}
+                className="flex flex-col rounded-lg border transition-all"
                 style={{
                   borderColor: 'hsl(var(--border))',
                   backgroundColor: 'hsl(var(--card))',
                 }}
               >
-                <div className="flex items-center gap-1.5">
-                  <Icon className="h-3.5 w-3.5" style={{ color: 'hsl(var(--destructive))' }} />
-                  <span className="text-xs font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-                    {preset.label}
-                  </span>
-                </div>
-                <p className="text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  {preset.description}
-                </p>
-              </button>
+                {/* Header — always visible, clickable to expand */}
+                <button
+                  onClick={() => setExpandedScenarioId(isExpanded ? null : scenario.id)}
+                  className="flex flex-col gap-1 p-2.5 text-left transition-colors hover:bg-accent/5"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Icon className="h-3.5 w-3.5" style={{ color: 'hsl(var(--destructive))' }} />
+                      <span className="text-xs font-semibold">{scenario.label}</span>
+                    </div>
+                    <DifficultyBadge difficulty={scenario.difficulty} />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">{scenario.description}</p>
+                </button>
+
+                {/* Expanded content */}
+                {isExpanded && (
+                  <div className="border-t px-2.5 pb-2.5 pt-2" style={{ borderColor: 'hsl(var(--border))' }}>
+                    {/* Learning objectives */}
+                    <div className="mb-2">
+                      <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        You'll Learn
+                      </span>
+                      <ul className="mt-1 space-y-0.5">
+                        {scenario.learningObjectives.map((obj, i) => (
+                          <li key={i} className="flex items-start gap-1 text-[10px] text-muted-foreground">
+                            <span className="mt-0.5 text-primary">•</span>
+                            {obj}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* What happens */}
+                    <p className="mb-2 text-[10px] italic text-muted-foreground">
+                      {scenario.whatHappens}
+                    </p>
+
+                    {/* Trigger button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (targetNodeId) {
+                          const failureScenario = scenario.createScenario(targetNodeId);
+                          const educationalHint = scenario.educationalHint(targetNodeId);
+                          actions.triggerFailure(failureScenario);
+                          // Manually trigger teaching mode with the educational hint
+                          // The store will show this in TeachingOverlay
+                          actions.triggerTeachingMode(educationalHint);
+                          setExpandedScenarioId(null);
+                        }
+                      }}
+                      disabled={!targetNodeId}
+                      className={cn(
+                        "flex w-full items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-colors",
+                        "bg-destructive/10 text-destructive hover:bg-destructive/20",
+                        "disabled:cursor-not-allowed disabled:opacity-40"
+                      )}
+                    >
+                      <Zap className="h-3 w-3" />
+                      Trigger Failure
+                    </button>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
