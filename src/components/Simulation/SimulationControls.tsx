@@ -9,7 +9,8 @@ function SimulationControlsComponent() {
   const isBroken = useSimulationStore((s) => s.isBroken);
   const isTeaching = useSimulationStore((s) => s.isTeaching);
   const speed = useSimulationStore((s) => s.speed);
-  const currentTime = useSimulationStore((s) => s.currentTime);
+  // Throttle to 1/sec: round to nearest second in ms so selector only returns new value once per second
+  const currentTime = useSimulationStore((s) => Math.floor(s.currentTime / 1000) * 1000);
   const actions = useSimulationStore((s) => s.actions);
 
   // Don't render if simulation is not initialized

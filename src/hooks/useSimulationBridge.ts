@@ -9,7 +9,7 @@
  * Usage: Call once inside the Canvas component.
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useSimulationStore } from '@/stores/simulationStore';
 import type { NodeVisualState } from '@/types/simulation';
@@ -24,8 +24,6 @@ export function useSimulationBridge() {
   const edges = useCanvasStore((s) => s.edges);
   const isInitialized = useSimulationStore((s) => s.isInitialized);
   const isRunning = useSimulationStore((s) => s.isRunning);
-  const nodeVisualStates = useSimulationStore((s) => s.nodeVisualStates);
-  const edgeVisualStates = useSimulationStore((s) => s.edgeVisualStates);
 
   const actions = useSimulationStore((s) => s.actions);
 
@@ -34,15 +32,11 @@ export function useSimulationBridge() {
 
   // Initialize simulation engine when canvas graph changes
   useEffect(() => {
-    // Build a fingerprint from node/edge IDs and config to detect graph changes
-    const graphKey = nodes.map((n) => {
-      // Include config hash so engine re-initializes when node config changes
-      const config = n.type === 'archComponent' && n.data?.config
-        ? JSON.stringify(n.data.config)
-        : '';
-      return `${n.id}:${config}`;
-    }).sort().join(',') + '|' +
-      edges.map((e) => e.id).sort().join(',');
+    // PERF #7: Simpler graph fingerprint using only node/edge IDs
+    // Config changes during simulation don't need engine re-initialization —
+    // the engine reads live state via component states on each tick
+    const graphKey = nodes.map(n => n.id).sort().join(',') + '|' +
+      edges.map(e => e.id).sort().join(',');
 
     // Only re-initialize if graph structure actually changed
     if (graphKey === initGraphRef.current) return;
@@ -52,67 +46,91 @@ export function useSimulationBridge() {
     actions.initialize(nodes, edges);
   }, [nodes, edges, actions]);
 
-  // Sync visual states back into canvas store
-  const syncVisualStates = useCallback(() => {
+  // Sync visual states back into canvas store via Zustand subscription
+  useEffect(() => {
     if (!isRunning && !isInitialized) return;
-    if (nodeVisualStates.size === 0 && edgeVisualStates.size === 0) return;
 
-    const canvasState = useCanvasStore.getState();
-    let nodesChanged = false;
-    let edgesChanged = false;
+    // Track previous visual states to detect changes
+    let prevNodeVisuals: Map<string, NodeVisualState> | null = null;
+    let prevEdgeVisuals: Map<string, any> | null = null;
 
-    // Update node data with simulation visual states
-    // We use type assertions because we're only modifying [key: string]: unknown
-    // index-signature fields (simVisual, highlighted), not discriminant fields.
-    const updatedNodes = canvasState.nodes.map((node): CanvasNode => {
-      const visual = nodeVisualStates.get(node.id);
-      if (!visual) {
-        // Clear simulation data if no visual state
-        if (node.data.simVisual) {
-          nodesChanged = true;
-          return { ...node, data: { ...node.data, simVisual: undefined } } as CanvasNode;
-        }
-        return node;
+    // Subscribe directly to visual state changes in simulation store
+    const unsubscribe = useSimulationStore.subscribe((state) => {
+      const { nodeVisualStates, edgeVisualStates } = state;
+
+      // Only process if Maps actually changed (reference comparison)
+      if (nodeVisualStates === prevNodeVisuals && edgeVisualStates === prevEdgeVisuals) {
+        return;
       }
+      prevNodeVisuals = nodeVisualStates;
+      prevEdgeVisuals = edgeVisualStates;
 
-      // Check if visual state actually changed (reference comparison)
-      const current = node.data.simVisual as NodeVisualState | undefined;
-      if (current === visual) return node;
+      if (nodeVisualStates.size === 0 && edgeVisualStates.size === 0) return;
 
-      nodesChanged = true;
-      return {
-        ...node,
-        data: {
-          ...node.data,
-          simVisual: visual,
-          // Also set highlighted for nodes with critical health
-          highlighted: visual.healthColor === 'red',
-        },
-      } as CanvasNode;
-    });
+      const canvasState = useCanvasStore.getState();
+      let nodesChanged = false;
+      let edgesChanged = false;
 
-    // Update edge data with simulation visual states
-    const updatedEdges = canvasState.edges.map((edge): ArchEdge => {
-      const visual = edgeVisualStates.get(edge.id);
-      if (!visual) {
-        // Clear simulation flags if no visual state
-        if (edge.data?.simulating) {
-          edgesChanged = true;
-          return {
-            ...edge,
-            data: { ...edge.data, simulating: false, status: undefined },
-          } as ArchEdge;
+      // Update node data with simulation visual states
+      // We use type assertions because we're only modifying [key: string]: unknown
+      // index-signature fields (simVisual, highlighted), not discriminant fields.
+      const updatedNodes = canvasState.nodes.map((node): CanvasNode => {
+        const visual = nodeVisualStates.get(node.id);
+        if (!visual) {
+          // Clear simulation data if no visual state
+          if (node.data.simVisual) {
+            nodesChanged = true;
+            return { ...node, data: { ...node.data, simVisual: undefined } } as CanvasNode;
+          }
+          return node;
         }
-        return edge;
-      }
 
-      // Map EdgeVisualState to ArchEdge's existing data interface
-      const simulating = visual.particleFlow.count > 0;
-      const status = mapCongestionToStatus(visual.congestionLevel);
+        // Check if visual state actually changed (reference comparison)
+        const current = node.data.simVisual as NodeVisualState | undefined;
+        if (current === visual) return node;
 
-      // Always apply simVisual when we have visual data from the engine
-      // (the old check was too conservative and missed simVisual updates)
-      if (visual) {
+        nodesChanged = true;
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            simVisual: visual,
+            // Also set highlighted for nodes with critical health
+            highlighted: visual.healthColor === 'red',
+          },
+        } as CanvasNode;
+      });
+
+      // Update edge data with simulation visual states
+      const updatedEdges = canvasState.edges.map((edge): ArchEdge => {
+        const visual = edgeVisualStates.get(edge.id);
+        if (!visual) {
+          // Clear simulation flags if no visual state
+          if (edge.data?.simulating) {
+            edgesChanged = true;
+            return {
+              ...edge,
+              data: { ...edge.data, simulating: false, status: undefined },
+            } as ArchEdge;
+          }
+          return edge;
+        }
+
+        // Map EdgeVisualState to ArchEdge's existing data interface
+        const simulating = visual.particleFlow.count > 0;
+        const status = mapCongestionToStatus(visual.congestionLevel);
+
+        // PERF #6 fix: Compare current values with new values before creating new edge object
+        // If the engine's diff didn't emit an update for this edge, the visual reference
+        // from the Map is the SAME object as last tick, so === comparison works
+        const currentVisual = edge.data?.simVisual;
+        const currentSimulating = edge.data?.simulating;
+        const currentStatus = edge.data?.status;
+
+        if (currentVisual === visual && currentSimulating === simulating && currentStatus === status) {
+          return edge; // unchanged — return same reference to prevent ReactFlow re-render
+        }
+
         edgesChanged = true;
         return {
           ...edge,
@@ -123,41 +141,19 @@ export function useSimulationBridge() {
             simVisual: visual,
           },
         } as ArchEdge;
-      }
+      });
 
-      // Only skip update if simulating and status haven't changed AND no visual data
-      if (
-        edge.data?.simulating === simulating &&
-        edge.data?.status === status
-      ) {
-        return edge;
+      // Only update store if something actually changed
+      if (nodesChanged || edgesChanged) {
+        useCanvasStore.setState({
+          ...(nodesChanged ? { nodes: updatedNodes } : {}),
+          ...(edgesChanged ? { edges: updatedEdges } : {}),
+        });
       }
-
-      edgesChanged = true;
-      return {
-        ...edge,
-        data: {
-          ...edge.data,
-          simulating,
-          status,
-          simVisual: visual,
-        },
-      } as ArchEdge;
     });
 
-    // Only update store if something actually changed
-    if (nodesChanged || edgesChanged) {
-      useCanvasStore.setState({
-        ...(nodesChanged ? { nodes: updatedNodes } : {}),
-        ...(edgesChanged ? { edges: updatedEdges } : {}),
-      });
-    }
-  }, [isRunning, isInitialized, nodeVisualStates, edgeVisualStates]);
-
-  // Run sync whenever visual states change
-  useEffect(() => {
-    syncVisualStates();
-  }, [syncVisualStates]);
+    return unsubscribe;
+  }, [isRunning, isInitialized]);
 
   // Cleanup: clear simulation data from nodes/edges when unmounting
   useEffect(() => {

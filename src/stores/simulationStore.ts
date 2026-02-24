@@ -16,7 +16,6 @@ import type {
   MetricsSnapshot,
   NodeVisualState,
   EdgeVisualState,
-  SimulationEvent,
   FailureScenario,
   EducationalHint,
 } from '@/types/simulation';
@@ -51,9 +50,6 @@ interface SimulationStoreState {
   activeFailures: FailureScenario[];
   currentLesson: EducationalHint | null;
 
-  // Recent events for timeline (last 100)
-  recentEvents: SimulationEvent[];
-
   // Actions
   actions: {
     initialize: (nodes: CanvasNode[], edges: ArchEdge[]) => void;
@@ -65,6 +61,8 @@ interface SimulationStoreState {
     recoverFromFailure: (scenarioId: string) => void;
     acknowledgeLesson: () => void;
     triggerTeachingMode: (lesson: EducationalHint) => void;
+    triggerFailureWithTeaching: (scenario: FailureScenario, hint: EducationalHint) => void;
+    fixAndResume: () => void;
   };
 }
 
@@ -88,8 +86,6 @@ function getOrCreateEngine(): SimulationEngine {
 // Store
 // ============================================================================
 
-const MAX_EVENTS = 100;
-
 export const useSimulationStore = create<SimulationStoreState>((set) => {
   // Subscribe engine ticks to store updates
   function subscribeToEngine(eng: SimulationEngine): void {
@@ -100,17 +96,58 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
       const state = eng.getState();
       const mode = state.mode;
 
-      // Build visual state maps from tick result
-      const nodeVisualStates = new Map<string, NodeVisualState>();
-      const edgeVisualStates = new Map<string, EdgeVisualState>();
+      // PERF #5 fix: Skip Map copies when no visual updates
+      const get = useSimulationStore.getState;
+      let nodeVisualsChanged = false;
+      let edgeVisualsChanged = false;
+      let nodeVisualStates: Map<string, NodeVisualState> | undefined;
+      let edgeVisualStates: Map<string, EdgeVisualState> | undefined;
 
-      for (const update of result.visualUpdates) {
-        if (update.type === 'node') {
-          nodeVisualStates.set(update.id, update.visualState as NodeVisualState);
-        } else {
-          edgeVisualStates.set(update.id, update.visualState as EdgeVisualState);
+      if (result.visualUpdates.length > 0) {
+        const prevNodeVisuals = get().nodeVisualStates;
+        const prevEdgeVisuals = get().edgeVisualStates;
+        nodeVisualStates = new Map(prevNodeVisuals);
+        edgeVisualStates = new Map(prevEdgeVisuals);
+
+        for (const update of result.visualUpdates) {
+          if (update.type === 'node') {
+            const prev = prevNodeVisuals.get(update.id);
+            const next = update.visualState;
+            // Simple shallow compare on key fields
+            if (!prev ||
+                prev.healthColor !== next.healthColor ||
+                prev.pulseIntensity !== next.pulseIntensity ||
+                prev.queueVisualization?.percentFull !== next.queueVisualization?.percentFull) {
+              nodeVisualStates.set(update.id, next);
+              nodeVisualsChanged = true;
+            }
+          } else {
+            const prev = prevEdgeVisuals.get(update.id);
+            const next = update.visualState;
+            if (!prev ||
+                prev.congestionLevel !== next.congestionLevel ||
+                prev.particleFlow?.speed !== next.particleFlow?.speed) {
+              edgeVisualStates.set(update.id, next);
+              edgeVisualsChanged = true;
+            }
+          }
         }
       }
+
+      // Bug #18 fix: Only create new activeFailures array if it changed
+      const currentFailures = get().activeFailures;
+      const engineFailures = state.activeFailures;
+      const failuresChanged = currentFailures.length !== engineFailures.length ||
+        currentFailures.some((f, i) => f.id !== engineFailures[i]?.id);
+
+      // PERF #2 fix: Only spread systemMetrics when values changed
+      const prevMetrics = get().systemMetrics;
+      const newMetrics = result.systemMetrics;
+      const metricsChanged = !prevMetrics ||
+        prevMetrics.totalThroughput !== newMetrics.totalThroughput ||
+        prevMetrics.averageLatency !== newMetrics.averageLatency ||
+        prevMetrics.errorRate !== newMetrics.errorRate ||
+        prevMetrics.healthyNodeCount !== newMetrics.healthyNodeCount;
 
       set({
         isRunning: mode.state === 'running',
@@ -119,18 +156,18 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
         isTeaching: mode.state === 'teaching',
         speed: state.speed,
         currentTime: state.currentTime,
-        systemMetrics: { ...result.systemMetrics },
-        nodeVisualStates,
-        edgeVisualStates,
-        activeFailures: [...state.activeFailures],
+        ...(metricsChanged ? { systemMetrics: { ...newMetrics } } : {}),
+        ...(nodeVisualsChanged ? { nodeVisualStates } : {}),
+        ...(edgeVisualsChanged ? { edgeVisualStates } : {}),
+        ...(failuresChanged ? { activeFailures: [...engineFailures] } : {}),
         currentLesson: mode.state === 'teaching' ? mode.lesson : null,
-        recentEvents: [...state.events.slice(-MAX_EVENTS)],
       });
 
-      // Throttle metrics history snapshots to ~1 per second
-      const currentTime = state.currentTime;
-      if (currentTime - lastSnapshotTime >= 1000) {
-        lastSnapshotTime = currentTime;
+      // Throttle metrics history snapshots to ~1 per second (wall-clock time)
+      const now = Date.now();
+      if (now - lastSnapshotTime >= 1000) {
+        lastSnapshotTime = now;
+        const currentTime = state.currentTime;
         set(prev => ({
           metricsHistory: [
             ...(prev.metricsHistory.length >= 300
@@ -168,7 +205,6 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
     edgeVisualStates: new Map(),
     activeFailures: [],
     currentLesson: null,
-    recentEvents: [],
 
     actions: {
       initialize(nodes: CanvasNode[], edges: ArchEdge[]) {
@@ -193,7 +229,7 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
       reset() {
         const eng = getOrCreateEngine();
         eng.reset();
-        lastSnapshotTime = 0;
+        lastSnapshotTime = Date.now();
         set({
           isRunning: false,
           isPaused: true,
@@ -216,7 +252,6 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
           edgeVisualStates: new Map(),
           activeFailures: [],
           currentLesson: null,
-          recentEvents: [],
         });
       },
 
@@ -240,7 +275,17 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
       recoverFromFailure(scenarioId: string) {
         const eng = getOrCreateEngine();
         eng.recoverFromFailure(scenarioId);
-        set({ activeFailures: [...eng.getState().activeFailures] });
+        const engineState = eng.getState();
+        const newState: Partial<SimulationStoreState> = {
+          activeFailures: [...engineState.activeFailures],
+        };
+        // FIX 3: If all failures cleared, update mode flags
+        if (engineState.activeFailures.length === 0) {
+          newState.isBroken = false;
+          newState.isPaused = true;
+          newState.isRunning = false;
+        }
+        set(newState);
       },
 
       acknowledgeLesson() {
@@ -253,6 +298,43 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
         const eng = getOrCreateEngine();
         eng.pauseForTeaching(lesson);
         set({ isTeaching: true, currentLesson: lesson, isPaused: true });
+      },
+
+      // FIX 2: Atomic triggerFailureWithTeaching action
+      triggerFailureWithTeaching(scenario: FailureScenario, hint: EducationalHint) {
+        const eng = getOrCreateEngine();
+        eng.triggerFailure(scenario);
+        // Store the hint — it will be shown after cascading events complete
+        eng.getState().pendingHints.push(hint);
+        const mode = eng.getState().mode;
+        set({
+          isBroken: mode.state === 'broken',
+          isRunning: false, // Even though tick continues, from user POV sim is "failing"
+          activeFailures: [...eng.getState().activeFailures],
+        });
+      },
+
+      // FIX 4: Atomic fixAndResume action
+      fixAndResume() {
+        const eng = getOrCreateEngine();
+        // Get current failures from engine (not React state — avoids stale closure)
+        const failures = eng.getState().activeFailures;
+        // Recover ALL failures
+        for (const f of failures) {
+          eng.recoverFromFailure(f.id);
+        }
+        // Clear teaching state
+        eng.resumeFromTeaching();
+        // Restart
+        eng.start();
+        set({
+          activeFailures: [],
+          isBroken: false,
+          isTeaching: false,
+          isPaused: false,
+          isRunning: true,
+          currentLesson: null,
+        });
       },
     },
   };
