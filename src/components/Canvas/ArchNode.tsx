@@ -2,6 +2,7 @@ import { memo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { ArchNode as ArchNodeType } from '@/types';
+import type { NodeVisualState } from '@/types/simulation';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { getIconByName } from '@/registry/iconRegistry';
 import { categoryGlows, categoryAccentTokens } from '@/registry/categoryThemes';
@@ -16,6 +17,7 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
   const isHighlighted = data.highlighted ?? false;
   const isNewlyAdded = data.isNewlyAdded ?? false;
   const hasContext = Boolean(data.context);
+  const simVisual = data.simVisual as NodeVisualState | undefined;
   const typeDef = componentTypeMap.get(data.componentType);
   const IconComponent = getIconByName(typeDef?.icon ?? '');
   const glowColor = typeDef ? categoryGlows[typeDef.category] : categoryGlows.External;
@@ -31,18 +33,36 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
     : isHovered
       ? 'var(--node-surface-hover)'
       : 'var(--node-surface)';
-  const baseBorderColor = selected
+
+  // Determine border color - simulation health color overrides when active
+  const healthColorMap = {
+    green: 'hsl(142 71% 45% / 0.6)',
+    yellow: 'hsl(45 93% 47% / 0.6)',
+    red: 'hsl(0 84% 60% / 0.6)',
+    gray: undefined,
+  };
+  const simulationBorderColor = simVisual ? healthColorMap[simVisual.healthColor] : undefined;
+  const baseBorderColor = simulationBorderColor ?? (selected
     ? accentBorderColor
     : isHovered
       ? 'var(--node-border-hover)'
-      : 'var(--node-border)';
-  const boxShadow = isHighlighted
+      : 'var(--node-border)');
+  // Determine shadow - add health glow when simulating
+  const healthGlowMap = {
+    green: '0 0 12px hsl(142 71% 45% / 0.3)',
+    yellow: '0 0 12px hsl(45 93% 47% / 0.3)',
+    red: '0 0 16px 4px hsl(0 84% 60% / 0.4)',
+    gray: undefined,
+  };
+  const healthGlow = simVisual ? healthGlowMap[simVisual.healthColor] : undefined;
+  const baseShadow = isHighlighted
     ? `var(--node-selected-shadow), 0 0 16px 4px ${glowColor}`
     : selected
       ? `var(--node-selected-shadow), 0 0 14px ${glowColor}`
       : isHovered
         ? `var(--node-hover-shadow), 0 0 10px ${glowColor}`
         : 'var(--node-shadow)';
+  const boxShadow = healthGlow ? `${baseShadow}, ${healthGlow}` : baseShadow;
   const transform = selected
     ? 'scale(var(--node-selected-scale))'
     : isHovered
@@ -53,7 +73,8 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
     <div
       className={cn(
         "relative flex flex-col items-center justify-center gap-2.5 rounded-xl border px-4 py-3 transition-all duration-160",
-        isNewlyAdded && "ring-2 ring-blue-400/60 animate-pulse"
+        isNewlyAdded && "ring-2 ring-blue-400/60 animate-pulse",
+        simVisual && simVisual.pulseIntensity > 0.5 && "animate-pulse"
       )}
       style={{
         width: ARCH_NODE.WIDTH,
@@ -140,6 +161,40 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
           opacity: isHovered || selected ? 1 : 0.3,
         }}
       />
+
+      {/* Queue depth visualization bar */}
+      {simVisual?.queueVisualization && (
+        <div
+          className="absolute -bottom-1 left-2 right-2 h-1 rounded-full overflow-hidden"
+          style={{ backgroundColor: 'var(--node-border)' }}
+        >
+          <div
+            className="h-full rounded-full transition-all duration-300"
+            style={{
+              width: `${simVisual.queueVisualization.percentFull}%`,
+              backgroundColor: simVisual.queueVisualization.percentFull > 80
+                ? 'hsl(0 84% 60%)'
+                : simVisual.queueVisualization.percentFull > 50
+                  ? 'hsl(45 93% 47%)'
+                  : 'hsl(142 71% 45%)',
+            }}
+          />
+        </div>
+      )}
+
+      {/* Metrics overlay - shown on hover or when selected */}
+      {simVisual?.metricsOverlay && (isHovered || selected) && (
+        <div
+          className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex gap-2 text-[9px] font-mono whitespace-nowrap"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          <span>{simVisual.metricsOverlay.throughput}</span>
+          <span>{simVisual.metricsOverlay.latency}</span>
+          {simVisual.metricsOverlay.errorRate && (
+            <span style={{ color: 'hsl(0 84% 60%)' }}>{simVisual.metricsOverlay.errorRate}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 
