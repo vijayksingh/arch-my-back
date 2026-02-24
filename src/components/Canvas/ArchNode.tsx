@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useRef } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { ArchNode as ArchNodeType } from '@/types';
@@ -18,6 +18,19 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
   const isNewlyAdded = data.isNewlyAdded ?? false;
   const hasContext = Boolean(data.context);
   const simVisual = data.simVisual as NodeVisualState | undefined;
+
+  // PERF #13: Pulse animation hysteresis to prevent flickering at boundary
+  const isPulsingRef = useRef(false);
+  if (simVisual) {
+    if (!isPulsingRef.current && simVisual.pulseIntensity > 0.6) {
+      isPulsingRef.current = true;
+    } else if (isPulsingRef.current && simVisual.pulseIntensity < 0.4) {
+      isPulsingRef.current = false;
+    }
+  } else {
+    isPulsingRef.current = false;
+  }
+  const shouldPulse = simVisual && isPulsingRef.current;
   const typeDef = componentTypeMap.get(data.componentType);
   const IconComponent = getIconByName(typeDef?.icon ?? '');
   const glowColor = typeDef ? categoryGlows[typeDef.category] : categoryGlows.External;
@@ -74,7 +87,7 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
       className={cn(
         "relative flex flex-col items-center justify-center gap-2.5 rounded-xl border px-4 py-3 transition-all duration-160",
         isNewlyAdded && "ring-2 ring-blue-400/60 animate-pulse",
-        simVisual && simVisual.pulseIntensity > 0.5 && "animate-pulse"
+        shouldPulse && "animate-pulse"
       )}
       style={{
         width: ARCH_NODE.WIDTH,

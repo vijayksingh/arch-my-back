@@ -16,18 +16,16 @@ const TeachingOverlayComponent = () => {
   const isBroken = useSimulationStore((s) => s.isBroken);
   const currentLesson = useSimulationStore((s) => s.currentLesson);
   const activeFailures = useSimulationStore((s) => s.activeFailures);
-  const { acknowledgeLesson, recoverFromFailure, start } = useSimulationStore((s) => s.actions);
+  const { acknowledgeLesson, fixAndResume } = useSimulationStore((s) => s.actions);
 
   const handleGotIt = useCallback(() => {
     acknowledgeLesson();
   }, [acknowledgeLesson]);
 
+  // FIX 4: Use single atomic fixAndResume action
   const handleFixAndResume = useCallback(() => {
-    // Recover from ALL active failures, then acknowledge and start
-    activeFailures.forEach(f => recoverFromFailure(f.id));
-    acknowledgeLesson();
-    start();
-  }, [activeFailures, recoverFromFailure, acknowledgeLesson, start]);
+    fixAndResume();
+  }, [fixAndResume]);
 
   // Don't render if not in teaching or broken state
   if (!isTeaching && !isBroken) {

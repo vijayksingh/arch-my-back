@@ -65,7 +65,7 @@ const EDUCATIONAL_HINTS: Record<string, (context: { nodeId: string; metrics?: Re
     actionSuggestion: 'Consider adding horizontal scaling (more instances behind a load balancer), implementing caching to reduce load, or optimizing the service to handle more requests per second.',
   }),
 
-  cascading_failure: ({ nodeId, metrics }) => ({
+  cascading_failure: ({ nodeId }) => ({
     id: `hint-cascade-${nodeId}-${Date.now()}`,
     type: 'failure_explanation',
     title: 'Cascading Failure',
@@ -147,6 +147,7 @@ export class SimulationEngine implements ISimulationEngine {
   private nodes: CanvasNode[] = [];
   private edges: ArchEdge[] = [];
   private nodeMap = new Map<string, CanvasNode>();
+  private edgeMap = new Map<string, ArchEdge>();
 
   // Adjacency: nodeId → inbound edge IDs
   private inboundEdges = new Map<string, string[]>();
@@ -154,6 +155,8 @@ export class SimulationEngine implements ISimulationEngine {
   private outboundEdges = new Map<string, string[]>();
   // Entry nodes (no inbound edges from arch components)
   private entryNodeIds = new Set<string>();
+  // Cached topological order (PERF #3 fix)
+  private topologicalOrder: string[] = [];
 
   // RAF loop
   private rafId: number | null = null;
@@ -170,6 +173,12 @@ export class SimulationEngine implements ISimulationEngine {
   private lastTeachingTime = 0;
   private teachingCooldown = 15_000; // Don't teach more than once per 15 simulated seconds
 
+  // PERF #18 fix: Throttle bottleneck events per node (max 2/sec per node)
+  private lastBottleneckEventTime = new Map<string, number>();
+  // Visual state diffing (Bug #24 fix)
+  private prevNodeVisuals = new Map<string, NodeVisualState>();
+  private prevEdgeVisuals = new Map<string, EdgeVisualState>();
+
   constructor(registry?: BehaviorRegistry) {
     this.eventBus = new EventBusImpl();
     this.behaviorRegistry = registry ?? createBehaviorRegistry();
@@ -181,7 +190,8 @@ export class SimulationEngine implements ISimulationEngine {
   // ============================================================================
 
   initialize(graph: { nodes: CanvasNode[]; edges: ArchEdge[] }): void {
-    this.nodes = graph.nodes;
+    // Bug #20 fix: Only include arch component nodes in simulation
+    this.nodes = graph.nodes.filter(n => n.type === 'archComponent');
     this.edges = graph.edges;
     this.buildAdjacency();
     this.initializeComponentStates();
@@ -214,8 +224,14 @@ export class SimulationEngine implements ISimulationEngine {
     this.cancelTick();
     this.state = this.createInitialState();
     this.scheduledEvents = [];
-    this.eventBus.clear();
+    // Bug #9 fix: Only clear event queue, not listeners
+    this.eventBus.clearQueue();
     this.lastTeachingTime = 0;
+    this.lastBottleneckEventTime.clear(); // PERF #18 fix: clear bottleneck throttle
+    this.edgeMap.clear();
+    this.prevNodeVisuals.clear();
+    this.prevEdgeVisuals.clear();
+    this.topologicalOrder = []; // PERF #3 fix: clear cached order
     if (this.nodes.length > 0) {
       this.initializeComponentStates();
       this.state.isInitialized = true;
@@ -319,6 +335,10 @@ export class SimulationEngine implements ISimulationEngine {
 
     // Schedule cascading failure events for downstream nodes
     const downstreamNodeIds = this.findDownstreamNodes(nodeId);
+
+    // FIX 5: Populate affectedNodeIds so recoverFromFailure can heal downstream nodes
+    scenario.affectedNodeIds = downstreamNodeIds;
+
     for (const downstreamId of downstreamNodeIds) {
       const timeoutDelay = 5000; // 5s timeout
       this.scheduledEvents.push(
@@ -328,10 +348,12 @@ export class SimulationEngine implements ISimulationEngine {
       );
     }
 
-    // If running, transition to broken state
+    // FIX 1: Don't stop the tick loop — let cascading events propagate
+    // The teaching overlay will show after cascade completes
     if (this.state.mode.state === 'running') {
       this.state.mode = { state: 'broken', failure: scenario };
-      this.cancelTick();
+      // Don't call cancelTick() — keep the loop running so
+      // processScheduledEvents() can fire downstream cascade events
     }
   }
 
@@ -365,6 +387,12 @@ export class SimulationEngine implements ISimulationEngine {
         compState.errorRate = 0;
         compState.behaviorState = {};
       }
+    }
+
+    // FIX 3: Transition out of broken state when all failures are cleared
+    if (this.state.activeFailures.length === 0) {
+      this.state.mode = { state: 'paused' };
+      this.cancelTick(); // Stop the tick loop since we're now paused
     }
   }
 
@@ -401,6 +429,7 @@ export class SimulationEngine implements ISimulationEngine {
 
   private buildAdjacency(): void {
     this.nodeMap.clear();
+    this.edgeMap.clear();
     this.inboundEdges.clear();
     this.outboundEdges.clear();
     this.entryNodeIds.clear();
@@ -412,6 +441,7 @@ export class SimulationEngine implements ISimulationEngine {
     }
 
     for (const edge of this.edges) {
+      this.edgeMap.set(edge.id, edge);
       this.outboundEdges.get(edge.source)?.push(edge.id);
       this.inboundEdges.get(edge.target)?.push(edge.id);
     }
@@ -423,6 +453,9 @@ export class SimulationEngine implements ISimulationEngine {
         this.entryNodeIds.add(node.id);
       }
     }
+
+    // PERF #3 fix: Compute topological order once after graph is built
+    this.topologicalOrder = this.computeTopologicalOrder();
   }
 
   private initializeComponentStates(): void {
@@ -529,6 +562,13 @@ export class SimulationEngine implements ISimulationEngine {
       this.state.events.push(event);
       this.eventBus.emit(event);
     }
+
+    // Cap events array to prevent unbounded memory growth
+    // PERF #14: Use splice for in-place mutation instead of slice
+    if (this.state.events.length > 500) {
+      this.state.events.splice(0, this.state.events.length - 500);
+    }
+
     this.eventBus.flush(timestamp);
 
     // 7.5. Check for pending teaching moments
@@ -553,8 +593,9 @@ export class SimulationEngine implements ISimulationEngine {
       listener(tickResult);
     }
 
-    // 9. Schedule next tick (if still running)
-    if (this.state.mode.state === 'running') {
+    // 9. Schedule next tick (if still running OR has pending cascading events)
+    const mode = this.state.mode;
+    if (mode.state === 'running' || (mode.state === 'broken' && this.scheduledEvents.length > 0)) {
       this.scheduleNextTick();
     }
   };
@@ -564,6 +605,9 @@ export class SimulationEngine implements ISimulationEngine {
   // ============================================================================
 
   private processScheduledEvents(newEvents: SimulationEvent[]): void {
+    // PERF #10 fix: Early return when no events to avoid allocating arrays
+    if (this.scheduledEvents.length === 0) return;
+
     const currentTime = this.state.currentTime;
     const toFire: Array<{ event: ScheduledFailureEvent; fireAt: number }> = [];
     const remaining: Array<{ event: ScheduledFailureEvent; fireAt: number }> = [];
@@ -668,9 +712,11 @@ export class SimulationEngine implements ISimulationEngine {
     }
   }
 
-  private updateNodeStates(deltaTimeSec: number): void {
-    // Process nodes in topological order (entry nodes first)
-    // This ensures upstream throughput is calculated before downstream incoming load
+  /**
+   * PERF #3 fix: Compute topological order via DFS.
+   * This is called once in buildAdjacency(), not every tick.
+   */
+  private computeTopologicalOrder(): string[] {
     const visited = new Set<string>();
     const order: string[] = [];
 
@@ -681,7 +727,7 @@ export class SimulationEngine implements ISimulationEngine {
       // Visit upstream nodes first
       const inbound = this.inboundEdges.get(nodeId) ?? [];
       for (const edgeId of inbound) {
-        const edge = this.edges.find(e => e.id === edgeId);
+        const edge = this.edgeMap.get(edgeId);
         if (edge) visit(edge.source);
       }
 
@@ -692,8 +738,14 @@ export class SimulationEngine implements ISimulationEngine {
       visit(node.id);
     }
 
-    // Now process in topological order
-    for (const nodeId of order) {
+    return order;
+  }
+
+  private updateNodeStates(deltaTimeSec: number): void {
+    // Process nodes in topological order (entry nodes first)
+    // This ensures upstream throughput is calculated before downstream incoming load
+    // PERF #3 fix: Use cached topological order instead of computing DFS every tick
+    for (const nodeId of this.topologicalOrder) {
       const node = this.nodeMap.get(nodeId);
       if (!node) continue;
 
@@ -788,23 +840,28 @@ export class SimulationEngine implements ISimulationEngine {
         if (compState.isHealthy && compState.throughput > 0) {
           const utilization = compState.throughput / nodeCapacity;
           if (utilization > 0.9) {
-            newEvents.push({
-              type: 'bottleneck_detected',
-              timestamp: this.state.currentTime,
-              nodeId,
-              severity: utilization > 0.95 ? 0.9 : 0.6,
-              suggestion: 'Consider adding a cache, load balancer, or scaling horizontally',
-              metrics: {
-                throughput: compState.throughput,
-                capacity: nodeCapacity,
-                utilizationPercent: utilization * 100,
-              },
-            });
+            // PERF #18 fix: Throttle bottleneck events to max 2/sec per node
+            const lastTime = this.lastBottleneckEventTime.get(nodeId) ?? 0;
+            if (this.state.currentTime - lastTime >= 500) {
+              this.lastBottleneckEventTime.set(nodeId, this.state.currentTime);
+              newEvents.push({
+                type: 'bottleneck_detected',
+                timestamp: this.state.currentTime,
+                nodeId,
+                severity: utilization > 0.95 ? 0.9 : 0.6,
+                suggestion: 'Consider adding a cache, load balancer, or scaling horizontally',
+                metrics: {
+                  throughput: compState.throughput,
+                  capacity: nodeCapacity,
+                  utilizationPercent: utilization * 100,
+                },
+              });
+            }
 
             // Auto-teach on severe bottlenecks (>95% utilization)
             if (utilization > 0.95 && this.state.mode.state === 'running') {
-              // Check cooldown
-              if (this.state.currentTime - this.lastTeachingTime > this.teachingCooldown) {
+              // Check cooldown (scaled by speed so it's ~15 real seconds regardless of sim speed)
+              if (this.state.currentTime - this.lastTeachingTime > this.teachingCooldown * this.state.speed) {
                 this.lastTeachingTime = this.state.currentTime;
                 const hint = EDUCATIONAL_HINTS.bottleneck({
                   nodeId,
@@ -821,8 +878,10 @@ export class SimulationEngine implements ISimulationEngine {
         // Queue overflow detection
         if (compState.isHealthy && compState.queueDepth > 0) {
           const maxQueue = getNodeConfig(node, 'maxQueueDepth', DEFAULTS.maxQueueDepth);
-          const queueRatio = compState.queueDepth / maxQueue;
-          if (queueRatio > 0.9) {
+          // Bug #7 fix: Guard against division by zero
+          if (maxQueue > 0) {
+            const queueRatio = compState.queueDepth / maxQueue;
+            if (queueRatio > 0.9) {
             newEvents.push({
               type: 'queue_overflow',
               timestamp: this.state.currentTime,
@@ -834,11 +893,12 @@ export class SimulationEngine implements ISimulationEngine {
 
             // Auto-teach on first queue overflow
             if (this.state.mode.state === 'running' &&
-                this.state.currentTime - this.lastTeachingTime > this.teachingCooldown) {
+                this.state.currentTime - this.lastTeachingTime > this.teachingCooldown * this.state.speed) {
               this.lastTeachingTime = this.state.currentTime;
               this.state.pendingHints.push(
                 EDUCATIONAL_HINTS.queue_overflow({ nodeId })
               );
+            }
             }
           }
         }
@@ -853,14 +913,32 @@ export class SimulationEngine implements ISimulationEngine {
       const capacity = node ? getNodeConfig(node, 'capacity', DEFAULTS.nodeCapacity) : DEFAULTS.nodeCapacity;
       const utilization = capacity > 0 ? compState.throughput / capacity : 0;
 
+      // PERF #4: Compute lightweight values first, check against prev before building full object
+      const pulseIntensity = Math.min(1, utilization);
+      const healthColor = healthColorFromUtilization(utilization, compState.isHealthy);
+      const queueDepth = Math.round(compState.queueDepth);
+      const queuePercentFull = compState.maxQueueDepth > 0
+        ? (compState.queueDepth / compState.maxQueueDepth) * 100
+        : 0;
+
+      const prev = this.prevNodeVisuals.get(nodeId);
+      if (prev &&
+          prev.healthColor === healthColor &&
+          prev.pulseIntensity === pulseIntensity &&
+          prev.queueVisualization?.depth === queueDepth &&
+          prev.queueVisualization?.percentFull === queuePercentFull) {
+        continue; // Skip full object construction — nothing changed
+      }
+
+      // Only construct the full object with expensive string formatting if something changed
       const visualState: NodeVisualState = {
-        pulseIntensity: Math.min(1, utilization),
-        healthColor: healthColorFromUtilization(utilization, compState.isHealthy),
+        pulseIntensity,
+        healthColor,
         queueVisualization: compState.maxQueueDepth > 0
           ? {
-              depth: Math.round(compState.queueDepth),
+              depth: queueDepth,
               maxDepth: compState.maxQueueDepth,
-              percentFull: (compState.queueDepth / compState.maxQueueDepth) * 100,
+              percentFull: queuePercentFull,
             }
           : undefined,
         metricsOverlay: {
@@ -871,46 +949,72 @@ export class SimulationEngine implements ISimulationEngine {
       };
 
       updates.push({ type: 'node', id: nodeId, visualState });
+      this.prevNodeVisuals.set(nodeId, visualState);
     }
 
     // Edge visuals
     for (const [edgeId, flowState] of this.state.edgeFlowStates) {
+      // PERF #4: Compare values before constructing object
+      const congestionLevel = flowState.congestionLevel;
+      const particleCount = flowState.particleCount;
+      const particleSpeed = flowState.particleSpeed;
+      const isBackpressured = flowState.isBackpressured;
+
+      const prev = this.prevEdgeVisuals.get(edgeId);
+      if (prev &&
+          prev.congestionLevel === congestionLevel &&
+          prev.particleFlow?.count === particleCount &&
+          prev.particleFlow?.speed === particleSpeed &&
+          prev.isBackpressured === isBackpressured) {
+        continue; // Skip object construction
+      }
+
       const visualState: EdgeVisualState = {
         particleFlow: {
-          count: flowState.particleCount,
-          speed: flowState.particleSpeed,
+          count: particleCount,
+          speed: particleSpeed,
         },
-        congestionLevel: flowState.congestionLevel,
-        isBackpressured: flowState.isBackpressured,
+        congestionLevel,
+        isBackpressured,
       };
 
       updates.push({ type: 'edge', id: edgeId, visualState });
+      this.prevEdgeVisuals.set(edgeId, visualState);
     }
   }
 
   private updateSystemMetrics(): void {
     const metrics = this.state.systemMetrics;
-    const states = [...this.state.componentStates.values()];
+    const nodeCount = this.state.componentStates.size;
 
-    if (states.length === 0) return;
+    if (nodeCount === 0) return;
+
+    // PERF #11 fix: Single loop over Map iterator instead of spreading to array + multiple reduces
+    let totalThroughput = 0;
+    let totalLatency = 0;
+    let totalErrors = 0;
+    let healthyCount = 0;
+    let totalQueueDepth = 0;
 
     // Only count entry nodes for total throughput (avoids double-counting)
-    let totalThroughput = 0;
     for (const nodeId of this.entryNodeIds) {
       const cs = this.state.componentStates.get(nodeId);
       if (cs) totalThroughput += cs.throughput;
     }
 
-    const totalLatency = states.reduce((sum, s) => sum + (isFinite(s.latency) ? s.latency : 0), 0);
-    const totalErrors = states.reduce((sum, s) => sum + s.errorRate, 0);
-    const healthyCount = states.filter(s => s.isHealthy).length;
-    const totalQueueDepth = states.reduce((sum, s) => sum + s.queueDepth, 0);
+    // Accumulate all other metrics in one pass
+    for (const s of this.state.componentStates.values()) {
+      totalLatency += isFinite(s.latency) ? s.latency : 0;
+      totalErrors += s.errorRate;
+      if (s.isHealthy) healthyCount++;
+      totalQueueDepth += s.queueDepth;
+    }
 
     metrics.totalThroughput = totalThroughput;
-    metrics.averageLatency = states.length > 0 ? totalLatency / states.length : 0;
-    metrics.errorRate = states.length > 0 ? totalErrors / states.length : 0;
+    metrics.averageLatency = nodeCount > 0 ? totalLatency / nodeCount : 0;
+    metrics.errorRate = nodeCount > 0 ? totalErrors / nodeCount : 0;
     metrics.healthyNodeCount = healthyCount;
-    metrics.unhealthyNodeCount = states.length - healthyCount;
+    metrics.unhealthyNodeCount = nodeCount - healthyCount;
     metrics.activeRequestCount = Math.round(totalQueueDepth);
 
     // Track peaks
@@ -934,7 +1038,7 @@ export class SimulationEngine implements ISimulationEngine {
       const current = queue.shift()!;
       const outbound = this.outboundEdges.get(current) ?? [];
       for (const edgeId of outbound) {
-        const edge = this.edges.find(e => e.id === edgeId);
+        const edge = this.edgeMap.get(edgeId);
         if (edge && !visited.has(edge.target)) {
           visited.add(edge.target);
           queue.push(edge.target);

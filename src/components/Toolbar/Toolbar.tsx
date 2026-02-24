@@ -4,6 +4,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useQuery as useConvexQuery, useMutation } from 'convex/react';
 import { Button } from '@/components/ui/button';
 import { ShareButton } from '@/components/ShareButton';
+import { SimulationControls } from '@/components/Simulation/SimulationControls';
 import { useAuthActions, useQuery } from '@/lib/auth';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
@@ -89,7 +90,7 @@ export function Toolbar({ designId }: ToolbarProps = {}) {
         </div>
       </div>
 
-      {/* Center: breadcrumbs (when designId provided) */}
+      {/* Center: breadcrumbs + simulation controls */}
       <div className="flex flex-1 items-center justify-center gap-3">
         {designId && design && (
           // Breadcrumb navigation for designs
@@ -143,6 +144,9 @@ export function Toolbar({ designId }: ToolbarProps = {}) {
             )}
           </div>
         )}
+
+        {/* Simulation controls (renders only when initialized) */}
+        <SimulationControls />
       </div>
 
       {/* Right: share and auth */}

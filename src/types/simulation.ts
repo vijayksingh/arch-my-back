@@ -350,11 +350,9 @@ export interface SimulationTickResult {
  * Visual updates to apply to canvas nodes/edges.
  * Simulation engine produces these, canvas consumes them.
  */
-export interface CanvasVisualUpdate {
-  type: 'node' | 'edge';
-  id: string;
-  visualState: NodeVisualState | EdgeVisualState;
-}
+export type CanvasVisualUpdate =
+  | { type: 'node'; id: string; visualState: NodeVisualState }
+  | { type: 'edge'; id: string; visualState: EdgeVisualState };
 
 /**
  * Visual state for a node on the canvas.

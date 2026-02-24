@@ -17,6 +17,8 @@ import type { Node, XYPosition, Connection, Edge } from '@xyflow/react';
 import type { CanvasNode, CanvasShapeKind } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { useSimulationBridge } from '@/hooks/useSimulationBridge';
+import { TeachingOverlay, FailureScenarioPanel, SystemMetricsBar, MetricsDashboard } from '@/components/Simulation';
 import { useWidgetStore } from '@/widgets/store/widgetStore';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { categoryColors } from '@/registry/categoryThemes';
@@ -195,6 +197,9 @@ Canvas.Editor = function EditorCanvas() {
   const pendingFocusSectionId = useCanvasStore((s) => s.pendingFocusSectionId);
   const clearPendingFocusSection = useCanvasStore((s) => s.clearPendingFocusSection);
   const addWidgetInstance = useWidgetStore((s) => s.addWidget);
+
+  // Simulation bridge: syncs visual states from simulation engine → canvas nodes/edges
+  useSimulationBridge();
 
   // Drag-to-create state
   const dragStart = useRef<{ screen: { x: number; y: number }; flow: XYPosition } | null>(null);
@@ -493,6 +498,12 @@ Canvas.Editor = function EditorCanvas() {
 
       {/* Floating group/section action bar */}
       <SelectionActionBar />
+
+      {/* Simulation overlays */}
+      <MetricsDashboard />
+      <FailureScenarioPanel />
+      <SystemMetricsBar />
+      <TeachingOverlay />
 
       {/* Connection feedback toast */}
       {connectionFeedback && (

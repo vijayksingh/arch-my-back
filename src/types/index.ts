@@ -200,3 +200,6 @@ export type NotebookBlock =
   | (NotebookBlockBase & { type: typeof BLOCK_TYPE.SCHEMA; data: SchemaBlockData })
   | (NotebookBlockBase & { type: typeof BLOCK_TYPE.API; data: ApiBlockData })
   | (NotebookBlockBase & { type: typeof BLOCK_TYPE.LLD; data: LldBlockData });
+
+// --- Simulation Types ---
+export * from './simulation';

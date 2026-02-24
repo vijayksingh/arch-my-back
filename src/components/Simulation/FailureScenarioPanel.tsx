@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useMemo } from 'react';
 import {
   Flame,
   TrendingUp,
@@ -18,6 +18,7 @@ import { useSimulationStore } from '@/stores/simulationStore';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { cn } from '@/lib/utils';
 import type { FailureScenario } from '@/types/simulation';
+import type { ArchNode, CanvasNode } from '@/types';
 import { SCENARIO_LIBRARY, type ScenarioDefinition } from '@/lib/simulation/failureScenarioLibrary';
 import { NODE_TYPE } from '@/constants';
 
@@ -60,6 +61,14 @@ function DifficultyBadge({ difficulty }: { difficulty: ScenarioDefinition['diffi
 }
 
 // ============================================================================
+// Type Guard
+// ============================================================================
+
+function isArchNode(n: CanvasNode): n is ArchNode {
+  return n.type === NODE_TYPE.ARCH_COMPONENT;
+}
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -80,8 +89,8 @@ function FailureScenarioPanelComponent() {
   // Don't render if simulation is not initialized
   if (!isInitialized) return null;
 
-  // Filter to only archComponent nodes
-  const archNodes = nodes.filter((n) => n.type === NODE_TYPE.ARCH_COMPONENT);
+  // PERF #15: Memoize archNodes filter to avoid re-filtering on every render
+  const archNodes = useMemo(() => nodes.filter(isArchNode), [nodes]);
 
   // Auto-select first node if none selected
   const targetNodeId = selectedNodeId || archNodes[0]?.id || null;
@@ -284,10 +293,8 @@ function FailureScenarioPanelComponent() {
                         if (targetNodeId) {
                           const failureScenario = scenario.createScenario(targetNodeId);
                           const educationalHint = scenario.educationalHint(targetNodeId);
-                          actions.triggerFailure(failureScenario);
-                          // Manually trigger teaching mode with the educational hint
-                          // The store will show this in TeachingOverlay
-                          actions.triggerTeachingMode(educationalHint);
+                          // FIX 2: Use single atomic action instead of two separate calls
+                          actions.triggerFailureWithTeaching(failureScenario, educationalHint);
                           setExpandedScenarioId(null);
                         }
                       }}
