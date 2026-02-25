@@ -164,7 +164,7 @@ function TracerLayer({ nodes, edges }: TracerLayerProps) {
     return null;
   }
 
-  return <TracerParticle tracer={activeTracer} nodes={nodes} edges={edges} />;
+  return <TracerParticle tracer={activeTracer} edges={edges} />;
 }
 
 // ============================================================================
@@ -880,6 +880,7 @@ Canvas.Walkthrough = function WalkthroughCanvas({
       </ReactFlow>
       {simulationEnabled && (
         <>
+          <MetricsDashboard />
           <SystemMetricsBar />
           <LoadSlider />
           <TraceButton />

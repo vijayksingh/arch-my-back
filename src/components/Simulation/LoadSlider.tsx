@@ -82,6 +82,8 @@ function LoadSliderComponent() {
           value={loadMultiplier}
           onChange={handleChange}
           disabled={isDisabled}
+          aria-label="Load multiplier"
+          aria-valuetext={`${percentage}% load`}
           className={cn(
             "w-full h-2 rounded-full appearance-none cursor-pointer",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",

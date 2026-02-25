@@ -20,13 +20,12 @@
 
 import { memo, useMemo, useEffect, useState } from 'react';
 import { useReactFlow, getBezierPath, Position } from '@xyflow/react';
-import type { Node, Edge } from '@xyflow/react';
+import type { Edge } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import type { TracerState } from '@/hooks/useRequestTracer';
 
 interface TracerParticleProps {
   tracer: TracerState;
-  nodes: Node[]; // Required for prop passing but unused (we use getNode instead)
   edges: Edge[];
 }
 

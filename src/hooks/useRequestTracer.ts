@@ -25,7 +25,7 @@
  * // tracer.activeTracer: { pathNodeIds: string[], currentNodeIndex: number, progress: number } | null
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Node, Edge } from '@xyflow/react';
 import { useSimulationStore } from '@/stores/simulationStore';
 
@@ -106,10 +106,18 @@ export function useRequestTracer(
   // Read node latencies from simulation store
   const nodeVisualStates = useSimulationStore(s => s.nodeVisualStates);
 
+  // Store activeTracer and nodeVisualStates in refs so RAF loop can read them without effect teardown
+  const activeTracerRef = useRef<TracerState | null>(null);
+  const nodeVisualStatesRef = useRef<Map<string, any>>(nodeVisualStates);
+
+  // Sync refs with state on every render
+  activeTracerRef.current = activeTracer;
+  nodeVisualStatesRef.current = nodeVisualStates;
+
   /**
    * Start tracing from the given entry node.
    */
-  const startTrace = (nodeId: string) => {
+  const startTrace = useCallback((nodeId: string) => {
     // Compute path from entry node to leaf
     const pathNodeIds = computeRequestPath(nodeId, nodes, edges);
 
@@ -127,25 +135,27 @@ export function useRequestTracer(
     });
 
     lastTimestampRef.current = null;
-  };
+  }, [nodes, edges]);
 
   /**
    * Clear active trace.
    */
-  const clearTrace = () => {
+  const clearTrace = useCallback(() => {
     if (animationFrameRef.current !== null) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
     setActiveTracer(null);
     lastTimestampRef.current = null;
-  };
+  }, []);
 
   /**
    * Animation loop: advance tracer along path.
+   * Only depends on whether a trace is active (boolean), not the tracer state itself.
    */
+  const isTracing = activeTracer !== null;
   useEffect(() => {
-    if (!activeTracer) {
+    if (!isTracing) {
       // No active tracer — cleanup
       if (animationFrameRef.current !== null) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -176,7 +186,8 @@ export function useRequestTracer(
 
         if (phase === 'processing') {
           // Processing at node — wait for latency duration
-          const nodeVisual = nodeVisualStates.get(currentNodeId);
+          // Read from ref to avoid effect dependency
+          const nodeVisual = nodeVisualStatesRef.current.get(currentNodeId);
           const latency = nodeVisual?.metricsOverlay?.latency ?? '10ms';
           const latencyMs = parseLatencyMs(latency);
 
@@ -230,7 +241,7 @@ export function useRequestTracer(
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [activeTracer, nodeVisualStates]);
+  }, [isTracing]); // Only start/stop RAF loop, never teardown mid-animation
 
   return { activeTracer, startTrace, clearTrace };
 }

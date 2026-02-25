@@ -34,6 +34,7 @@ function TraceButtonComponent() {
     <button
       onClick={handleToggle}
       disabled={isDisabled}
+      aria-label={isTraceMode ? "Disable trace mode" : "Enable trace mode"}
       className={cn(
         "absolute top-3 right-[260px] z-30 flex items-center gap-2 px-3 py-2 rounded-lg border",
         "backdrop-blur-sm transition-all",
