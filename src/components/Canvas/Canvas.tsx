@@ -21,7 +21,9 @@ import { useSimulationStore } from '@/stores/simulationStore';
 import { useSimulationBridge } from '@/hooks/useSimulationBridge';
 import { useWalkthroughSimulationBridge } from '@/hooks/useWalkthroughSimulationBridge';
 import { useBootSequence } from '@/hooks/useBootSequence';
-import { TeachingOverlay, FailureScenarioPanel, SystemMetricsBar, MetricsDashboard, LoadSlider, AmbientHint, HintPanel } from '@/components/Simulation';
+import { useRequestTracer } from '@/hooks/useRequestTracer';
+import { TeachingOverlay, FailureScenarioPanel, SystemMetricsBar, MetricsDashboard, LoadSlider, AmbientHint, HintPanel, TraceButton } from '@/components/Simulation';
+import { TracerParticle } from './TracerParticle';
 import { useWidgetStore } from '@/widgets/store/widgetStore';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { categoryColors } from '@/registry/categoryThemes';
@@ -134,6 +136,35 @@ function HintPanelLayer() {
   }
 
   return <HintPanel nodeId={selectedHint.nodeId} hint={selectedHint.hint} />;
+}
+
+/**
+ * Renders the request tracer particle when active.
+ * Used in both Editor and Walkthrough modes during simulation.
+ */
+interface TracerLayerProps {
+  nodes: Node[];
+  edges: Edge[];
+}
+
+function TracerLayer({ nodes, edges }: TracerLayerProps) {
+  const activeTracerNodeId = useSimulationStore((s) => s.activeTracerNodeId);
+  const { activeTracer, startTrace, clearTrace } = useRequestTracer(nodes, edges);
+
+  // Start trace when activeTracerNodeId changes
+  useEffect(() => {
+    if (activeTracerNodeId) {
+      startTrace(activeTracerNodeId);
+    } else {
+      clearTrace();
+    }
+  }, [activeTracerNodeId, startTrace, clearTrace]);
+
+  if (!activeTracer) {
+    return null;
+  }
+
+  return <TracerParticle tracer={activeTracer} nodes={nodes} edges={edges} />;
 }
 
 // ============================================================================
@@ -330,22 +361,52 @@ Canvas.Editor = function EditorCanvas() {
     [activeCanvasTool],
   );
 
+  // Trace mode state
+  const isTraceMode = useSimulationStore((s) => s.isTraceMode);
+  const startTrace = useSimulationStore((s) => s.actions.startTrace);
+  const clearTrace = useSimulationStore((s) => s.actions.clearTrace);
+
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
+      // If trace mode is enabled, start trace from clicked node
+      if (isTraceMode && node.type === NODE_TYPE.ARCH_COMPONENT) {
+        startTrace(node.id);
+        return;
+      }
+
+      // Normal selection behavior
       setSelectedNode(node.id);
     },
-    [setSelectedNode],
+    [isTraceMode, startTrace, setSelectedNode],
   );
 
   const onPaneClick = useCallback(
     (_event: React.MouseEvent) => {
+      // Clear trace when clicking pane
+      if (isTraceMode) {
+        clearTrace();
+        return;
+      }
+
       if (activeCanvasTool === CANVAS_TOOL.CURSOR || activeCanvasTool === CANVAS_TOOL.SELECT) {
         setSelectedNode(null);
         stopShapeInlineEdit();
       }
     },
-    [activeCanvasTool, setSelectedNode, stopShapeInlineEdit],
+    [isTraceMode, clearTrace, activeCanvasTool, setSelectedNode, stopShapeInlineEdit],
   );
+
+  // ESC key to clear trace
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isTraceMode) {
+        clearTrace();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTraceMode, clearTrace]);
 
   const onSelectionChange = useCallback(
     ({ nodes: nextSelection }: { nodes: Node[] }) => {
@@ -564,11 +625,15 @@ Canvas.Editor = function EditorCanvas() {
       <FailureScenarioPanel />
       <SystemMetricsBar />
       <LoadSlider />
+      <TraceButton />
       <TeachingOverlay />
 
       {/* Ambient teaching hints (non-modal) */}
       <AmbientHintsLayer />
       <HintPanelLayer />
+
+      {/* Request tracer */}
+      <TracerLayer nodes={storeNodes} edges={storeEdges} />
 
       {/* Connection feedback toast */}
       {connectionFeedback && (
@@ -656,6 +721,42 @@ Canvas.Walkthrough = function WalkthroughCanvas({
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
+  // Trace mode handler for walkthrough
+  const isTraceMode = useSimulationStore((s) => s.isTraceMode);
+  const startTrace = useSimulationStore((s) => s.actions.startTrace);
+  const clearTrace = useSimulationStore((s) => s.actions.clearTrace);
+
+  const handleNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      // If trace mode is enabled and simulation is active, start trace from clicked node
+      if (isTraceMode && simulationEnabled && node.type === NODE_TYPE.ARCH_COMPONENT) {
+        startTrace(node.id);
+      }
+    },
+    [isTraceMode, simulationEnabled, startTrace],
+  );
+
+  const handlePaneClick = useCallback(() => {
+    // Clear trace when clicking pane
+    if (isTraceMode) {
+      clearTrace();
+    }
+  }, [isTraceMode, clearTrace]);
+
+  // ESC key to clear trace
+  useEffect(() => {
+    if (!simulationEnabled) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isTraceMode) {
+        clearTrace();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [simulationEnabled, isTraceMode, clearTrace]);
+
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
@@ -735,6 +836,8 @@ Canvas.Walkthrough = function WalkthroughCanvas({
         isValidConnection={isValidConnection}
         onDragOver={onDragOver}
         onDrop={onDrop}
+        onNodeClick={handleNodeClick}
+        onPaneClick={handlePaneClick}
         nodeTypes={designNodeTypes}
         edgeTypes={archEdgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
@@ -779,12 +882,16 @@ Canvas.Walkthrough = function WalkthroughCanvas({
         <>
           <SystemMetricsBar />
           <LoadSlider />
+          <TraceButton />
           <TeachingOverlay />
           <FailureScenarioPanel nodes={localNodes as CanvasNode[]} />
 
           {/* Ambient teaching hints (non-modal) */}
           <AmbientHintsLayer />
           <HintPanelLayer />
+
+          {/* Request tracer */}
+          <TracerLayer nodes={localNodes} edges={localEdges} />
         </>
       )}
     </>

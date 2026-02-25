@@ -7,3 +7,4 @@ export { Sparkline } from './Sparkline';
 export { LoadSlider } from './LoadSlider';
 export { AmbientHint } from './AmbientHint';
 export { HintPanel } from './HintPanel';
+export { TraceButton } from './TraceButton';

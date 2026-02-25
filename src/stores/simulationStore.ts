@@ -57,6 +57,10 @@ interface SimulationStoreState {
   pendingHints: Array<{ nodeId: string; hint: EducationalHint; timestamp: number }>;
   selectedHintNodeId: string | null;
 
+  // Request tracer (spatial debugging)
+  isTraceMode: boolean;
+  activeTracerNodeId: string | null;
+
   // Actions
   actions: {
     initialize: (nodes: CanvasNode[], edges: ArchEdge[]) => void;
@@ -73,6 +77,9 @@ interface SimulationStoreState {
     fixAndResume: () => void;
     dismissHint: (nodeId: string) => void;
     selectHint: (nodeId: string | null) => void;
+    setTraceMode: (enabled: boolean) => void;
+    startTrace: (nodeId: string) => void;
+    clearTrace: () => void;
   };
 }
 
@@ -220,6 +227,8 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
     currentLesson: null,
     pendingHints: [],
     selectedHintNodeId: null,
+    isTraceMode: false,
+    activeTracerNodeId: null,
 
     actions: {
       initialize(nodes: CanvasNode[], edges: ArchEdge[]) {
@@ -490,6 +499,22 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
 
       selectHint(nodeId: string | null) {
         set({ selectedHintNodeId: nodeId });
+      },
+
+      setTraceMode(enabled: boolean) {
+        set({ isTraceMode: enabled });
+        // Clear active trace when disabling trace mode
+        if (!enabled) {
+          set({ activeTracerNodeId: null });
+        }
+      },
+
+      startTrace(nodeId: string) {
+        set({ activeTracerNodeId: nodeId });
+      },
+
+      clearTrace() {
+        set({ activeTracerNodeId: null });
       },
     },
   };
