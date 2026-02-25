@@ -1,4 +1,4 @@
-import { memo, useState, useRef } from 'react';
+import { memo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { ArchNode as ArchNodeType } from '@/types';
@@ -19,18 +19,16 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
   const hasContext = Boolean(data.context);
   const simVisual = data.simVisual as NodeVisualState | undefined;
 
-  // PERF #13: Pulse animation hysteresis to prevent flickering at boundary
-  const isPulsingRef = useRef(false);
-  if (simVisual) {
-    if (!isPulsingRef.current && simVisual.pulseIntensity > 0.6) {
-      isPulsingRef.current = true;
-    } else if (isPulsingRef.current && simVisual.pulseIntensity < 0.4) {
-      isPulsingRef.current = false;
-    }
-  } else {
-    isPulsingRef.current = false;
-  }
-  const shouldPulse = simVisual && isPulsingRef.current;
+  // Breathing animation based on utilization
+  const utilization = simVisual?.utilization ?? 0;
+  const isSimulating = simVisual !== undefined;
+
+  // Calculate breathing speed: max(0.4, 2 - utilization * 1.6)
+  // At 0%: 2s (slow, barely perceptible with opacity 0.85)
+  // At 50%: 1.2s (moderate)
+  // At 90%: 0.56s (fast, visible)
+  // At 100%: 0.4s (capped minimum)
+  const breatheDuration = Math.max(0.4, 2 - utilization * 1.6);
   const typeDef = componentTypeMap.get(data.componentType);
   const IconComponent = getIconByName(typeDef?.icon ?? '');
   const glowColor = typeDef ? categoryGlows[typeDef.category] : categoryGlows.External;
@@ -87,7 +85,7 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
       className={cn(
         "relative flex flex-col items-center justify-center gap-2.5 rounded-xl border px-4 py-3 transition-all duration-160",
         isNewlyAdded && "ring-2 ring-blue-400/60 animate-pulse",
-        shouldPulse && "animate-pulse"
+        isSimulating && "animate-breathe"
       )}
       style={{
         width: ARCH_NODE.WIDTH,
@@ -97,6 +95,12 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
         boxShadow,
         transform,
         backdropFilter: 'blur(10px)',
+        // Dynamic animation duration for breathing based on utilization
+        ...(isSimulating && {
+          animationDuration: `${breatheDuration}s`,
+          // At low utilization, make it even less visible
+          opacity: utilization < 0.3 ? 0.85 : 1,
+        }),
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}

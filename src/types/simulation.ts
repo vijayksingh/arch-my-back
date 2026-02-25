@@ -364,6 +364,10 @@ export interface NodeVisualState {
   // Pulsing animation intensity (0-1)
   pulseIntensity: number;
 
+  // Utilization ratio (0-1): incomingLoad / capacity
+  // Used for breathing animation speed
+  utilization?: number;
+
   // Health color indicator
   healthColor: 'green' | 'yellow' | 'red' | 'gray';
 

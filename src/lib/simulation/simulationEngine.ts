@@ -179,6 +179,9 @@ export class SimulationEngine implements ISimulationEngine {
   private prevNodeVisuals = new Map<string, NodeVisualState>();
   private prevEdgeVisuals = new Map<string, EdgeVisualState>();
 
+  // Load control: User-adjustable multiplier for entry traffic (default 1.0 = 100%)
+  private entryLoadMultiplier = 1.0;
+
   constructor(registry?: BehaviorRegistry) {
     this.eventBus = new EventBusImpl();
     this.behaviorRegistry = registry ?? createBehaviorRegistry();
@@ -232,6 +235,7 @@ export class SimulationEngine implements ISimulationEngine {
     this.prevNodeVisuals.clear();
     this.prevEdgeVisuals.clear();
     this.topologicalOrder = []; // PERF #3 fix: clear cached order
+    this.entryLoadMultiplier = 1.0; // Reset load multiplier to 100%
     if (this.nodes.length > 0) {
       this.initializeComponentStates();
       this.state.isInitialized = true;
@@ -253,6 +257,19 @@ export class SimulationEngine implements ISimulationEngine {
 
   getSpeed(): 1 | 2 | 4 {
     return this.state.speed;
+  }
+
+  // ============================================================================
+  // Load Control
+  // ============================================================================
+
+  /**
+   * Set the entry load multiplier (10% to 300%).
+   * This multiplier is applied to auto-calculated entry load.
+   * Default is 1.0 (100%).
+   */
+  setEntryLoadMultiplier(multiplier: number): void {
+    this.entryLoadMultiplier = Math.max(0.1, Math.min(3.0, multiplier));
   }
 
   // ============================================================================
@@ -847,8 +864,9 @@ export class SimulationEngine implements ISimulationEngine {
       // Scale entry load based on downstream capacity so simulation shows realistic utilization
       // Default to enough load to create ~70% utilization on the weakest downstream path
       const configuredLoad = getNodeConfig(node!, 'load', 0);
-      if (configuredLoad > 0) return configuredLoad; // respect explicit config
-      return this.calculateAutoEntryLoad(nodeId);
+      const baseLoad = configuredLoad > 0 ? configuredLoad : this.calculateAutoEntryLoad(nodeId);
+      // Apply user-controlled load multiplier
+      return baseLoad * this.entryLoadMultiplier;
     }
 
     // Sum of flow from all inbound edges
@@ -977,6 +995,7 @@ export class SimulationEngine implements ISimulationEngine {
       if (prev &&
           prev.healthColor === healthColor &&
           prev.pulseIntensity === pulseIntensity &&
+          prev.utilization === utilization &&
           prev.queueVisualization?.depth === queueDepth &&
           prev.queueVisualization?.percentFull === queuePercentFull) {
         continue; // Skip full object construction — nothing changed
@@ -985,6 +1004,7 @@ export class SimulationEngine implements ISimulationEngine {
       // Only construct the full object with expensive string formatting if something changed
       const visualState: NodeVisualState = {
         pulseIntensity,
+        utilization, // Add utilization for breathing animation
         healthColor,
         queueVisualization: compState.maxQueueDepth > 0
           ? {
