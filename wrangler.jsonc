@@ -1,0 +1,7 @@
+{
+  "name": "arch-my-back",
+  "compatibility_date": "2026-02-25",
+  "assets": {
+    "directory": "./dist"
+  }
+}
