@@ -135,21 +135,39 @@ function FailureScenarioPanelComponent({ nodes: nodesProp }: FailureScenarioPane
     return scenarios;
   }, [activeCategory, targetNodeId, targetComponentType]);
 
-  // Don't render if simulation is not initialized
-  if (!isInitialized) return null;
-
-  const handleRecover = (scenarioId: string) => {
+  // Define callbacks BEFORE early return (Rules of Hooks)
+  const handleRecover = useCallback((scenarioId: string) => {
     actions.recoverFromFailure(scenarioId);
-  };
+  }, [actions]);
 
-  const getSeverityColor = (severity: FailureScenario['severity']) => {
+  const handleFailureClick = useCallback((rootCauseNodeId: string) => {
+    // Find the node in the canvas
+    const targetNode = nodes.find(n => n.id === rootCauseNodeId);
+    if (!targetNode) return;
+
+    // Select the node
+    setSelectedNode(rootCauseNodeId);
+
+    // Pan and zoom to center on the node
+    fitView({
+      nodes: [targetNode],
+      duration: 400,
+      padding: 0.3,
+      maxZoom: 1.5,
+    });
+  }, [nodes, setSelectedNode, fitView]);
+
+  const getSeverityColor = useCallback((severity: FailureScenario['severity']) => {
     switch (severity) {
       case 'critical': return 'hsl(var(--destructive))';
       case 'error': return 'hsl(var(--destructive) / 0.7)';
       case 'warning': return 'hsl(var(--warning))';
       default: return 'hsl(var(--muted-foreground))';
     }
-  };
+  }, []);
+
+  // Don't render if simulation is not initialized
+  if (!isInitialized) return null;
 
   if (!isExpanded) {
     // Collapsed state: just a tab button
@@ -186,23 +204,6 @@ function FailureScenarioPanelComponent({ nodes: nodesProp }: FailureScenarioPane
   }
 
   // Expanded state: full panel
-  const handleFailureClick = useCallback((rootCauseNodeId: string) => {
-    // Find the node in the canvas
-    const targetNode = nodes.find(n => n.id === rootCauseNodeId);
-    if (!targetNode) return;
-
-    // Select the node
-    setSelectedNode(rootCauseNodeId);
-
-    // Pan and zoom to center on the node
-    fitView({
-      nodes: [targetNode],
-      duration: 400,
-      padding: 0.3,
-      maxZoom: 1.5,
-    });
-  }, [nodes, setSelectedNode, fitView]);
-
   return (
     <div
       className="absolute right-4 top-4 z-40 w-72 rounded-lg border shadow-xl"
