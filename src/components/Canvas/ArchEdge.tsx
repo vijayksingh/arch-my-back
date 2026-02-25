@@ -36,15 +36,33 @@ function ArchEdgeComponent({
     return 1.5;
   };
 
-  // Dynamic particle count (1-5 based on simVisual flow)
+  // Dynamic particle count based on congestion (2-12 particles)
   const particleCount = simVisual
-    ? Math.max(1, Math.min(5, simVisual.particleFlow.count))
+    ? Math.max(2, Math.round(2 + simVisual.congestionLevel * 10))
     : 3;
 
   // Dynamic packet speed/duration
   const packetDur = simVisual
     ? Math.max(0.5, 10 / Math.max(1, simVisual.particleFlow.speed))
     : getPacketDur();
+
+  // Particle size based on congestion (1.5px → 2.5px)
+  const particleSize = simVisual
+    ? 1.5 + simVisual.congestionLevel
+    : 2;
+
+  // Particle color based on congestion thresholds
+  const getParticleColor = () => {
+    if (status === 'bottleneck' || status === 'error') return '#ef4444';
+    if (!simVisual) return '#3b82f6';
+
+    const { congestionLevel } = simVisual;
+    if (congestionLevel < 0.3) return '#3b82f6'; // blue
+    if (congestionLevel < 0.6) return '#f59e0b'; // amber
+    return '#ef4444'; // red
+  };
+
+  const particleColor = getParticleColor();
 
   // Congestion-based color gradient
   const getEdgeColor = () => {
@@ -59,16 +77,15 @@ function ArchEdgeComponent({
   };
 
   const edgeColor = getEdgeColor();
-  const packetColor = status === 'bottleneck' || status === 'error' ? '#ef4444' : '#3b82f6';
 
   // Congestion-based stroke width
   const congestionWidth = simVisual
     ? 2 + simVisual.congestionLevel * 2 // 2-4px
     : selected ? 3 : 2;
 
-  // Backpressure glow intensity
-  const glowOpacity = simVisual?.isBackpressured
-    ? 0.8
+  // Glow opacity scales with congestion level
+  const glowOpacity = simVisual
+    ? 0.3 + simVisual.congestionLevel * 0.6 // 0.3 → 0.9
     : selected ? 0.9 : 0.5;
 
   return (
@@ -101,13 +118,35 @@ function ArchEdgeComponent({
       {/* Animated packets for traffic simulation */}
       {simulating && packetDur > 0 && Array.from({ length: particleCount }, (_, i) => i).map((i) => {
         const delay = (packetDur / particleCount) * i;
+
+        // For congested edges, particles slow down near target (bunching effect)
+        // keyTimes: [0, 1] = start, end
+        // keySplines controls acceleration between keyframes
+        // format: "cx1 cy1 cx2 cy2" (cubic bezier control points)
+        const useVariableSpeed = simVisual && simVisual.congestionLevel > 0.3;
+        const keyTimes = useVariableSpeed ? '0;1' : undefined;
+        // ease-in: particles decelerate as they approach target (congestion)
+        const keySplines = useVariableSpeed
+          ? `0.42 0 1 ${0.4 + simVisual.congestionLevel * 0.6}` // more congestion = sharper deceleration
+          : undefined;
+        const calcMode = useVariableSpeed ? 'spline' : 'linear';
+
         return (
-          <circle key={i} r="4" fill={packetColor} filter={`drop-shadow(0 0 4px ${packetColor})`}>
+          <circle
+            key={i}
+            r={particleSize}
+            fill={particleColor}
+            filter={`drop-shadow(0 0 ${2 + (simVisual?.congestionLevel ?? 0) * 2}px ${particleColor})`}
+            style={{ willChange: 'transform' }}
+          >
             <animateMotion
               dur={`${packetDur}s`}
               begin={`-${delay}s`}
               repeatCount="indefinite"
               path={edgePath}
+              keyTimes={keyTimes}
+              keySplines={keySplines}
+              calcMode={calcMode}
             />
           </circle>
         );
