@@ -175,7 +175,7 @@ function FailureScenarioPanelComponent({ nodes: nodesProp }: FailureScenarioPane
       <button
         onClick={() => setIsExpanded(true)}
         className={cn(
-          "absolute right-4 top-4 z-40 flex items-center gap-1.5 rounded-l-lg border px-2.5 py-1.5",
+          "absolute right-4 top-16 z-40 flex items-center gap-1.5 rounded-l-lg border px-2.5 py-1.5",
           "transition-colors hover:bg-accent/10"
         )}
         style={{
@@ -206,7 +206,7 @@ function FailureScenarioPanelComponent({ nodes: nodesProp }: FailureScenarioPane
   // Expanded state: full panel
   return (
     <div
-      className="absolute right-4 top-4 z-40 w-72 rounded-lg border shadow-xl"
+      className="absolute right-4 top-16 z-40 w-72 rounded-lg border shadow-xl"
       style={{
         borderColor: 'hsl(var(--border))',
         backgroundColor: 'hsl(var(--card))',
