@@ -5,3 +5,5 @@ export { FailureScenarioPanel } from './FailureScenarioPanel';
 export { MetricsDashboard } from './MetricsDashboard';
 export { Sparkline } from './Sparkline';
 export { LoadSlider } from './LoadSlider';
+export { AmbientHint } from './AmbientHint';
+export { HintPanel } from './HintPanel';

@@ -53,6 +53,10 @@ interface SimulationStoreState {
   activeFailures: FailureScenario[];
   currentLesson: EducationalHint | null;
 
+  // Ambient teaching hints (non-modal)
+  pendingHints: Array<{ nodeId: string; hint: EducationalHint; timestamp: number }>;
+  selectedHintNodeId: string | null;
+
   // Actions
   actions: {
     initialize: (nodes: CanvasNode[], edges: ArchEdge[]) => void;
@@ -67,6 +71,8 @@ interface SimulationStoreState {
     triggerTeachingMode: (lesson: EducationalHint) => void;
     triggerFailureWithTeaching: (scenario: FailureScenario, hint: EducationalHint) => void;
     fixAndResume: () => void;
+    dismissHint: (nodeId: string) => void;
+    selectHint: (nodeId: string | null) => void;
   };
 }
 
@@ -212,6 +218,8 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
     edgeVisualStates: new Map(),
     activeFailures: [],
     currentLesson: null,
+    pendingHints: [],
+    selectedHintNodeId: null,
 
     actions: {
       initialize(nodes: CanvasNode[], edges: ArchEdge[]) {
@@ -363,17 +371,26 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
       },
 
       triggerTeachingMode(lesson: EducationalHint) {
-        const eng = getOrCreateEngine();
-        eng.pauseForTeaching(lesson);
-        set({ isTeaching: true, currentLesson: lesson, isPaused: true });
+        // NEW BEHAVIOR: Teaching moments NO LONGER pause simulation
+        // Instead, they push to pendingHints[] for ambient, non-modal display
+        // Determine which node this lesson relates to (use first relatedNodeId)
+        const nodeId = lesson.relatedNodeIds?.[0] || 'unknown';
+        set(prev => ({
+          pendingHints: [
+            ...prev.pendingHints,
+            { nodeId, hint: lesson, timestamp: Date.now() }
+          ]
+        }));
+        // NOTE: Simulation continues running (no pause)
       },
 
       // FIX 2: Atomic triggerFailureWithTeaching action
       triggerFailureWithTeaching(scenario: FailureScenario, hint: EducationalHint) {
         const eng = getOrCreateEngine();
         eng.triggerFailure(scenario);
-        // Store the hint — it will be shown after cascading events complete
-        eng.getState().pendingHints.push(hint);
+
+        // NEW BEHAVIOR: Push hint to ambient pendingHints[] instead of engine state
+        // Failures still pause (isBroken=true), but hints are now non-modal
         const mode = eng.getState().mode;
 
         // Compute synchronous visual updates for immediate feedback
@@ -427,13 +444,18 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
           }
         }
 
-        set({
+        set(prev => ({
           isBroken: mode.state === 'broken',
           isRunning: false, // Even though tick continues, from user POV sim is "failing"
           activeFailures: [...eng.getState().activeFailures],
           nodeVisualStates,
           edgeVisualStates,
-        });
+          // Add hint to ambient hints (non-modal)
+          pendingHints: [
+            ...prev.pendingHints,
+            { nodeId, hint, timestamp: Date.now() }
+          ]
+        }));
       },
 
       // FIX 4: Atomic fixAndResume action
@@ -457,6 +479,17 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
           isRunning: true,
           currentLesson: null,
         });
+      },
+
+      dismissHint(nodeId: string) {
+        set(prev => ({
+          pendingHints: prev.pendingHints.filter(h => h.nodeId !== nodeId),
+          selectedHintNodeId: prev.selectedHintNodeId === nodeId ? null : prev.selectedHintNodeId,
+        }));
+      },
+
+      selectHint(nodeId: string | null) {
+        set({ selectedHintNodeId: nodeId });
       },
     },
   };

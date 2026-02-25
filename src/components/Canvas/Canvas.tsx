@@ -17,9 +17,11 @@ import type { Node, XYPosition, Connection, Edge } from '@xyflow/react';
 import type { CanvasNode, CanvasShapeKind } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { useSimulationStore } from '@/stores/simulationStore';
 import { useSimulationBridge } from '@/hooks/useSimulationBridge';
 import { useWalkthroughSimulationBridge } from '@/hooks/useWalkthroughSimulationBridge';
-import { TeachingOverlay, FailureScenarioPanel, SystemMetricsBar, MetricsDashboard, LoadSlider } from '@/components/Simulation';
+import { useBootSequence } from '@/hooks/useBootSequence';
+import { TeachingOverlay, FailureScenarioPanel, SystemMetricsBar, MetricsDashboard, LoadSlider, AmbientHint, HintPanel } from '@/components/Simulation';
 import { useWidgetStore } from '@/widgets/store/widgetStore';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { categoryColors } from '@/registry/categoryThemes';
@@ -92,6 +94,46 @@ function useCanvasContext() {
     throw new Error('useCanvasContext must be used within Canvas provider');
   }
   return ctx;
+}
+
+// ============================================================================
+// Ambient Hints Helper Components
+// ============================================================================
+
+/**
+ * Renders all pending ambient hints as floating glyphs above their nodes.
+ * Used in both Editor and Walkthrough modes when simulation is active.
+ */
+function AmbientHintsLayer() {
+  const pendingHints = useSimulationStore((s) => s.pendingHints);
+
+  return (
+    <>
+      {pendingHints.map(({ nodeId, hint, timestamp }) => (
+        <AmbientHint key={nodeId} nodeId={nodeId} hint={hint} timestamp={timestamp} />
+      ))}
+    </>
+  );
+}
+
+/**
+ * Renders the HintPanel when a hint is selected.
+ * Non-modal side panel that slides in from right.
+ */
+function HintPanelLayer() {
+  const selectedHintNodeId = useSimulationStore((s) => s.selectedHintNodeId);
+  const pendingHints = useSimulationStore((s) => s.pendingHints);
+
+  if (!selectedHintNodeId) {
+    return null;
+  }
+
+  const selectedHint = pendingHints.find((h) => h.nodeId === selectedHintNodeId);
+  if (!selectedHint) {
+    return null;
+  }
+
+  return <HintPanel nodeId={selectedHint.nodeId} hint={selectedHint.hint} />;
 }
 
 // ============================================================================
@@ -201,6 +243,11 @@ Canvas.Editor = function EditorCanvas() {
 
   // Simulation bridge: syncs visual states from simulation engine → canvas nodes/edges
   useSimulationBridge();
+
+  // Boot sequence: staggers node activation when simulation starts
+  const isInitialized = useSimulationStore((s) => s.isInitialized);
+  const isRunning = useSimulationStore((s) => s.isRunning);
+  const { bootingNodeIds, isBooting } = useBootSequence(storeNodes, storeEdges, isInitialized, isRunning);
 
   // Drag-to-create state
   const dragStart = useRef<{ screen: { x: number; y: number }; flow: XYPosition } | null>(null);
@@ -414,6 +461,18 @@ Canvas.Editor = function EditorCanvas() {
     prefersReducedMotion,
   ]);
 
+  // Enrich nodes with boot state
+  const displayNodes = useMemo(() => {
+    if (!isBooting) return storeNodes;
+    return storeNodes.map(node => ({
+      ...node,
+      data: {
+        ...node.data,
+        isBooting: bootingNodeIds.has(node.id),
+      },
+    })) as CanvasNode[];
+  }, [storeNodes, isBooting, bootingNodeIds]);
+
   useEffect(() => {
     return () => {
       if (feedbackTimeoutRef.current) {
@@ -428,7 +487,7 @@ Canvas.Editor = function EditorCanvas() {
       onMouseDown={handleContainerMouseDown}
     >
       <ReactFlow
-        nodes={storeNodes}
+        nodes={displayNodes}
         edges={storeEdges}
         onNodesChange={storeOnNodesChange}
         onEdgesChange={storeOnEdgesChange}
@@ -507,6 +566,10 @@ Canvas.Editor = function EditorCanvas() {
       <LoadSlider />
       <TeachingOverlay />
 
+      {/* Ambient teaching hints (non-modal) */}
+      <AmbientHintsLayer />
+      <HintPanelLayer />
+
       {/* Connection feedback toast */}
       {connectionFeedback && (
         <div
@@ -559,6 +622,16 @@ Canvas.Walkthrough = function WalkthroughCanvas({
 
   // Simulation bridge: syncs visual states from simulation engine → canvas nodes/edges
   useWalkthroughSimulationBridge(localNodes, localEdges, setLocalNodes, setLocalEdges, simulationEnabled);
+
+  // Boot sequence: staggers node activation when simulation starts (only if simulation is enabled)
+  const isInitialized = useSimulationStore((s) => s.isInitialized);
+  const isRunning = useSimulationStore((s) => s.isRunning);
+  const { bootingNodeIds, isBooting } = useBootSequence(
+    localNodes,
+    localEdges,
+    simulationEnabled ? isInitialized : false,
+    simulationEnabled ? isRunning : false
+  );
 
   // Sync props to local state
   useEffect(() => {
@@ -632,9 +705,10 @@ Canvas.Walkthrough = function WalkthroughCanvas({
       data: {
         ...node.data,
         highlighted: highlightedSet.has(node.id) || (node.data.highlighted ?? false),
+        isBooting: isBooting && bootingNodeIds.has(node.id),
       },
     }));
-  }, [localNodes, highlightedNodeIds]);
+  }, [localNodes, highlightedNodeIds, isBooting, bootingNodeIds]);
 
   const displayEdges = useMemo(() => {
     const animatedSet = new Set(animatedEdgeIds);
@@ -707,6 +781,10 @@ Canvas.Walkthrough = function WalkthroughCanvas({
           <LoadSlider />
           <TeachingOverlay />
           <FailureScenarioPanel nodes={localNodes as CanvasNode[]} />
+
+          {/* Ambient teaching hints (non-modal) */}
+          <AmbientHintsLayer />
+          <HintPanelLayer />
         </>
       )}
     </>
