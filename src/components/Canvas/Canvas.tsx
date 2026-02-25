@@ -19,7 +19,7 @@ import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useSimulationBridge } from '@/hooks/useSimulationBridge';
 import { useWalkthroughSimulationBridge } from '@/hooks/useWalkthroughSimulationBridge';
-import { TeachingOverlay, FailureScenarioPanel, SystemMetricsBar, MetricsDashboard } from '@/components/Simulation';
+import { TeachingOverlay, FailureScenarioPanel, SystemMetricsBar, MetricsDashboard, LoadSlider } from '@/components/Simulation';
 import { useWidgetStore } from '@/widgets/store/widgetStore';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { categoryColors } from '@/registry/categoryThemes';
@@ -504,6 +504,7 @@ Canvas.Editor = function EditorCanvas() {
       <MetricsDashboard />
       <FailureScenarioPanel />
       <SystemMetricsBar />
+      <LoadSlider />
       <TeachingOverlay />
 
       {/* Connection feedback toast */}
@@ -703,6 +704,7 @@ Canvas.Walkthrough = function WalkthroughCanvas({
       {simulationEnabled && (
         <>
           <SystemMetricsBar />
+          <LoadSlider />
           <TeachingOverlay />
           <FailureScenarioPanel nodes={localNodes as CanvasNode[]} />
         </>

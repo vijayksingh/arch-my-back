@@ -36,6 +36,9 @@ interface SimulationStoreState {
   speed: 1 | 2 | 4;
   currentTime: number;
 
+  // Load control (user-adjustable entry traffic multiplier)
+  loadMultiplier: number;
+
   // System metrics (updated at ~10fps)
   systemMetrics: SystemMetrics;
 
@@ -57,6 +60,7 @@ interface SimulationStoreState {
     pause: () => void;
     reset: () => void;
     setSpeed: (speed: 1 | 2 | 4) => void;
+    setLoadMultiplier: (multiplier: number) => void;
     triggerFailure: (scenario: FailureScenario) => void;
     recoverFromFailure: (scenarioId: string) => void;
     acknowledgeLesson: () => void;
@@ -191,6 +195,7 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
     isTeaching: false,
     speed: 1,
     currentTime: 0,
+    loadMultiplier: 1.0,
     systemMetrics: {
       totalThroughput: 0,
       averageLatency: 0,
@@ -238,6 +243,7 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
           isBroken: false,
           isTeaching: false,
           currentTime: 0,
+          loadMultiplier: 1.0,
           systemMetrics: {
             totalThroughput: 0,
             averageLatency: 0,
@@ -261,6 +267,12 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
         const eng = getOrCreateEngine();
         eng.setSpeed(speed);
         set({ speed });
+      },
+
+      setLoadMultiplier(multiplier: number) {
+        const eng = getOrCreateEngine();
+        eng.setEntryLoadMultiplier(multiplier);
+        set({ loadMultiplier: multiplier });
       },
 
       triggerFailure(scenario: FailureScenario) {

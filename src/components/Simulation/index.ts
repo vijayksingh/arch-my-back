@@ -4,3 +4,4 @@ export { TeachingOverlay } from './TeachingOverlay';
 export { FailureScenarioPanel } from './FailureScenarioPanel';
 export { MetricsDashboard } from './MetricsDashboard';
 export { Sparkline } from './Sparkline';
+export { LoadSlider } from './LoadSlider';
