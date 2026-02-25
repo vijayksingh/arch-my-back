@@ -1,4 +1,4 @@
-import { memo, useState, useMemo } from 'react';
+import { memo, useState, useMemo, useCallback } from 'react';
 import {
   Flame,
   TrendingUp,
@@ -14,6 +14,7 @@ import {
   ServerOff,
   type LucideIcon
 } from 'lucide-react';
+import { useReactFlow } from '@xyflow/react';
 import { useSimulationStore } from '@/stores/simulationStore';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { cn } from '@/lib/utils';
@@ -78,6 +79,9 @@ function FailureScenarioPanelComponent() {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [expandedScenarioId, setExpandedScenarioId] = useState<string | null>(null);
 
+  // ReactFlow instance for programmatic navigation
+  const { fitView } = useReactFlow();
+
   // Simulation state
   const isInitialized = useSimulationStore((s) => s.isInitialized);
   const activeFailures = useSimulationStore((s) => s.activeFailures);
@@ -85,6 +89,7 @@ function FailureScenarioPanelComponent() {
 
   // Canvas nodes (for target selection)
   const nodes = useCanvasStore((s) => s.nodes);
+  const setSelectedNode = useCanvasStore((s) => s.setSelectedNode);
 
   // Don't render if simulation is not initialized
   if (!isInitialized) return null;
@@ -95,10 +100,30 @@ function FailureScenarioPanelComponent() {
   // Auto-select first node if none selected
   const targetNodeId = selectedNodeId || archNodes[0]?.id || null;
 
-  // Filter scenarios by category
-  const filteredScenarios = activeCategory === 'all'
-    ? SCENARIO_LIBRARY
-    : SCENARIO_LIBRARY.filter(s => s.category === activeCategory);
+  // Get the selected node's component type for filtering
+  const targetNode = archNodes.find(n => n.id === targetNodeId);
+  const targetComponentType = targetNode?.data.componentType;
+
+  // Filter scenarios by category AND node type applicability
+  const filteredScenarios = useMemo(() => {
+    let scenarios = activeCategory === 'all'
+      ? SCENARIO_LIBRARY
+      : SCENARIO_LIBRARY.filter(s => s.category === activeCategory);
+
+    // If a target node is selected, filter by applicable node types
+    if (targetNodeId && targetComponentType) {
+      scenarios = scenarios.filter(scenario => {
+        // If applicableNodeTypes is undefined or empty array, it's universal
+        if (!scenario.applicableNodeTypes || scenario.applicableNodeTypes.length === 0) {
+          return true;
+        }
+        // Otherwise, check if the target node's type is in the list
+        return scenario.applicableNodeTypes.includes(targetComponentType);
+      });
+    }
+
+    return scenarios;
+  }, [activeCategory, targetNodeId, targetComponentType]);
 
   const handleRecover = (scenarioId: string) => {
     actions.recoverFromFailure(scenarioId);
@@ -148,6 +173,23 @@ function FailureScenarioPanelComponent() {
   }
 
   // Expanded state: full panel
+  const handleFailureClick = useCallback((rootCauseNodeId: string) => {
+    // Find the node in the canvas
+    const targetNode = nodes.find(n => n.id === rootCauseNodeId);
+    if (!targetNode) return;
+
+    // Select the node
+    setSelectedNode(rootCauseNodeId);
+
+    // Pan and zoom to center on the node
+    fitView({
+      nodes: [targetNode],
+      duration: 400,
+      padding: 0.3,
+      maxZoom: 1.5,
+    });
+  }, [nodes, setSelectedNode, fitView]);
+
   return (
     <div
       className="absolute right-4 top-4 z-40 w-72 rounded-lg border shadow-xl"
@@ -229,15 +271,27 @@ function FailureScenarioPanelComponent() {
 
         {/* Trigger Failure Section */}
         <div className="flex flex-col gap-2">
-          <h3
-            className="text-[10px] font-semibold uppercase tracking-wide"
-            style={{ color: 'hsl(var(--muted-foreground))' }}
-          >
-            Trigger Failure
-          </h3>
-          {filteredScenarios.map((scenario) => {
-            const Icon = ICON_MAP[scenario.icon] || Zap;
-            const isExpanded = expandedScenarioId === scenario.id;
+          <div>
+            <h3
+              className="text-[10px] font-semibold uppercase tracking-wide"
+              style={{ color: 'hsl(var(--muted-foreground))' }}
+            >
+              Trigger Failure
+            </h3>
+            {targetNode && (
+              <p className="mt-0.5 text-[9px] italic text-muted-foreground">
+                Scenarios for {targetNode.data.label}
+              </p>
+            )}
+          </div>
+          {filteredScenarios.length === 0 ? (
+            <p className="text-center text-[10px] italic text-muted-foreground py-4">
+              No scenarios applicable to this node type.
+            </p>
+          ) : (
+            filteredScenarios.map((scenario) => {
+              const Icon = ICON_MAP[scenario.icon] || Zap;
+              const isExpanded = expandedScenarioId === scenario.id;
 
             return (
               <div
@@ -312,7 +366,8 @@ function FailureScenarioPanelComponent() {
                 )}
               </div>
             );
-          })}
+          })
+          )}
         </div>
 
         {/* Active Failures Section */}
@@ -327,11 +382,13 @@ function FailureScenarioPanelComponent() {
             {activeFailures.map((failure) => (
               <div
                 key={failure.id}
-                className="flex flex-col gap-2 rounded-lg border p-2.5"
+                className="flex flex-col gap-2 rounded-lg border p-2.5 cursor-pointer transition-all hover:bg-accent/5"
                 style={{
                   borderColor: getSeverityColor(failure.severity),
                   backgroundColor: 'hsl(var(--card))',
                 }}
+                onClick={() => handleFailureClick(failure.rootCauseNodeId)}
+                title="Click to navigate to affected node"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
@@ -357,7 +414,10 @@ function FailureScenarioPanelComponent() {
                     )}
                   </div>
                   <button
-                    onClick={() => handleRecover(failure.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRecover(failure.id);
+                    }}
                     className={cn(
                       "flex h-6 items-center gap-1 rounded px-2 text-[10px] font-semibold transition-colors",
                       "hover:bg-accent/20"
