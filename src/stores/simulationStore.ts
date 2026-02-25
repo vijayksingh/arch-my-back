@@ -126,7 +126,9 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
             const next = update.visualState;
             if (!prev ||
                 prev.congestionLevel !== next.congestionLevel ||
-                prev.particleFlow?.speed !== next.particleFlow?.speed) {
+                prev.particleFlow?.speed !== next.particleFlow?.speed ||
+                prev.particleFlow?.count !== next.particleFlow?.count ||
+                prev.isBackpressured !== next.isBackpressured) {
               edgeVisualStates.set(update.id, next);
               edgeVisualsChanged = true;
             }
@@ -265,10 +267,64 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
         const eng = getOrCreateEngine();
         eng.triggerFailure(scenario);
         const mode = eng.getState().mode;
+
+        // Compute synchronous visual updates for immediate feedback
+        const nodeId = scenario.rootCauseNodeId;
+        const compState = eng.getComponentState(nodeId);
+        const prevNodeVisuals = useSimulationStore.getState().nodeVisualStates;
+        const prevEdgeVisuals = useSimulationStore.getState().edgeVisualStates;
+        const nodeVisualStates = new Map(prevNodeVisuals);
+        const edgeVisualStates = new Map(prevEdgeVisuals);
+
+        if (compState) {
+          // Replicate visual computation from engine's computeVisualUpdates
+          const nodeVisual: NodeVisualState = {
+            pulseIntensity: 1, // Max pulse for failed node
+            healthColor: 'red',
+            queueVisualization: compState.maxQueueDepth > 0
+              ? {
+                  depth: Math.round(compState.queueDepth),
+                  maxDepth: compState.maxQueueDepth,
+                  percentFull: (compState.queueDepth / compState.maxQueueDepth) * 100,
+                }
+              : undefined,
+            metricsOverlay: {
+              throughput: '0/s', // Failed node has zero throughput
+              latency: compState.latency >= 1000 ? `${(compState.latency / 1000).toFixed(1)}s` : `${compState.latency.toFixed(0)}ms`,
+              errorRate: '100%',
+            },
+          };
+          nodeVisualStates.set(nodeId, nodeVisual);
+
+          // Update outbound edge visuals (show error propagation)
+          const state = eng.getState();
+          const outboundEdgeIds = state.graphEdgeIds.filter(eid => {
+            const flowState = state.edgeFlowStates.get(eid);
+            return flowState?.sourceNodeId === nodeId;
+          });
+
+          for (const edgeId of outboundEdgeIds) {
+            const flowState = state.edgeFlowStates.get(edgeId);
+            if (flowState) {
+              const edgeVisual: EdgeVisualState = {
+                particleFlow: {
+                  count: 0, // No flow from failed node
+                  speed: 30,
+                },
+                congestionLevel: 1, // Max congestion
+                isBackpressured: true,
+              };
+              edgeVisualStates.set(edgeId, edgeVisual);
+            }
+          }
+        }
+
         set({
           isBroken: mode.state === 'broken',
           isRunning: mode.state === 'running',
           activeFailures: [...eng.getState().activeFailures],
+          nodeVisualStates,
+          edgeVisualStates,
         });
       },
 
@@ -307,10 +363,64 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
         // Store the hint — it will be shown after cascading events complete
         eng.getState().pendingHints.push(hint);
         const mode = eng.getState().mode;
+
+        // Compute synchronous visual updates for immediate feedback
+        const nodeId = scenario.rootCauseNodeId;
+        const compState = eng.getComponentState(nodeId);
+        const prevNodeVisuals = useSimulationStore.getState().nodeVisualStates;
+        const prevEdgeVisuals = useSimulationStore.getState().edgeVisualStates;
+        const nodeVisualStates = new Map(prevNodeVisuals);
+        const edgeVisualStates = new Map(prevEdgeVisuals);
+
+        if (compState) {
+          // Replicate visual computation from engine's computeVisualUpdates
+          const nodeVisual: NodeVisualState = {
+            pulseIntensity: 1, // Max pulse for failed node
+            healthColor: 'red',
+            queueVisualization: compState.maxQueueDepth > 0
+              ? {
+                  depth: Math.round(compState.queueDepth),
+                  maxDepth: compState.maxQueueDepth,
+                  percentFull: (compState.queueDepth / compState.maxQueueDepth) * 100,
+                }
+              : undefined,
+            metricsOverlay: {
+              throughput: '0/s', // Failed node has zero throughput
+              latency: compState.latency >= 1000 ? `${(compState.latency / 1000).toFixed(1)}s` : `${compState.latency.toFixed(0)}ms`,
+              errorRate: '100%',
+            },
+          };
+          nodeVisualStates.set(nodeId, nodeVisual);
+
+          // Update outbound edge visuals (show error propagation)
+          const state = eng.getState();
+          const outboundEdgeIds = state.graphEdgeIds.filter(eid => {
+            const flowState = state.edgeFlowStates.get(eid);
+            return flowState?.sourceNodeId === nodeId;
+          });
+
+          for (const edgeId of outboundEdgeIds) {
+            const flowState = state.edgeFlowStates.get(edgeId);
+            if (flowState) {
+              const edgeVisual: EdgeVisualState = {
+                particleFlow: {
+                  count: 0, // No flow from failed node
+                  speed: 30,
+                },
+                congestionLevel: 1, // Max congestion
+                isBackpressured: true,
+              };
+              edgeVisualStates.set(edgeId, edgeVisual);
+            }
+          }
+        }
+
         set({
           isBroken: mode.state === 'broken',
           isRunning: false, // Even though tick continues, from user POV sim is "failing"
           activeFailures: [...eng.getState().activeFailures],
+          nodeVisualStates,
+          edgeVisualStates,
         });
       },
 

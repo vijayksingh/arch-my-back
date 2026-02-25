@@ -9,7 +9,7 @@ import { categoryGlows, categoryAccentTokens } from '@/registry/categoryThemes';
 import { ARCH_NODE } from '@/constants';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Info } from 'lucide-react';
+import { Info, AlertTriangle } from 'lucide-react';
 
 function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
   const [isHovered, setIsHovered] = useState(false);
@@ -132,6 +132,27 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
         </div>
       )}
 
+      {/* Failure Status Indicator */}
+      {simVisual && (simVisual.healthColor === 'red' || simVisual.healthColor === 'yellow') && (
+        <div className="absolute -top-1 -left-1">
+          <div
+            className="flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all duration-200 shadow-lg"
+            style={{
+              backgroundColor: simVisual.healthColor === 'red'
+                ? 'hsl(0 84% 60%)'
+                : 'hsl(45 93% 47%)',
+              borderColor: 'var(--node-surface)',
+            }}
+          >
+            <AlertTriangle
+              size={12}
+              strokeWidth={2.5}
+              className="text-white dark:text-gray-900"
+            />
+          </div>
+        </div>
+      )}
+
       <div
         className="flex h-9 w-9 items-center justify-center rounded-lg"
         style={{
@@ -195,8 +216,8 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
         </div>
       )}
 
-      {/* Metrics overlay - shown on hover or when selected */}
-      {simVisual?.metricsOverlay && (isHovered || selected) && (
+      {/* Metrics overlay - shown on hover/selected, or always for unhealthy nodes */}
+      {simVisual?.metricsOverlay && (isHovered || selected || simVisual.healthColor === 'red' || simVisual.healthColor === 'yellow') && (
         <div
           className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex gap-2 text-[9px] font-mono whitespace-nowrap"
           style={{ color: 'var(--text-secondary)' }}
@@ -206,6 +227,20 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
           {simVisual.metricsOverlay.errorRate && (
             <span style={{ color: 'hsl(0 84% 60%)' }}>{simVisual.metricsOverlay.errorRate}</span>
           )}
+        </div>
+      )}
+
+      {/* Status message tooltip - shown on hover for unhealthy nodes */}
+      {simVisual?.statusMessage && (isHovered || selected) && (simVisual.healthColor === 'red' || simVisual.healthColor === 'yellow') && (
+        <div
+          className="absolute -bottom-14 left-1/2 -translate-x-1/2 px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap shadow-md border"
+          style={{
+            backgroundColor: 'var(--surface-bg)',
+            borderColor: 'var(--ui-border-ghost)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          {simVisual.statusMessage}
         </div>
       )}
     </div>

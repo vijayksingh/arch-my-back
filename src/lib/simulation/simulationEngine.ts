@@ -514,7 +514,9 @@ export class SimulationEngine implements ISimulationEngine {
    * Main simulation tick — bound method for RAF callback.
    */
   private tick = (timestamp: number): void => {
-    if (this.state.mode.state !== 'running') return;
+    // Allow tick loop to run in 'running' and 'broken' modes (for cascading events)
+    // Only 'paused' and 'teaching' modes should stop the loop
+    if (this.state.mode.state === 'paused' || this.state.mode.state === 'teaching') return;
 
     // Calculate delta time
     if (this.lastTimestamp === null) {
@@ -946,6 +948,7 @@ export class SimulationEngine implements ISimulationEngine {
           latency: formatLatency(compState.latency),
           errorRate: compState.errorRate > 0 ? `${compState.errorRate.toFixed(1)}%` : undefined,
         },
+        statusMessage: compState.healthReason,
       };
 
       updates.push({ type: 'node', id: nodeId, visualState });

@@ -378,6 +378,9 @@ export interface NodeVisualState {
     latency: string; // formatted e.g., "45ms"
     errorRate?: string; // formatted e.g., "2.3%"
   };
+
+  // Status message (optional, explains current health state)
+  statusMessage?: string; // e.g., "Database killed", "High queue pressure"
 }
 
 /**
