@@ -22,6 +22,11 @@ export interface ScenarioDefinition {
   icon: string; // lucide icon name
   learningObjectives: string[];
   whatHappens: string;
+  /**
+   * Which component types this scenario applies to.
+   * Empty array or omitted means applies to all types (universal scenario).
+   */
+  applicableNodeTypes?: string[];
   createScenario: (nodeId: string) => FailureScenario;
   educationalHint: (nodeId: string) => EducationalHint;
 }
@@ -40,6 +45,7 @@ export const SCENARIO_LIBRARY: ScenarioDefinition[] = [
     category: 'availability',
     difficulty: 'beginner',
     icon: 'flame',
+    applicableNodeTypes: ['postgres', 'mysql', 'mongodb', 'cassandra', 'dynamodb'],
     learningObjectives: [
       'Understand cascading failures',
       'Learn circuit breaker pattern',
@@ -79,6 +85,7 @@ export const SCENARIO_LIBRARY: ScenarioDefinition[] = [
     category: 'scalability',
     difficulty: 'beginner',
     icon: 'trending-up',
+    applicableNodeTypes: [], // Universal - applies to all node types
     learningObjectives: [
       'Understand load saturation',
       'Learn auto-scaling strategies',
@@ -118,6 +125,7 @@ export const SCENARIO_LIBRARY: ScenarioDefinition[] = [
     category: 'performance',
     difficulty: 'beginner',
     icon: 'timer',
+    applicableNodeTypes: [], // Universal - any service can become slow
     learningObjectives: [
       'Understand timeout configuration',
       'Learn async processing patterns',
@@ -159,6 +167,7 @@ export const SCENARIO_LIBRARY: ScenarioDefinition[] = [
     category: 'resilience',
     difficulty: 'intermediate',
     icon: 'unplug',
+    applicableNodeTypes: [], // Universal - any node can be isolated
     learningObjectives: [
       'Understand CAP theorem implications',
       'Learn retry with backoff',
@@ -198,6 +207,7 @@ export const SCENARIO_LIBRARY: ScenarioDefinition[] = [
     category: 'availability',
     difficulty: 'intermediate',
     icon: 'memory-stick',
+    applicableNodeTypes: ['app_server', 'worker', 'serverless'], // Primarily compute services
     learningObjectives: [
       'Understand resource exhaustion',
       'Learn health check patterns',
@@ -236,6 +246,7 @@ export const SCENARIO_LIBRARY: ScenarioDefinition[] = [
     category: 'performance',
     difficulty: 'intermediate',
     icon: 'layers',
+    applicableNodeTypes: ['kafka', 'message_queue', 'app_server', 'worker'], // Services with queues
     learningObjectives: [
       'Understand backpressure mechanisms',
       'Learn message queue patterns',
@@ -275,6 +286,7 @@ export const SCENARIO_LIBRARY: ScenarioDefinition[] = [
     category: 'performance',
     difficulty: 'intermediate',
     icon: 'database',
+    applicableNodeTypes: ['postgres', 'mysql', 'mongodb', 'app_server'], // Services with connection pools
     learningObjectives: [
       'Understand connection pooling',
       'Learn pool sizing strategies',
@@ -317,6 +329,7 @@ export const SCENARIO_LIBRARY: ScenarioDefinition[] = [
     category: 'resilience',
     difficulty: 'advanced',
     icon: 'zap',
+    applicableNodeTypes: [], // Universal - any service can timeout
     learningObjectives: [
       'Understand timeout propagation',
       'Learn bulkhead pattern',
@@ -357,6 +370,7 @@ export const SCENARIO_LIBRARY: ScenarioDefinition[] = [
     category: 'resilience',
     difficulty: 'advanced',
     icon: 'cloud-off',
+    applicableNodeTypes: ['postgres', 'mysql', 'mongodb', 'cassandra', 'redis', 'kafka'], // Distributed systems
     learningObjectives: [
       'Understand distributed consensus',
       'Learn leader election',
@@ -396,6 +410,7 @@ export const SCENARIO_LIBRARY: ScenarioDefinition[] = [
     category: 'scalability',
     difficulty: 'advanced',
     icon: 'server-crash',
+    applicableNodeTypes: ['redis', 'cdn'], // Cache layers
     learningObjectives: [
       'Understand cache stampede',
       'Learn cache warming strategies',
