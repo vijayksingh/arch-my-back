@@ -18,6 +18,7 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
   const isNewlyAdded = data.isNewlyAdded ?? false;
   const hasContext = Boolean(data.context);
   const simVisual = data.simVisual as NodeVisualState | undefined;
+  const isBooting = data.isBooting ?? false;
 
   // Breathing animation based on utilization
   const utilization = simVisual?.utilization ?? 0;
@@ -85,7 +86,7 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
       className={cn(
         "relative flex flex-col items-center justify-center gap-2.5 rounded-xl border px-4 py-3 transition-all duration-160",
         isNewlyAdded && "ring-2 ring-blue-400/60 animate-pulse",
-        isSimulating && "animate-breathe"
+        isSimulating && !isBooting && "animate-breathe"
       )}
       style={{
         width: ARCH_NODE.WIDTH,
@@ -95,8 +96,12 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
         boxShadow,
         transform,
         backdropFilter: 'blur(10px)',
-        // Dynamic animation duration for breathing based on utilization
-        ...(isSimulating && {
+        // Boot state: dimmed opacity
+        ...(isBooting && {
+          opacity: 0.4,
+        }),
+        // Dynamic animation duration for breathing based on utilization (only when not booting)
+        ...(isSimulating && !isBooting && {
           animationDuration: `${breatheDuration}s`,
           // At low utilization, make it even less visible
           opacity: utilization < 0.3 ? 0.85 : 1,
