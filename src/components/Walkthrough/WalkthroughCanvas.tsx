@@ -10,7 +10,6 @@ import { BuildPalette } from './canvas/BuildPalette';
 import { BuildValidator } from './canvas/BuildValidator';
 import { useWalkthroughContext } from './WalkthroughContext';
 import { cn } from '@/lib/utils';
-import { SimulationControls } from '@/components/Simulation/SimulationControls';
 
 export function WalkthroughCanvas() {
   const {
@@ -43,8 +42,7 @@ export function WalkthroughCanvas() {
       </ReactFlowProvider>
 
       {/* Simulation Toggle */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-        {simulationEnabled && <SimulationControls />}
+      <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
         <button
           onClick={toggleSimulation}
           className={cn(

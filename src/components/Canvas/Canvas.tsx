@@ -630,7 +630,7 @@ Canvas.Walkthrough = function WalkthroughCanvas({
       ...node,
       data: {
         ...node.data,
-        highlighted: highlightedSet.has(node.id),
+        highlighted: highlightedSet.has(node.id) || (node.data.highlighted ?? false),
       },
     }));
   }, [localNodes, highlightedNodeIds]);
