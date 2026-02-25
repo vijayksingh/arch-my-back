@@ -277,6 +277,10 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
           edgeVisualStates: new Map(),
           activeFailures: [],
           currentLesson: null,
+          pendingHints: [],
+          selectedHintNodeId: null,
+          isTraceMode: false,
+          activeTracerNodeId: null,
         });
       },
 

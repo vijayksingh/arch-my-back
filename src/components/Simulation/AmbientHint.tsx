@@ -21,7 +21,7 @@ interface AmbientHintProps {
 }
 
 const AmbientHintComponent = ({ nodeId, hint, timestamp }: AmbientHintProps) => {
-  const { getNode } = useReactFlow();
+  const { getNode, flowToScreenPosition } = useReactFlow();
   const { selectHint, dismissHint } = useSimulationStore((s) => s.actions);
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -53,9 +53,10 @@ const AmbientHintComponent = ({ nodeId, hint, timestamp }: AmbientHintProps) => 
     return null;
   }
 
-  // Position hint above the node (centered horizontally)
-  const hintX = node.position.x + (node.measured?.width || 200) / 2;
-  const hintY = node.position.y - 40; // 40px above node
+  // Convert flow coordinates to screen coordinates (accounts for pan/zoom)
+  const centerX = node.position.x + (node.measured?.width || 200) / 2;
+  const topY = node.position.y - 40; // 40px above node
+  const screenPos = flowToScreenPosition({ x: centerX, y: topY });
 
   const Icon = getIconForType(hint.type);
   const colors = getTypeColorForType(hint.type);
@@ -66,8 +67,8 @@ const AmbientHintComponent = ({ nodeId, hint, timestamp }: AmbientHintProps) => 
       <div
         className="absolute z-50 pointer-events-auto"
         style={{
-          left: `${hintX}px`,
-          top: `${hintY}px`,
+          left: `${screenPos.x}px`,
+          top: `${screenPos.y}px`,
           transform: 'translate(-50%, 0)',
         }}
       >
