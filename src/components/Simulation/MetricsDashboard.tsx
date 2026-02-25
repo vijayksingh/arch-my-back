@@ -60,9 +60,6 @@ function MetricsDashboardComponent() {
   const metricsHistory = useSimulationStore((s) => s.metricsHistory);
   const systemMetrics = useSimulationStore((s) => s.systemMetrics);
 
-  // Don't render if simulation is not initialized
-  if (!isInitialized) return null;
-
   // Extract data arrays from metrics history
   const throughputData = useMemo(
     () => metricsHistory.map((s) => s.metrics.totalThroughput),
@@ -85,6 +82,9 @@ function MetricsDashboardComponent() {
       { config: CHART_CONFIGS[2], data: errorRateData, currentValue: systemMetrics.errorRate },
     ];
   }, [throughputData, latencyData, errorRateData, systemMetrics]);
+
+  // Don't render if simulation is not initialized
+  if (!isInitialized) return null;
 
   if (!isExpanded) {
     // Collapsed state: small tab button

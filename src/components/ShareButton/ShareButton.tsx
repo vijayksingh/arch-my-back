@@ -28,12 +28,10 @@ export function ShareButton({ designId }: ShareButtonProps) {
   const makePublic = useMutation(api.sharing.makeDesignPublic);
   const makePrivate = useMutation(api.sharing.makeDesignPrivate);
 
-  const isPublic = design?.isPublic ?? false;
-  const shareSlug = design?.shareSlug;
-
   const handleTogglePublic = useCallback(async () => {
+    if (!design) return;
     try {
-      if (isPublic) {
+      if (design.isPublic) {
         await makePrivate({ designId });
       } else {
         await makePublic({ designId });
@@ -42,22 +40,25 @@ export function ShareButton({ designId }: ShareButtonProps) {
       console.error('Failed to toggle public status:', error);
       alert('Failed to update sharing settings. Please try again.');
     }
-  }, [isPublic, designId, makePublic, makePrivate]);
+  }, [design, designId, makePublic, makePrivate]);
 
   const handleCopyLink = useCallback(() => {
-    if (!shareSlug) return;
+    if (!design?.shareSlug) return;
 
-    const shareUrl = `${window.location.origin}/share/${shareSlug}`;
+    const shareUrl = `${window.location.origin}/share/${design.shareSlug}`;
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), TIMING.FEEDBACK_DISPLAY);
     });
-  }, [shareSlug]);
+  }, [design?.shareSlug]);
 
-  // Don't render if design is not loaded
+  // Don't render if design is not loaded (all hooks called above)
   if (!design) {
     return null;
   }
+
+  const isPublic = design.isPublic ?? false;
+  const shareSlug = design.shareSlug;
 
   const shareUrl = shareSlug ? `${window.location.origin}/share/${shareSlug}` : '';
 

@@ -91,9 +91,6 @@ function FailureScenarioPanelComponent() {
   const nodes = useCanvasStore((s) => s.nodes);
   const setSelectedNode = useCanvasStore((s) => s.setSelectedNode);
 
-  // Don't render if simulation is not initialized
-  if (!isInitialized) return null;
-
   // PERF #15: Memoize archNodes filter to avoid re-filtering on every render
   const archNodes = useMemo(() => nodes.filter(isArchNode), [nodes]);
 
@@ -124,6 +121,9 @@ function FailureScenarioPanelComponent() {
 
     return scenarios;
   }, [activeCategory, targetNodeId, targetComponentType]);
+
+  // Don't render if simulation is not initialized
+  if (!isInitialized) return null;
 
   const handleRecover = (scenarioId: string) => {
     actions.recoverFromFailure(scenarioId);

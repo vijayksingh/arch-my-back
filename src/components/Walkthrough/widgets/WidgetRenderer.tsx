@@ -2,7 +2,7 @@
  * WidgetRenderer - Routes widgets to appropriate components
  */
 
-import type { WidgetConfig } from '@/types/walkthrough';
+import type { WidgetConfig, SimulationMetricsWidgetConfig } from '@/types/walkthrough';
 import { CodeBlock } from '@/widgets/code-block/CodeBlock';
 import { TradeoffsCard } from '@/widgets/tradeoffs-card/TradeoffsCard';
 import { Timeline } from '@/widgets/timeline/Timeline';
@@ -10,6 +10,7 @@ import { ComparisonTable } from '@/widgets/comparison-table/ComparisonTable';
 import { ScaleExplorer } from '../widgets/ScaleExplorer';
 import { InteractiveTimelineWidget } from '../InteractiveTimelineWidget';
 import { QuizWidget } from './QuizWidget';
+import { SimulationMetricsWidget } from './SimulationMetricsWidget';
 
 interface WidgetRendererProps {
   widget: WidgetConfig;
@@ -146,6 +147,8 @@ export function WidgetRenderer({ widget, quizAnswers, onQuizAnswer, onTimelineHi
       );
     case 'scale-explorer':
       return <ScaleExplorer config={widget} />;
+    case 'simulation-metrics':
+      return <SimulationMetricsWidget config={widget as SimulationMetricsWidgetConfig} />;
     default:
       return null;
   }

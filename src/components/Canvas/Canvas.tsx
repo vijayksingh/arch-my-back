@@ -18,6 +18,7 @@ import type { CanvasNode, CanvasShapeKind } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useSimulationBridge } from '@/hooks/useSimulationBridge';
+import { useWalkthroughSimulationBridge } from '@/hooks/useWalkthroughSimulationBridge';
 import { TeachingOverlay, FailureScenarioPanel, SystemMetricsBar, MetricsDashboard } from '@/components/Simulation';
 import { useWidgetStore } from '@/widgets/store/widgetStore';
 import { componentTypeMap } from '@/registry/componentTypes';
@@ -536,6 +537,7 @@ interface WalkthroughCanvasProps {
   highlightedNodeIds?: string[];
   animatedEdgeIds?: string[];
   onNodeAdd?: (node: Node) => void;
+  simulationEnabled?: boolean;
 }
 
 Canvas.Walkthrough = function WalkthroughCanvas({
@@ -545,6 +547,7 @@ Canvas.Walkthrough = function WalkthroughCanvas({
   highlightedNodeIds = [],
   animatedEdgeIds = [],
   onNodeAdd,
+  simulationEnabled = false,
 }: WalkthroughCanvasProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const { screenToFlowPosition, fitView, miniMapNodeColor } = useCanvasContext();
@@ -552,6 +555,9 @@ Canvas.Walkthrough = function WalkthroughCanvas({
   // Walkthrough mode: use local controlled state
   const [localNodes, setLocalNodes] = useState<Node[]>(initialNodes);
   const [localEdges, setLocalEdges] = useState<Edge[]>(initialEdges);
+
+  // Simulation bridge: syncs visual states from simulation engine → canvas nodes/edges
+  useWalkthroughSimulationBridge(localNodes, localEdges, setLocalNodes, setLocalEdges, simulationEnabled);
 
   // Sync props to local state
   useEffect(() => {
@@ -645,53 +651,63 @@ Canvas.Walkthrough = function WalkthroughCanvas({
   );
 
   return (
-    <ReactFlow
-      nodes={displayNodes}
-      edges={displayEdges}
-      onNodesChange={handleNodesChange}
-      onEdgesChange={handleEdgesChange}
-      isValidConnection={isValidConnection}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      nodeTypes={designNodeTypes}
-      edgeTypes={archEdgeTypes}
-      defaultEdgeOptions={defaultEdgeOptions}
-      snapToGrid
-      snapGrid={[20, 20]}
-      panOnDrag
-      nodesDraggable
-      nodesConnectable
-      elementsSelectable
-      selectionMode={SelectionMode.Partial}
-      fitView
-      minZoom={0.1}
-      maxZoom={4.0}
-      fitViewOptions={WALKTHROUGH_FIT_VIEW_OPTIONS}
-      deleteKeyCode={WALKTHROUGH_DELETE_KEYS}
-      proOptions={{ hideAttribution: true }}
-      className="bg-background"
-    >
-      <Background
-        variant={BackgroundVariant.Dots}
-        gap={20}
-        size={1}
-        color="hsl(var(--canvas-dot))"
-      />
-      <Controls position="bottom-right" />
-      <MiniMap
-        position="bottom-left"
-        nodeColor={miniMapNodeColor}
-        maskColor="var(--canvas-mask)"
-        pannable
-        zoomable
-        style={{
-          width: 120,
-          height: 80,
-          opacity: 0.5,
-          transition: 'opacity 0.2s ease-in-out',
-        }}
-        className="hover:opacity-100"
-      />
-    </ReactFlow>
+    <>
+      <ReactFlow
+        nodes={displayNodes}
+        edges={displayEdges}
+        onNodesChange={handleNodesChange}
+        onEdgesChange={handleEdgesChange}
+        isValidConnection={isValidConnection}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        nodeTypes={designNodeTypes}
+        edgeTypes={archEdgeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
+        snapToGrid
+        snapGrid={[20, 20]}
+        panOnDrag
+        nodesDraggable
+        nodesConnectable
+        elementsSelectable
+        selectionMode={SelectionMode.Partial}
+        fitView
+        minZoom={0.1}
+        maxZoom={4.0}
+        fitViewOptions={WALKTHROUGH_FIT_VIEW_OPTIONS}
+        deleteKeyCode={WALKTHROUGH_DELETE_KEYS}
+        proOptions={{ hideAttribution: true }}
+        className="bg-background"
+      >
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={20}
+          size={1}
+          color="hsl(var(--canvas-dot))"
+        />
+        <Controls position="bottom-right" />
+        <MiniMap
+          position="bottom-left"
+          nodeColor={miniMapNodeColor}
+          maskColor="var(--canvas-mask)"
+          pannable
+          zoomable
+          style={{
+            width: 120,
+            height: 80,
+            opacity: 0.5,
+            transition: 'opacity 0.2s ease-in-out',
+          }}
+          className="hover:opacity-100"
+        />
+      </ReactFlow>
+      {simulationEnabled && (
+        <>
+          <SystemMetricsBar />
+          <TeachingOverlay />
+          {/* TODO: FailureScenarioPanel reads archNodes from canvasStore which is empty in walkthrough mode. Target selector will be empty. */}
+          <FailureScenarioPanel />
+        </>
+      )}
+    </>
   );
 };

@@ -216,13 +216,21 @@ export interface ScaleExplorerWidgetConfig {
   }>;
 }
 
+export interface SimulationMetricsWidgetConfig {
+  type: 'simulation-metrics';
+  title?: string;
+  metrics?: Array<'throughput' | 'latency' | 'errorRate' | 'healthyNodes' | 'queueDepth'>;
+  compactMode?: boolean;
+}
+
 export type WidgetConfig =
   | TimelineWidgetConfig
   | QuizWidgetConfig
   | TradeoffsWidgetConfig
   | CodeBlockWidgetConfig
   | ComparisonTableWidgetConfig
-  | ScaleExplorerWidgetConfig;
+  | ScaleExplorerWidgetConfig
+  | SimulationMetricsWidgetConfig;
 
 // --- User Actions ---
 

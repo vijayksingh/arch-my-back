@@ -13,7 +13,7 @@ function SimulationControlsComponent() {
   const currentTime = useSimulationStore((s) => Math.floor(s.currentTime / 1000) * 1000);
   const actions = useSimulationStore((s) => s.actions);
 
-  // Don't render if simulation is not initialized
+  // Don't render if simulation is not initialized (moved after all hooks to comply with Rules of Hooks)
   if (!isInitialized) return null;
 
   const statusColor = isRunning ? '#22c55e' : isBroken ? '#ef4444' : isTeaching ? '#3b82f6' : '#eab308';
