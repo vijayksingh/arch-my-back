@@ -49,6 +49,15 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      keyframes: {
+        breathe: {
+          '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+          '50%': { transform: 'scale(1.015)', opacity: '0.92' },
+        },
+      },
+      animation: {
+        breathe: 'breathe 2s ease-in-out infinite',
+      },
     },
   },
 } satisfies Config;

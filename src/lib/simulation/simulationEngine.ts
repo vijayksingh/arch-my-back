@@ -30,7 +30,7 @@ import type {
 import type { CanvasNode, ArchEdge, ArchNodeData } from '@/types';
 import type { ComponentTypeKey } from '@/types/componentTypes';
 import { EventBusImpl } from './eventBus';
-import { createBehaviorRegistry } from './behaviorRegistry';
+import { createBehaviorRegistry, COMPONENT_DEFAULTS } from './behaviorRegistry';
 
 // ============================================================================
 // Configuration
@@ -179,6 +179,9 @@ export class SimulationEngine implements ISimulationEngine {
   private prevNodeVisuals = new Map<string, NodeVisualState>();
   private prevEdgeVisuals = new Map<string, EdgeVisualState>();
 
+  // Load control: User-adjustable multiplier for entry traffic (default 1.0 = 100%)
+  private entryLoadMultiplier = 1.0;
+
   constructor(registry?: BehaviorRegistry) {
     this.eventBus = new EventBusImpl();
     this.behaviorRegistry = registry ?? createBehaviorRegistry();
@@ -232,6 +235,7 @@ export class SimulationEngine implements ISimulationEngine {
     this.prevNodeVisuals.clear();
     this.prevEdgeVisuals.clear();
     this.topologicalOrder = []; // PERF #3 fix: clear cached order
+    this.entryLoadMultiplier = 1.0; // Reset load multiplier to 100%
     if (this.nodes.length > 0) {
       this.initializeComponentStates();
       this.state.isInitialized = true;
@@ -253,6 +257,19 @@ export class SimulationEngine implements ISimulationEngine {
 
   getSpeed(): 1 | 2 | 4 {
     return this.state.speed;
+  }
+
+  // ============================================================================
+  // Load Control
+  // ============================================================================
+
+  /**
+   * Set the entry load multiplier (10% to 300%).
+   * This multiplier is applied to auto-calculated entry load.
+   * Default is 1.0 (100%).
+   */
+  setEntryLoadMultiplier(multiplier: number): void {
+    this.entryLoadMultiplier = Math.max(0.1, Math.min(3.0, multiplier));
   }
 
   // ============================================================================
@@ -340,11 +357,15 @@ export class SimulationEngine implements ISimulationEngine {
     scenario.affectedNodeIds = downstreamNodeIds;
 
     for (const downstreamId of downstreamNodeIds) {
-      const timeoutDelay = 5000; // 5s timeout
+      // Cascade faster under higher load
+      const downstreamState = this.state.componentStates.get(downstreamId);
+      const loadFactor = Math.max(1, (downstreamState?.throughput ?? 100) / 100);
+      const baseTimeout = 5000 / loadFactor; // faster cascade at higher throughput
+
       this.scheduledEvents.push(
-        { event: { nodeId: downstreamId, event: 'requests_timing_out', delay: timeoutDelay }, fireAt: this.state.currentTime + timeoutDelay },
-        { event: { nodeId: downstreamId, event: 'queue_overflow', delay: timeoutDelay + 2000 }, fireAt: this.state.currentTime + timeoutDelay + 2000 },
-        { event: { nodeId: downstreamId, event: 'circuit_breaker_open', delay: timeoutDelay + 5000 }, fireAt: this.state.currentTime + timeoutDelay + 5000 },
+        { event: { nodeId: downstreamId, event: 'requests_timing_out', delay: baseTimeout }, fireAt: this.state.currentTime + baseTimeout },
+        { event: { nodeId: downstreamId, event: 'queue_overflow', delay: baseTimeout + 2000 / loadFactor }, fireAt: this.state.currentTime + baseTimeout + 2000 / loadFactor },
+        { event: { nodeId: downstreamId, event: 'circuit_breaker_open', delay: baseTimeout + 5000 / loadFactor }, fireAt: this.state.currentTime + baseTimeout + 5000 / loadFactor },
       );
     }
 
@@ -514,7 +535,9 @@ export class SimulationEngine implements ISimulationEngine {
    * Main simulation tick — bound method for RAF callback.
    */
   private tick = (timestamp: number): void => {
-    if (this.state.mode.state !== 'running') return;
+    // Allow tick loop to run in 'running' and 'broken' modes (for cascading events)
+    // Only 'paused' and 'teaching' modes should stop the loop
+    if (this.state.mode.state === 'paused' || this.state.mode.state === 'teaching') return;
 
     // Calculate delta time
     if (this.lastTimestamp === null) {
@@ -694,11 +717,24 @@ export class SimulationEngine implements ISimulationEngine {
       const numOutbound = outboundIds.length || 1;
       const sourceThroughput = sourceState?.throughput ?? 0;
 
-      flowState.requestsPerSecond = sourceThroughput / numOutbound;
+      const rawFlow = sourceThroughput / numOutbound;
+      // Apply backpressure from target — TCP-inspired (formula-reference-sheet.md line 164-172)
+      const targetState = this.state.componentStates.get(edge.target);
+      if (targetState && targetState.maxQueueDepth > 0) {
+        const threshold = targetState.maxQueueDepth * 0.7;
+        if (targetState.queueDepth > threshold) {
+          const backpressureSignal = Math.min(1, (targetState.queueDepth - threshold) / threshold);
+          const dampingFactor = 0.5;
+          flowState.requestsPerSecond = rawFlow * (1 - backpressureSignal * dampingFactor);
+        } else {
+          flowState.requestsPerSecond = rawFlow;
+        }
+      } else {
+        flowState.requestsPerSecond = rawFlow;
+      }
       flowState.averageLatency = sourceState?.latency ?? 0;
 
       // Congestion level based on how loaded the target is
-      const targetState = this.state.componentStates.get(edge.target);
       if (targetState && targetState.maxQueueDepth > 0) {
         flowState.congestionLevel = Math.min(1, targetState.queueDepth / targetState.maxQueueDepth);
       } else {
@@ -766,8 +802,10 @@ export class SimulationEngine implements ISimulationEngine {
       // Calculate incoming load
       const incomingLoad = this.calculateIncomingLoad(nodeId);
 
-      const capacity = getNodeConfig(node, 'capacity', DEFAULTS.nodeCapacity);
-      const serviceTime = getNodeConfig(node, 'serviceTime', DEFAULTS.serviceTime);
+      // Use per-type defaults for capacity and serviceTime
+      const typeDefaults = COMPONENT_DEFAULTS[componentType] ?? { capacity: DEFAULTS.nodeCapacity, serviceTime: DEFAULTS.serviceTime };
+      const capacity = getNodeConfig(node, 'capacity', typeDefaults.capacity);
+      const serviceTime = getNodeConfig(node, 'serviceTime', typeDefaults.serviceTime);
 
       // Calculate new throughput
       const newThroughput = behavior.calculateThroughput({
@@ -794,6 +832,8 @@ export class SimulationEngine implements ISimulationEngine {
         serviceTime,
         throughput: newThroughput,
         state: compState,
+        capacity, // M/M/1 needs capacity for utilization
+        incomingLoad, // M/M/1 needs arrival rate
       });
 
       // Update state
@@ -801,9 +841,15 @@ export class SimulationEngine implements ISimulationEngine {
       compState.queueDepth = newQueueDepth;
       compState.latency = isFinite(newLatency) ? newLatency : 9999;
 
-      // Update error rate (queue overflow → errors)
-      if (compState.queueDepth >= compState.maxQueueDepth && compState.maxQueueDepth > 0) {
-        compState.errorRate = Math.min(100, compState.errorRate + 5 * deltaTimeSec);
+      // Error rate based on utilization — starts gradually at 80%, accelerates near 100%
+      const utilization = capacity > 0 ? incomingLoad / capacity : 0;
+      const queueRatio = compState.maxQueueDepth > 0 ? compState.queueDepth / compState.maxQueueDepth : 0;
+
+      if (utilization > 0.8 || queueRatio > 0.8) {
+        // Errors start at 80% utilization, grow exponentially
+        const stress = Math.max(utilization, queueRatio);
+        const errorGrowthRate = Math.pow((stress - 0.8) / 0.2, 2) * 20; // 0 at 80%, 20%/sec at 100%
+        compState.errorRate = Math.min(100, compState.errorRate + errorGrowthRate * deltaTimeSec);
       } else if (compState.errorRate > 0 && compState.isHealthy) {
         // Slowly recover error rate
         compState.errorRate = Math.max(0, compState.errorRate - 10 * deltaTimeSec);
@@ -815,7 +861,12 @@ export class SimulationEngine implements ISimulationEngine {
     // Entry nodes generate synthetic load
     if (this.entryNodeIds.has(nodeId)) {
       const node = this.nodeMap.get(nodeId);
-      return getNodeConfig(node!, 'load', DEFAULTS.entryNodeLoad);
+      // Scale entry load based on downstream capacity so simulation shows realistic utilization
+      // Default to enough load to create ~70% utilization on the weakest downstream path
+      const configuredLoad = getNodeConfig(node!, 'load', 0);
+      const baseLoad = configuredLoad > 0 ? configuredLoad : this.calculateAutoEntryLoad(nodeId);
+      // Apply user-controlled load multiplier
+      return baseLoad * this.entryLoadMultiplier;
     }
 
     // Sum of flow from all inbound edges
@@ -828,6 +879,25 @@ export class SimulationEngine implements ISimulationEngine {
       }
     }
     return total;
+  }
+
+  private calculateAutoEntryLoad(entryNodeId: string): number {
+    // Find the minimum capacity among direct downstream nodes
+    const outbound = this.outboundEdges.get(entryNodeId) ?? [];
+    let minDownstreamCapacity = Infinity;
+    for (const edgeId of outbound) {
+      const edge = this.edges.find(e => e.id === edgeId);
+      if (!edge) continue;
+      const node = this.nodeMap.get(edge.target);
+      if (!node) continue;
+      const componentType = getComponentType(node);
+      const typeDefaults = COMPONENT_DEFAULTS[componentType ?? ''] ?? { capacity: DEFAULTS.nodeCapacity };
+      const capacity = getNodeConfig(node, 'capacity', typeDefaults.capacity);
+      minDownstreamCapacity = Math.min(minDownstreamCapacity, capacity);
+    }
+    if (!isFinite(minDownstreamCapacity)) return DEFAULTS.entryNodeLoad;
+    // Target 70% utilization on the weakest link
+    return Math.round(minDownstreamCapacity * 0.7);
   }
 
   private detectFailures(newEvents: SimulationEvent[]): void {
@@ -925,6 +995,7 @@ export class SimulationEngine implements ISimulationEngine {
       if (prev &&
           prev.healthColor === healthColor &&
           prev.pulseIntensity === pulseIntensity &&
+          prev.utilization === utilization &&
           prev.queueVisualization?.depth === queueDepth &&
           prev.queueVisualization?.percentFull === queuePercentFull) {
         continue; // Skip full object construction — nothing changed
@@ -933,6 +1004,7 @@ export class SimulationEngine implements ISimulationEngine {
       // Only construct the full object with expensive string formatting if something changed
       const visualState: NodeVisualState = {
         pulseIntensity,
+        utilization, // Add utilization for breathing animation
         healthColor,
         queueVisualization: compState.maxQueueDepth > 0
           ? {
@@ -946,6 +1018,7 @@ export class SimulationEngine implements ISimulationEngine {
           latency: formatLatency(compState.latency),
           errorRate: compState.errorRate > 0 ? `${compState.errorRate.toFixed(1)}%` : undefined,
         },
+        statusMessage: compState.healthReason,
       };
 
       updates.push({ type: 'node', id: nodeId, visualState });

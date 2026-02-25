@@ -60,9 +60,6 @@ function MetricsDashboardComponent() {
   const metricsHistory = useSimulationStore((s) => s.metricsHistory);
   const systemMetrics = useSimulationStore((s) => s.systemMetrics);
 
-  // Don't render if simulation is not initialized
-  if (!isInitialized) return null;
-
   // Extract data arrays from metrics history
   const throughputData = useMemo(
     () => metricsHistory.map((s) => s.metrics.totalThroughput),
@@ -86,13 +83,16 @@ function MetricsDashboardComponent() {
     ];
   }, [throughputData, latencyData, errorRateData, systemMetrics]);
 
+  // Don't render if simulation is not initialized
+  if (!isInitialized) return null;
+
   if (!isExpanded) {
     // Collapsed state: small tab button
     return (
       <button
         onClick={() => setIsExpanded(true)}
         className={cn(
-          'absolute left-4 top-4 z-40 flex items-center gap-1.5 rounded-r-lg border px-2.5 py-1.5',
+          'absolute left-4 top-16 z-40 flex items-center gap-1.5 rounded-r-lg border px-2.5 py-1.5',
           'transition-colors hover:bg-accent/10'
         )}
         style={{
@@ -113,7 +113,7 @@ function MetricsDashboardComponent() {
   // Expanded state: full panel with charts
   return (
     <div
-      className="absolute left-4 top-4 z-40 w-[280px] rounded-lg border shadow-lg backdrop-blur-sm"
+      className="absolute left-4 top-16 z-40 w-[280px] rounded-lg border shadow-lg backdrop-blur-sm"
       style={{
         borderColor: 'hsl(var(--border))',
         backgroundColor: 'hsl(var(--card) / 0.95)',

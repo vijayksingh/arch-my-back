@@ -84,10 +84,11 @@ export function InteractiveTimelineWidget({
   // Show prediction UI
   if (showPrediction) {
     const nextEvent = widget.events[currentEventIndex + 1];
-    if (!nextEvent?.predictPrompt || !nextEvent?.predictOptions) return null;
-
-    const correctOption = nextEvent.predictOptions.find(opt => opt.correct);
+    const correctOption = nextEvent?.predictOptions?.find(opt => opt.correct);
     const isCorrect = selectedPrediction === correctOption?.text;
+
+    // Guard clause after all hooks
+    if (!nextEvent?.predictPrompt || !nextEvent?.predictOptions) return null;
 
     return (
       <WidgetPreviewCard icon={HelpCircle} title={widget.title} accentBorder>

@@ -17,8 +17,13 @@ import type { Node, XYPosition, Connection, Edge } from '@xyflow/react';
 import type { CanvasNode, CanvasShapeKind } from '@/types';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { useSimulationStore } from '@/stores/simulationStore';
 import { useSimulationBridge } from '@/hooks/useSimulationBridge';
-import { TeachingOverlay, FailureScenarioPanel, SystemMetricsBar, MetricsDashboard } from '@/components/Simulation';
+import { useWalkthroughSimulationBridge } from '@/hooks/useWalkthroughSimulationBridge';
+import { useBootSequence } from '@/hooks/useBootSequence';
+import { useRequestTracer } from '@/hooks/useRequestTracer';
+import { TeachingOverlay, FailureScenarioPanel, SystemMetricsBar, MetricsDashboard, LoadSlider, AmbientHint, HintPanel, TraceButton } from '@/components/Simulation';
+import { TracerParticle } from './TracerParticle';
 import { useWidgetStore } from '@/widgets/store/widgetStore';
 import { componentTypeMap } from '@/registry/componentTypes';
 import { categoryColors } from '@/registry/categoryThemes';
@@ -91,6 +96,75 @@ function useCanvasContext() {
     throw new Error('useCanvasContext must be used within Canvas provider');
   }
   return ctx;
+}
+
+// ============================================================================
+// Ambient Hints Helper Components
+// ============================================================================
+
+/**
+ * Renders all pending ambient hints as floating glyphs above their nodes.
+ * Used in both Editor and Walkthrough modes when simulation is active.
+ */
+function AmbientHintsLayer() {
+  const pendingHints = useSimulationStore((s) => s.pendingHints);
+
+  return (
+    <>
+      {pendingHints.map(({ nodeId, hint, timestamp }) => (
+        <AmbientHint key={nodeId} nodeId={nodeId} hint={hint} timestamp={timestamp} />
+      ))}
+    </>
+  );
+}
+
+/**
+ * Renders the HintPanel when a hint is selected.
+ * Non-modal side panel that slides in from right.
+ */
+function HintPanelLayer() {
+  const selectedHintNodeId = useSimulationStore((s) => s.selectedHintNodeId);
+  const pendingHints = useSimulationStore((s) => s.pendingHints);
+
+  if (!selectedHintNodeId) {
+    return null;
+  }
+
+  const selectedHint = pendingHints.find((h) => h.nodeId === selectedHintNodeId);
+  if (!selectedHint) {
+    return null;
+  }
+
+  return <HintPanel nodeId={selectedHint.nodeId} hint={selectedHint.hint} />;
+}
+
+/**
+ * Renders the request tracer particle when active.
+ * Used in both Editor and Walkthrough modes during simulation.
+ */
+interface TracerLayerProps {
+  nodes: Node[];
+  edges: Edge[];
+}
+
+function TracerLayer({ nodes, edges }: TracerLayerProps) {
+  const activeTracerNodeId = useSimulationStore((s) => s.activeTracerNodeId);
+  const { activeTracer, startTrace, clearTrace } = useRequestTracer(nodes, edges);
+
+  // Start trace when activeTracerNodeId changes
+  useEffect(() => {
+    if (activeTracerNodeId) {
+      startTrace(activeTracerNodeId);
+    } else {
+      clearTrace();
+    }
+  }, [activeTracerNodeId, startTrace, clearTrace]);
+
+  if (!activeTracer) {
+    return null;
+  }
+
+  return <TracerParticle tracer={activeTracer} edges={edges} />;
 }
 
 // ============================================================================
@@ -201,6 +275,11 @@ Canvas.Editor = function EditorCanvas() {
   // Simulation bridge: syncs visual states from simulation engine → canvas nodes/edges
   useSimulationBridge();
 
+  // Boot sequence: staggers node activation when simulation starts
+  const isInitialized = useSimulationStore((s) => s.isInitialized);
+  const isRunning = useSimulationStore((s) => s.isRunning);
+  const { bootingNodeIds, isBooting } = useBootSequence(storeNodes, storeEdges, isInitialized, isRunning);
+
   // Drag-to-create state
   const dragStart = useRef<{ screen: { x: number; y: number }; flow: XYPosition } | null>(null);
   const activeDragTool = useRef<CanvasShapeKind | null>(null);
@@ -282,22 +361,52 @@ Canvas.Editor = function EditorCanvas() {
     [activeCanvasTool],
   );
 
+  // Trace mode state
+  const isTraceMode = useSimulationStore((s) => s.isTraceMode);
+  const startTrace = useSimulationStore((s) => s.actions.startTrace);
+  const clearTrace = useSimulationStore((s) => s.actions.clearTrace);
+
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
+      // If trace mode is enabled, start trace from clicked node
+      if (isTraceMode && node.type === NODE_TYPE.ARCH_COMPONENT) {
+        startTrace(node.id);
+        return;
+      }
+
+      // Normal selection behavior
       setSelectedNode(node.id);
     },
-    [setSelectedNode],
+    [isTraceMode, startTrace, setSelectedNode],
   );
 
   const onPaneClick = useCallback(
     (_event: React.MouseEvent) => {
+      // Clear trace when clicking pane
+      if (isTraceMode) {
+        clearTrace();
+        return;
+      }
+
       if (activeCanvasTool === CANVAS_TOOL.CURSOR || activeCanvasTool === CANVAS_TOOL.SELECT) {
         setSelectedNode(null);
         stopShapeInlineEdit();
       }
     },
-    [activeCanvasTool, setSelectedNode, stopShapeInlineEdit],
+    [isTraceMode, clearTrace, activeCanvasTool, setSelectedNode, stopShapeInlineEdit],
   );
+
+  // ESC key to clear trace
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isTraceMode) {
+        clearTrace();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTraceMode, clearTrace]);
 
   const onSelectionChange = useCallback(
     ({ nodes: nextSelection }: { nodes: Node[] }) => {
@@ -413,6 +522,18 @@ Canvas.Editor = function EditorCanvas() {
     prefersReducedMotion,
   ]);
 
+  // Enrich nodes with boot state
+  const displayNodes = useMemo(() => {
+    if (!isBooting) return storeNodes;
+    return storeNodes.map(node => ({
+      ...node,
+      data: {
+        ...node.data,
+        isBooting: bootingNodeIds.has(node.id),
+      },
+    })) as CanvasNode[];
+  }, [storeNodes, isBooting, bootingNodeIds]);
+
   useEffect(() => {
     return () => {
       if (feedbackTimeoutRef.current) {
@@ -427,7 +548,7 @@ Canvas.Editor = function EditorCanvas() {
       onMouseDown={handleContainerMouseDown}
     >
       <ReactFlow
-        nodes={storeNodes}
+        nodes={displayNodes}
         edges={storeEdges}
         onNodesChange={storeOnNodesChange}
         onEdgesChange={storeOnEdgesChange}
@@ -503,7 +624,16 @@ Canvas.Editor = function EditorCanvas() {
       <MetricsDashboard />
       <FailureScenarioPanel />
       <SystemMetricsBar />
+      <LoadSlider />
+      <TraceButton />
       <TeachingOverlay />
+
+      {/* Ambient teaching hints (non-modal) */}
+      <AmbientHintsLayer />
+      <HintPanelLayer />
+
+      {/* Request tracer */}
+      <TracerLayer nodes={storeNodes} edges={storeEdges} />
 
       {/* Connection feedback toast */}
       {connectionFeedback && (
@@ -536,6 +666,7 @@ interface WalkthroughCanvasProps {
   highlightedNodeIds?: string[];
   animatedEdgeIds?: string[];
   onNodeAdd?: (node: Node) => void;
+  simulationEnabled?: boolean;
 }
 
 Canvas.Walkthrough = function WalkthroughCanvas({
@@ -545,6 +676,7 @@ Canvas.Walkthrough = function WalkthroughCanvas({
   highlightedNodeIds = [],
   animatedEdgeIds = [],
   onNodeAdd,
+  simulationEnabled = false,
 }: WalkthroughCanvasProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const { screenToFlowPosition, fitView, miniMapNodeColor } = useCanvasContext();
@@ -552,6 +684,19 @@ Canvas.Walkthrough = function WalkthroughCanvas({
   // Walkthrough mode: use local controlled state
   const [localNodes, setLocalNodes] = useState<Node[]>(initialNodes);
   const [localEdges, setLocalEdges] = useState<Edge[]>(initialEdges);
+
+  // Simulation bridge: syncs visual states from simulation engine → canvas nodes/edges
+  useWalkthroughSimulationBridge(localNodes, localEdges, setLocalNodes, setLocalEdges, simulationEnabled);
+
+  // Boot sequence: staggers node activation when simulation starts (only if simulation is enabled)
+  const isInitialized = useSimulationStore((s) => s.isInitialized);
+  const isRunning = useSimulationStore((s) => s.isRunning);
+  const { bootingNodeIds, isBooting } = useBootSequence(
+    localNodes,
+    localEdges,
+    simulationEnabled ? isInitialized : false,
+    simulationEnabled ? isRunning : false
+  );
 
   // Sync props to local state
   useEffect(() => {
@@ -575,6 +720,42 @@ Canvas.Walkthrough = function WalkthroughCanvas({
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
+
+  // Trace mode handler for walkthrough
+  const isTraceMode = useSimulationStore((s) => s.isTraceMode);
+  const startTrace = useSimulationStore((s) => s.actions.startTrace);
+  const clearTrace = useSimulationStore((s) => s.actions.clearTrace);
+
+  const handleNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      // If trace mode is enabled and simulation is active, start trace from clicked node
+      if (isTraceMode && simulationEnabled && node.type === NODE_TYPE.ARCH_COMPONENT) {
+        startTrace(node.id);
+      }
+    },
+    [isTraceMode, simulationEnabled, startTrace],
+  );
+
+  const handlePaneClick = useCallback(() => {
+    // Clear trace when clicking pane
+    if (isTraceMode) {
+      clearTrace();
+    }
+  }, [isTraceMode, clearTrace]);
+
+  // ESC key to clear trace
+  useEffect(() => {
+    if (!simulationEnabled) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isTraceMode) {
+        clearTrace();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [simulationEnabled, isTraceMode, clearTrace]);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -624,10 +805,11 @@ Canvas.Walkthrough = function WalkthroughCanvas({
       ...node,
       data: {
         ...node.data,
-        highlighted: highlightedSet.has(node.id),
+        highlighted: highlightedSet.has(node.id) || (node.data.highlighted ?? false),
+        isBooting: isBooting && bootingNodeIds.has(node.id),
       },
     }));
-  }, [localNodes, highlightedNodeIds]);
+  }, [localNodes, highlightedNodeIds, isBooting, bootingNodeIds]);
 
   const displayEdges = useMemo(() => {
     const animatedSet = new Set(animatedEdgeIds);
@@ -645,53 +827,74 @@ Canvas.Walkthrough = function WalkthroughCanvas({
   );
 
   return (
-    <ReactFlow
-      nodes={displayNodes}
-      edges={displayEdges}
-      onNodesChange={handleNodesChange}
-      onEdgesChange={handleEdgesChange}
-      isValidConnection={isValidConnection}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      nodeTypes={designNodeTypes}
-      edgeTypes={archEdgeTypes}
-      defaultEdgeOptions={defaultEdgeOptions}
-      snapToGrid
-      snapGrid={[20, 20]}
-      panOnDrag
-      nodesDraggable
-      nodesConnectable
-      elementsSelectable
-      selectionMode={SelectionMode.Partial}
-      fitView
-      minZoom={0.1}
-      maxZoom={4.0}
-      fitViewOptions={WALKTHROUGH_FIT_VIEW_OPTIONS}
-      deleteKeyCode={WALKTHROUGH_DELETE_KEYS}
-      proOptions={{ hideAttribution: true }}
-      className="bg-background"
-    >
-      <Background
-        variant={BackgroundVariant.Dots}
-        gap={20}
-        size={1}
-        color="hsl(var(--canvas-dot))"
-      />
-      <Controls position="bottom-right" />
-      <MiniMap
-        position="bottom-left"
-        nodeColor={miniMapNodeColor}
-        maskColor="var(--canvas-mask)"
-        pannable
-        zoomable
-        style={{
-          width: 120,
-          height: 80,
-          opacity: 0.5,
-          transition: 'opacity 0.2s ease-in-out',
-        }}
-        className="hover:opacity-100"
-      />
-    </ReactFlow>
+    <>
+      <ReactFlow
+        nodes={displayNodes}
+        edges={displayEdges}
+        onNodesChange={handleNodesChange}
+        onEdgesChange={handleEdgesChange}
+        isValidConnection={isValidConnection}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onNodeClick={handleNodeClick}
+        onPaneClick={handlePaneClick}
+        nodeTypes={designNodeTypes}
+        edgeTypes={archEdgeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
+        snapToGrid
+        snapGrid={[20, 20]}
+        panOnDrag
+        nodesDraggable
+        nodesConnectable
+        elementsSelectable
+        selectionMode={SelectionMode.Partial}
+        fitView
+        minZoom={0.1}
+        maxZoom={4.0}
+        fitViewOptions={WALKTHROUGH_FIT_VIEW_OPTIONS}
+        deleteKeyCode={WALKTHROUGH_DELETE_KEYS}
+        proOptions={{ hideAttribution: true }}
+        className="bg-background"
+      >
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={20}
+          size={1}
+          color="hsl(var(--canvas-dot))"
+        />
+        <Controls position="bottom-right" />
+        <MiniMap
+          position="bottom-left"
+          nodeColor={miniMapNodeColor}
+          maskColor="var(--canvas-mask)"
+          pannable
+          zoomable
+          style={{
+            width: 120,
+            height: 80,
+            opacity: 0.5,
+            transition: 'opacity 0.2s ease-in-out',
+          }}
+          className="hover:opacity-100"
+        />
+      </ReactFlow>
+      {simulationEnabled && (
+        <>
+          <MetricsDashboard />
+          <SystemMetricsBar />
+          <LoadSlider />
+          <TraceButton />
+          <TeachingOverlay />
+          <FailureScenarioPanel nodes={localNodes as CanvasNode[]} />
+
+          {/* Ambient teaching hints (non-modal) */}
+          <AmbientHintsLayer />
+          <HintPanelLayer />
+
+          {/* Request tracer */}
+          <TracerLayer nodes={localNodes} edges={localEdges} />
+        </>
+      )}
+    </>
   );
 };

@@ -1,4 +1,4 @@
-import { memo, useState, useRef } from 'react';
+import { memo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { ArchNode as ArchNodeType } from '@/types';
@@ -9,7 +9,7 @@ import { categoryGlows, categoryAccentTokens } from '@/registry/categoryThemes';
 import { ARCH_NODE } from '@/constants';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Info } from 'lucide-react';
+import { Info, AlertTriangle } from 'lucide-react';
 
 function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
   const [isHovered, setIsHovered] = useState(false);
@@ -18,19 +18,18 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
   const isNewlyAdded = data.isNewlyAdded ?? false;
   const hasContext = Boolean(data.context);
   const simVisual = data.simVisual as NodeVisualState | undefined;
+  const isBooting = data.isBooting ?? false;
 
-  // PERF #13: Pulse animation hysteresis to prevent flickering at boundary
-  const isPulsingRef = useRef(false);
-  if (simVisual) {
-    if (!isPulsingRef.current && simVisual.pulseIntensity > 0.6) {
-      isPulsingRef.current = true;
-    } else if (isPulsingRef.current && simVisual.pulseIntensity < 0.4) {
-      isPulsingRef.current = false;
-    }
-  } else {
-    isPulsingRef.current = false;
-  }
-  const shouldPulse = simVisual && isPulsingRef.current;
+  // Breathing animation based on utilization
+  const utilization = simVisual?.utilization ?? 0;
+  const isSimulating = simVisual !== undefined;
+
+  // Calculate breathing speed: max(0.4, 2 - utilization * 1.6)
+  // At 0%: 2s (slow, barely perceptible with opacity 0.85)
+  // At 50%: 1.2s (moderate)
+  // At 90%: 0.56s (fast, visible)
+  // At 100%: 0.4s (capped minimum)
+  const breatheDuration = Math.max(0.4, 2 - utilization * 1.6);
   const typeDef = componentTypeMap.get(data.componentType);
   const IconComponent = getIconByName(typeDef?.icon ?? '');
   const glowColor = typeDef ? categoryGlows[typeDef.category] : categoryGlows.External;
@@ -87,7 +86,7 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
       className={cn(
         "relative flex flex-col items-center justify-center gap-2.5 rounded-xl border px-4 py-3 transition-all duration-160",
         isNewlyAdded && "ring-2 ring-blue-400/60 animate-pulse",
-        shouldPulse && "animate-pulse"
+        isSimulating && !isBooting && "animate-breathe"
       )}
       style={{
         width: ARCH_NODE.WIDTH,
@@ -97,6 +96,16 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
         boxShadow,
         transform,
         backdropFilter: 'blur(10px)',
+        // Boot state: dimmed opacity
+        ...(isBooting && {
+          opacity: 0.4,
+        }),
+        // Dynamic animation duration for breathing based on utilization (only when not booting)
+        ...(isSimulating && !isBooting && {
+          animationDuration: `${breatheDuration}s`,
+          // At low utilization, make it even less visible
+          opacity: utilization < 0.3 ? 0.85 : 1,
+        }),
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -127,6 +136,27 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
               size={10}
               strokeWidth={2.5}
               style={{ color: accentColor }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Failure Status Indicator */}
+      {simVisual && (simVisual.healthColor === 'red' || simVisual.healthColor === 'yellow') && (
+        <div className="absolute -top-1 -left-1">
+          <div
+            className="flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all duration-200 shadow-lg"
+            style={{
+              backgroundColor: simVisual.healthColor === 'red'
+                ? 'hsl(0 84% 60%)'
+                : 'hsl(45 93% 47%)',
+              borderColor: 'var(--node-surface)',
+            }}
+          >
+            <AlertTriangle
+              size={12}
+              strokeWidth={2.5}
+              className="text-white dark:text-gray-900"
             />
           </div>
         </div>
@@ -195,8 +225,8 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
         </div>
       )}
 
-      {/* Metrics overlay - shown on hover or when selected */}
-      {simVisual?.metricsOverlay && (isHovered || selected) && (
+      {/* Metrics overlay - shown on hover/selected, or always for unhealthy nodes */}
+      {simVisual?.metricsOverlay && (isHovered || selected || simVisual.healthColor === 'red' || simVisual.healthColor === 'yellow') && (
         <div
           className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex gap-2 text-[9px] font-mono whitespace-nowrap"
           style={{ color: 'var(--text-secondary)' }}
@@ -206,6 +236,20 @@ function ArchNodeComponent({ data, selected }: NodeProps<ArchNodeType>) {
           {simVisual.metricsOverlay.errorRate && (
             <span style={{ color: 'hsl(0 84% 60%)' }}>{simVisual.metricsOverlay.errorRate}</span>
           )}
+        </div>
+      )}
+
+      {/* Status message tooltip - shown on hover for unhealthy nodes */}
+      {simVisual?.statusMessage && (isHovered || selected) && (simVisual.healthColor === 'red' || simVisual.healthColor === 'yellow') && (
+        <div
+          className="absolute -bottom-14 left-1/2 -translate-x-1/2 px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap shadow-md border"
+          style={{
+            backgroundColor: 'var(--surface-bg)',
+            borderColor: 'var(--ui-border-ghost)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          {simVisual.statusMessage}
         </div>
       )}
     </div>

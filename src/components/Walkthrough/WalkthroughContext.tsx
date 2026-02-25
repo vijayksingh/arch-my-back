@@ -2,11 +2,13 @@
  * WalkthroughContext - Shared state for WalkthroughViewer compound components
  */
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { WalkthroughEngine, type WalkthroughStep } from '@/lib/walkthroughEngine';
 import type { Walkthrough } from '@/types/walkthrough';
 import type { Node, Edge } from '@xyflow/react';
+import type { CanvasNode, ArchEdge } from '@/types';
+import { useSimulationStore } from '@/stores/simulationStore';
 
 interface WalkthroughContextValue {
   // Core data
@@ -38,6 +40,10 @@ interface WalkthroughContextValue {
   handleNodeAdd: (node: Node) => void;
   handleBuildValidationSuccess: () => void;
   handleApplySolution: (nodes: any[], edges: Edge[]) => void;
+
+  // Simulation toggle
+  simulationEnabled: boolean;
+  toggleSimulation: () => void;
 }
 
 const WalkthroughContext = createContext<WalkthroughContextValue | null>(null);
@@ -63,6 +69,7 @@ export function WalkthroughProvider({ walkthrough, onComplete, children }: Walkt
   const [showLearningGoals, setShowLearningGoals] = useState(false);
   const [timelineHighlightedNodes, setTimelineHighlightedNodes] = useState<string[]>([]);
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
+  const [simulationEnabled, setSimulationEnabled] = useState(false);
 
   const currentStep = engine.getCurrentStep() ?? null;
   const progress = engine.getProgress();
@@ -116,6 +123,38 @@ export function WalkthroughProvider({ walkthrough, onComplete, children }: Walkt
     }
   }, [engine, currentStep]);
 
+  const toggleSimulation = useCallback(() => {
+    const simActions = useSimulationStore.getState().actions;
+    if (simulationEnabled) {
+      // Turning off — reset simulation
+      simActions.reset();
+      setSimulationEnabled(false);
+    } else {
+      // Turning on — initialize from current graph
+      simActions.initialize(state.canvasNodes as CanvasNode[], state.canvasEdges as ArchEdge[]);
+      simActions.start();
+      setSimulationEnabled(true);
+    }
+  }, [simulationEnabled, state.canvasNodes, state.canvasEdges]);
+
+  // Reset on step change — re-initialize simulation with new graph from new step
+  useEffect(() => {
+    if (simulationEnabled) {
+      const simActions = useSimulationStore.getState().actions;
+      // Re-initialize simulation with new graph from new step
+      simActions.reset();
+      simActions.initialize(state.canvasNodes as CanvasNode[], state.canvasEdges as ArchEdge[]);
+      simActions.start();
+    }
+  }, [state.currentStepIndex]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      useSimulationStore.getState().actions.reset();
+    };
+  }, []);
+
   const value: WalkthroughContextValue = {
     walkthrough,
     engine,
@@ -137,6 +176,8 @@ export function WalkthroughProvider({ walkthrough, onComplete, children }: Walkt
     handleNodeAdd,
     handleBuildValidationSuccess,
     handleApplySolution,
+    simulationEnabled,
+    toggleSimulation,
   };
 
   return (

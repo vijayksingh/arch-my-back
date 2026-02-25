@@ -44,7 +44,7 @@ const TeachingOverlayComponent = () => {
     );
 
     return (
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-full max-w-lg px-4 animate-in slide-in-from-bottom-4 duration-300">
+      <div className="absolute bottom-4 right-4 z-50 w-full max-w-[400px] animate-in slide-in-from-bottom-right duration-300">
         <div className="rounded-lg border border-[hsl(var(--ui-border-accent-soft))] bg-[hsl(var(--surface-bg-elevated))] shadow-lg backdrop-blur-sm">
           <div className="p-6 space-y-4">
             {/* Header */}
@@ -101,7 +101,7 @@ const TeachingOverlayComponent = () => {
     const typeColor = getTypeColorForType(lesson.type);
 
     return (
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-full max-w-lg px-4 animate-in slide-in-from-bottom-4 duration-300">
+      <div className="absolute bottom-4 right-4 z-50 w-full max-w-[400px] animate-in slide-in-from-bottom-right duration-300">
         <div className="rounded-lg border border-[hsl(var(--ui-border-accent-soft))] bg-[hsl(var(--surface-bg-elevated))] shadow-lg backdrop-blur-sm">
           <div className="p-6 space-y-4">
             {/* Header */}

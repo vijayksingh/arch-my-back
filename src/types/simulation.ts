@@ -224,6 +224,8 @@ export interface ComponentBehavior {
     serviceTime: number; // ms per request
     throughput: number; // current throughput
     state: ComponentState;
+    capacity?: number; // max requests/sec (for M/M/1 utilization)
+    incomingLoad?: number; // requests/sec arriving (for M/M/1 utilization)
   }): number;
 
   /**
@@ -362,6 +364,10 @@ export interface NodeVisualState {
   // Pulsing animation intensity (0-1)
   pulseIntensity: number;
 
+  // Utilization ratio (0-1): incomingLoad / capacity
+  // Used for breathing animation speed
+  utilization?: number;
+
   // Health color indicator
   healthColor: 'green' | 'yellow' | 'red' | 'gray';
 
@@ -378,6 +384,9 @@ export interface NodeVisualState {
     latency: string; // formatted e.g., "45ms"
     errorRate?: string; // formatted e.g., "2.3%"
   };
+
+  // Status message (optional, explains current health state)
+  statusMessage?: string; // e.g., "Database killed", "High queue pressure"
 }
 
 /**

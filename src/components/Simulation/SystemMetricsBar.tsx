@@ -60,13 +60,13 @@ function SystemMetricsBarComponent() {
   const metrics = useSimulationStore((s) => s.systemMetrics);
   const isInitialized = useSimulationStore((s) => s.isInitialized);
 
+  const totalNodes = metrics.healthyNodeCount + metrics.unhealthyNodeCount;
+  const nodeColor = getMetricColor('nodes', metrics.unhealthyNodeCount);
+
   // Don't render until simulation is initialized
   if (!isInitialized) {
     return null;
   }
-
-  const totalNodes = metrics.healthyNodeCount + metrics.unhealthyNodeCount;
-  const nodeColor = getMetricColor('nodes', metrics.unhealthyNodeCount);
 
   return (
     <div

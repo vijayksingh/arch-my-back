@@ -36,6 +36,9 @@ interface SimulationStoreState {
   speed: 1 | 2 | 4;
   currentTime: number;
 
+  // Load control (user-adjustable entry traffic multiplier)
+  loadMultiplier: number;
+
   // System metrics (updated at ~10fps)
   systemMetrics: SystemMetrics;
 
@@ -50,6 +53,14 @@ interface SimulationStoreState {
   activeFailures: FailureScenario[];
   currentLesson: EducationalHint | null;
 
+  // Ambient teaching hints (non-modal)
+  pendingHints: Array<{ nodeId: string; hint: EducationalHint; timestamp: number }>;
+  selectedHintNodeId: string | null;
+
+  // Request tracer (spatial debugging)
+  isTraceMode: boolean;
+  activeTracerNodeId: string | null;
+
   // Actions
   actions: {
     initialize: (nodes: CanvasNode[], edges: ArchEdge[]) => void;
@@ -57,12 +68,18 @@ interface SimulationStoreState {
     pause: () => void;
     reset: () => void;
     setSpeed: (speed: 1 | 2 | 4) => void;
+    setLoadMultiplier: (multiplier: number) => void;
     triggerFailure: (scenario: FailureScenario) => void;
     recoverFromFailure: (scenarioId: string) => void;
     acknowledgeLesson: () => void;
     triggerTeachingMode: (lesson: EducationalHint) => void;
     triggerFailureWithTeaching: (scenario: FailureScenario, hint: EducationalHint) => void;
     fixAndResume: () => void;
+    dismissHint: (nodeId: string) => void;
+    selectHint: (nodeId: string | null) => void;
+    setTraceMode: (enabled: boolean) => void;
+    startTrace: (nodeId: string) => void;
+    clearTrace: () => void;
   };
 }
 
@@ -126,7 +143,9 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
             const next = update.visualState;
             if (!prev ||
                 prev.congestionLevel !== next.congestionLevel ||
-                prev.particleFlow?.speed !== next.particleFlow?.speed) {
+                prev.particleFlow?.speed !== next.particleFlow?.speed ||
+                prev.particleFlow?.count !== next.particleFlow?.count ||
+                prev.isBackpressured !== next.isBackpressured) {
               edgeVisualStates.set(update.id, next);
               edgeVisualsChanged = true;
             }
@@ -189,6 +208,7 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
     isTeaching: false,
     speed: 1,
     currentTime: 0,
+    loadMultiplier: 1.0,
     systemMetrics: {
       totalThroughput: 0,
       averageLatency: 0,
@@ -205,6 +225,10 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
     edgeVisualStates: new Map(),
     activeFailures: [],
     currentLesson: null,
+    pendingHints: [],
+    selectedHintNodeId: null,
+    isTraceMode: false,
+    activeTracerNodeId: null,
 
     actions: {
       initialize(nodes: CanvasNode[], edges: ArchEdge[]) {
@@ -236,6 +260,7 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
           isBroken: false,
           isTeaching: false,
           currentTime: 0,
+          loadMultiplier: 1.0,
           systemMetrics: {
             totalThroughput: 0,
             averageLatency: 0,
@@ -252,6 +277,10 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
           edgeVisualStates: new Map(),
           activeFailures: [],
           currentLesson: null,
+          pendingHints: [],
+          selectedHintNodeId: null,
+          isTraceMode: false,
+          activeTracerNodeId: null,
         });
       },
 
@@ -261,14 +290,74 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
         set({ speed });
       },
 
+      setLoadMultiplier(multiplier: number) {
+        const eng = getOrCreateEngine();
+        eng.setEntryLoadMultiplier(multiplier);
+        set({ loadMultiplier: multiplier });
+      },
+
       triggerFailure(scenario: FailureScenario) {
         const eng = getOrCreateEngine();
         eng.triggerFailure(scenario);
         const mode = eng.getState().mode;
+
+        // Compute synchronous visual updates for immediate feedback
+        const nodeId = scenario.rootCauseNodeId;
+        const compState = eng.getComponentState(nodeId);
+        const prevNodeVisuals = useSimulationStore.getState().nodeVisualStates;
+        const prevEdgeVisuals = useSimulationStore.getState().edgeVisualStates;
+        const nodeVisualStates = new Map(prevNodeVisuals);
+        const edgeVisualStates = new Map(prevEdgeVisuals);
+
+        if (compState) {
+          // Replicate visual computation from engine's computeVisualUpdates
+          const nodeVisual: NodeVisualState = {
+            pulseIntensity: 1, // Max pulse for failed node
+            healthColor: 'red',
+            queueVisualization: compState.maxQueueDepth > 0
+              ? {
+                  depth: Math.round(compState.queueDepth),
+                  maxDepth: compState.maxQueueDepth,
+                  percentFull: (compState.queueDepth / compState.maxQueueDepth) * 100,
+                }
+              : undefined,
+            metricsOverlay: {
+              throughput: '0/s', // Failed node has zero throughput
+              latency: compState.latency >= 1000 ? `${(compState.latency / 1000).toFixed(1)}s` : `${compState.latency.toFixed(0)}ms`,
+              errorRate: '100%',
+            },
+          };
+          nodeVisualStates.set(nodeId, nodeVisual);
+
+          // Update outbound edge visuals (show error propagation)
+          const state = eng.getState();
+          const outboundEdgeIds = state.graphEdgeIds.filter(eid => {
+            const flowState = state.edgeFlowStates.get(eid);
+            return flowState?.sourceNodeId === nodeId;
+          });
+
+          for (const edgeId of outboundEdgeIds) {
+            const flowState = state.edgeFlowStates.get(edgeId);
+            if (flowState) {
+              const edgeVisual: EdgeVisualState = {
+                particleFlow: {
+                  count: 0, // No flow from failed node
+                  speed: 30,
+                },
+                congestionLevel: 1, // Max congestion
+                isBackpressured: true,
+              };
+              edgeVisualStates.set(edgeId, edgeVisual);
+            }
+          }
+        }
+
         set({
           isBroken: mode.state === 'broken',
           isRunning: mode.state === 'running',
           activeFailures: [...eng.getState().activeFailures],
+          nodeVisualStates,
+          edgeVisualStates,
         });
       },
 
@@ -295,23 +384,91 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
       },
 
       triggerTeachingMode(lesson: EducationalHint) {
-        const eng = getOrCreateEngine();
-        eng.pauseForTeaching(lesson);
-        set({ isTeaching: true, currentLesson: lesson, isPaused: true });
+        // NEW BEHAVIOR: Teaching moments NO LONGER pause simulation
+        // Instead, they push to pendingHints[] for ambient, non-modal display
+        // Determine which node this lesson relates to (use first relatedNodeId)
+        const nodeId = lesson.relatedNodeIds?.[0] || 'unknown';
+        set(prev => ({
+          pendingHints: [
+            ...prev.pendingHints,
+            { nodeId, hint: lesson, timestamp: Date.now() }
+          ]
+        }));
+        // NOTE: Simulation continues running (no pause)
       },
 
       // FIX 2: Atomic triggerFailureWithTeaching action
       triggerFailureWithTeaching(scenario: FailureScenario, hint: EducationalHint) {
         const eng = getOrCreateEngine();
         eng.triggerFailure(scenario);
-        // Store the hint — it will be shown after cascading events complete
-        eng.getState().pendingHints.push(hint);
+
+        // NEW BEHAVIOR: Push hint to ambient pendingHints[] instead of engine state
+        // Failures still pause (isBroken=true), but hints are now non-modal
         const mode = eng.getState().mode;
-        set({
+
+        // Compute synchronous visual updates for immediate feedback
+        const nodeId = scenario.rootCauseNodeId;
+        const compState = eng.getComponentState(nodeId);
+        const prevNodeVisuals = useSimulationStore.getState().nodeVisualStates;
+        const prevEdgeVisuals = useSimulationStore.getState().edgeVisualStates;
+        const nodeVisualStates = new Map(prevNodeVisuals);
+        const edgeVisualStates = new Map(prevEdgeVisuals);
+
+        if (compState) {
+          // Replicate visual computation from engine's computeVisualUpdates
+          const nodeVisual: NodeVisualState = {
+            pulseIntensity: 1, // Max pulse for failed node
+            healthColor: 'red',
+            queueVisualization: compState.maxQueueDepth > 0
+              ? {
+                  depth: Math.round(compState.queueDepth),
+                  maxDepth: compState.maxQueueDepth,
+                  percentFull: (compState.queueDepth / compState.maxQueueDepth) * 100,
+                }
+              : undefined,
+            metricsOverlay: {
+              throughput: '0/s', // Failed node has zero throughput
+              latency: compState.latency >= 1000 ? `${(compState.latency / 1000).toFixed(1)}s` : `${compState.latency.toFixed(0)}ms`,
+              errorRate: '100%',
+            },
+          };
+          nodeVisualStates.set(nodeId, nodeVisual);
+
+          // Update outbound edge visuals (show error propagation)
+          const state = eng.getState();
+          const outboundEdgeIds = state.graphEdgeIds.filter(eid => {
+            const flowState = state.edgeFlowStates.get(eid);
+            return flowState?.sourceNodeId === nodeId;
+          });
+
+          for (const edgeId of outboundEdgeIds) {
+            const flowState = state.edgeFlowStates.get(edgeId);
+            if (flowState) {
+              const edgeVisual: EdgeVisualState = {
+                particleFlow: {
+                  count: 0, // No flow from failed node
+                  speed: 30,
+                },
+                congestionLevel: 1, // Max congestion
+                isBackpressured: true,
+              };
+              edgeVisualStates.set(edgeId, edgeVisual);
+            }
+          }
+        }
+
+        set(prev => ({
           isBroken: mode.state === 'broken',
           isRunning: false, // Even though tick continues, from user POV sim is "failing"
           activeFailures: [...eng.getState().activeFailures],
-        });
+          nodeVisualStates,
+          edgeVisualStates,
+          // Add hint to ambient hints (non-modal)
+          pendingHints: [
+            ...prev.pendingHints,
+            { nodeId, hint, timestamp: Date.now() }
+          ]
+        }));
       },
 
       // FIX 4: Atomic fixAndResume action
@@ -335,6 +492,33 @@ export const useSimulationStore = create<SimulationStoreState>((set) => {
           isRunning: true,
           currentLesson: null,
         });
+      },
+
+      dismissHint(nodeId: string) {
+        set(prev => ({
+          pendingHints: prev.pendingHints.filter(h => h.nodeId !== nodeId),
+          selectedHintNodeId: prev.selectedHintNodeId === nodeId ? null : prev.selectedHintNodeId,
+        }));
+      },
+
+      selectHint(nodeId: string | null) {
+        set({ selectedHintNodeId: nodeId });
+      },
+
+      setTraceMode(enabled: boolean) {
+        set({ isTraceMode: enabled });
+        // Clear active trace when disabling trace mode
+        if (!enabled) {
+          set({ activeTracerNodeId: null });
+        }
+      },
+
+      startTrace(nodeId: string) {
+        set({ activeTracerNodeId: nodeId });
+      },
+
+      clearTrace() {
+        set({ activeTracerNodeId: null });
       },
     },
   };
