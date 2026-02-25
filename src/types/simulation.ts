@@ -224,6 +224,8 @@ export interface ComponentBehavior {
     serviceTime: number; // ms per request
     throughput: number; // current throughput
     state: ComponentState;
+    capacity?: number; // max requests/sec (for M/M/1 utilization)
+    incomingLoad?: number; // requests/sec arriving (for M/M/1 utilization)
   }): number;
 
   /**

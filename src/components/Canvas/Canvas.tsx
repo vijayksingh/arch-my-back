@@ -704,8 +704,7 @@ Canvas.Walkthrough = function WalkthroughCanvas({
         <>
           <SystemMetricsBar />
           <TeachingOverlay />
-          {/* TODO: FailureScenarioPanel reads archNodes from canvasStore which is empty in walkthrough mode. Target selector will be empty. */}
-          <FailureScenarioPanel />
+          <FailureScenarioPanel nodes={localNodes as CanvasNode[]} />
         </>
       )}
     </>

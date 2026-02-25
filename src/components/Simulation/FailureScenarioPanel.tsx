@@ -70,10 +70,19 @@ function isArchNode(n: CanvasNode): n is ArchNode {
 }
 
 // ============================================================================
+// Component Props
+// ============================================================================
+
+interface FailureScenarioPanelProps {
+  /** Optional nodes array to override canvasStore (for walkthrough mode) */
+  nodes?: CanvasNode[];
+}
+
+// ============================================================================
 // Component
 // ============================================================================
 
-function FailureScenarioPanelComponent() {
+function FailureScenarioPanelComponent({ nodes: nodesProp }: FailureScenarioPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -88,8 +97,12 @@ function FailureScenarioPanelComponent() {
   const actions = useSimulationStore((s) => s.actions);
 
   // Canvas nodes (for target selection)
-  const nodes = useCanvasStore((s) => s.nodes);
+  // Always call the hook (Rules of Hooks), but use prop if provided
+  const storeNodes = useCanvasStore((s) => s.nodes);
   const setSelectedNode = useCanvasStore((s) => s.setSelectedNode);
+
+  // Use prop if provided, otherwise fall back to store
+  const nodes = nodesProp ?? storeNodes;
 
   // PERF #15: Memoize archNodes filter to avoid re-filtering on every render
   const archNodes = useMemo(() => nodes.filter(isArchNode), [nodes]);

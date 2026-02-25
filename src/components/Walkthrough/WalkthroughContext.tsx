@@ -7,6 +7,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { WalkthroughEngine, type WalkthroughStep } from '@/lib/walkthroughEngine';
 import type { Walkthrough } from '@/types/walkthrough';
 import type { Node, Edge } from '@xyflow/react';
+import type { CanvasNode, ArchEdge } from '@/types';
 import { useSimulationStore } from '@/stores/simulationStore';
 
 interface WalkthroughContextValue {
@@ -130,7 +131,7 @@ export function WalkthroughProvider({ walkthrough, onComplete, children }: Walkt
       setSimulationEnabled(false);
     } else {
       // Turning on — initialize from current graph
-      simActions.initialize(state.canvasNodes as any, state.canvasEdges as any);
+      simActions.initialize(state.canvasNodes as CanvasNode[], state.canvasEdges as ArchEdge[]);
       simActions.start();
       setSimulationEnabled(true);
     }
@@ -142,7 +143,7 @@ export function WalkthroughProvider({ walkthrough, onComplete, children }: Walkt
       const simActions = useSimulationStore.getState().actions;
       // Re-initialize simulation with new graph from new step
       simActions.reset();
-      simActions.initialize(state.canvasNodes as any, state.canvasEdges as any);
+      simActions.initialize(state.canvasNodes as CanvasNode[], state.canvasEdges as ArchEdge[]);
       simActions.start();
     }
   }, [state.currentStepIndex]);
