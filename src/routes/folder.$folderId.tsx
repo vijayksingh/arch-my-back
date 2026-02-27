@@ -36,7 +36,7 @@ function FolderViewPage() {
         <div className="text-center">
           <p className="mb-4 text-lg">Folder not found</p>
           <button
-            onClick={() => navigate({ to: '/' })}
+            onClick={() => navigate({ to: '/dashboard' })}
             className="text-accent hover:underline"
           >
             Back to Dashboard
@@ -51,7 +51,7 @@ function FolderViewPage() {
       <div className="border-b border-border px-6 py-4">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate({ to: '/' })}
+            onClick={() => navigate({ to: '/dashboard' })}
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
           >
             <ArrowLeftIcon className="h-5 w-5" />

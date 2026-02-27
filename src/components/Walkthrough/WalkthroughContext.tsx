@@ -77,7 +77,7 @@ export function WalkthroughProvider({ walkthrough, onComplete, children }: Walkt
   const canGoPrevious = engine.canGoPrevious();
 
   const handleBack = useCallback(() => {
-    navigate({ to: '/' });
+    navigate({ to: '/dashboard' });
   }, [navigate]);
 
   const handleNext = useCallback(async () => {

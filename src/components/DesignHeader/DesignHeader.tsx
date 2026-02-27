@@ -74,7 +74,7 @@ export function DesignHeader({ designId }: DesignHeaderProps) {
       <div className="flex items-center gap-2">
         {/* Home link */}
         <button
-          onClick={() => navigate({ to: '/' })}
+          onClick={() => navigate({ to: '/dashboard' })}
           className="flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
         >
           <Home className="h-4 w-4" />

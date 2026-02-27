@@ -17,9 +17,17 @@ function RootComponent() {
     );
   }
 
-  // If not authenticated and not on login/signup page, redirect to login
-  if (!isAuthenticated && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/signup')) {
+  const path = window.location.pathname;
+  const isPublicRoute = path === '/' || path.startsWith('/login') || path.startsWith('/signup');
+
+  // If not authenticated and not on a public page, redirect to login
+  if (!isAuthenticated && !isPublicRoute) {
     return <Navigate to="/login" />;
+  }
+
+  // If authenticated and on login/signup, redirect to dashboard
+  if (isAuthenticated && (path.startsWith('/login') || path.startsWith('/signup'))) {
+    return <Navigate to="/dashboard" />;
   }
 
   return <Outlet />;

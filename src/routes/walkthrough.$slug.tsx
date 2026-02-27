@@ -21,7 +21,7 @@ function WalkthroughPage() {
 
   const handleComplete = () => {
     // Navigate back to dashboard
-    navigate({ to: '/' });
+    navigate({ to: '/dashboard' });
   };
 
   // Show fallback for unknown slugs
@@ -34,7 +34,7 @@ function WalkthroughPage() {
             The walkthrough "{slug}" does not exist.
           </p>
           <button
-            onClick={() => navigate({ to: '/' })}
+            onClick={() => navigate({ to: '/dashboard' })}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
           >
             Return to Dashboard
